@@ -491,6 +491,8 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       icon: habitData.icon || 'target',
       hideTitle: Boolean(habitData.hideTitle),
       period: normalizePeriod(habitData.period), // o Firestore não aceita undefined
+      // Só grava quando em destaque (sem undefined para o Firestore)
+      ...(habitData.featured ? { featured: true } : {}),
       // Só grava 'avoid' (padrão 'build' fica ausente, como nos dados antigos)
       ...(normalizeKind(habitData.kind) === 'avoid' ? { kind: 'avoid' as const } : {}),
       frequency: [...habitData.frequency].sort(),

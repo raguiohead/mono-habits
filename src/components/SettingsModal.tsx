@@ -12,14 +12,15 @@ import {
   Download,
   Trash2,
   ArrowLeft,
-  FileText
+  FileText,
+  LayoutGrid
 } from 'lucide-react';
 import { useHabits } from '@/context/HabitsContext';
 import { useSettings } from '@/context/SettingsContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import { exportLocalData } from '@/lib/storage';
 import { getPermission, requestPermission, showSystemNotification } from '@/lib/notifications';
-import { isValidTime, type MotionPref, type TextSize } from '@/lib/settings';
+import { isValidTime, type FocusLayout, type MotionPref, type TextSize } from '@/lib/settings';
 import { Avatar } from './Avatar';
 import { ModalShell } from './ModalShell';
 import { BTN, BTN_PRIMARY, SectionTitle, Switch } from './settingsControls';
@@ -74,6 +75,11 @@ const TEXT_OPTIONS: { value: TextSize; label: string }[] = [
   { value: 'normal', label: 'Normal' },
   { value: 'large', label: 'Grande' },
   { value: 'xlarge', label: 'Muito grande' }
+];
+
+const LAYOUT_OPTIONS: { value: FocusLayout; label: string }[] = [
+  { value: 'list', label: 'Lista' },
+  { value: 'bento', label: 'Bento' }
 ];
 
 const MOTION_OPTIONS: { value: MotionPref; label: string }[] = [
@@ -236,6 +242,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               Conectar com Google
             </button>
           )}
+        </section>
+
+        {/* Aparência */}
+        <section className="space-y-3">
+          <SectionTitle icon={<LayoutGrid className="w-3.5 h-3.5" />}>Aparência</SectionTitle>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium">Layout dos hábitos no Foco</p>
+            <Segmented label="Layout dos hábitos no Foco" value={settings.focusLayout} options={LAYOUT_OPTIONS} onChange={(focusLayout) => updateSettings({ focusLayout })} />
+            <div aria-hidden="true" className="grid grid-cols-2 gap-1.5 pt-1">
+              {settings.focusLayout === 'bento' ? (
+                <>
+                  <div className="col-span-2 h-9 rounded-lg border border-zinc-400 dark:border-zinc-500 bg-zinc-200/70 dark:bg-zinc-800" />
+                  <div className="h-7 rounded-lg border border-zinc-300 dark:border-zinc-700" />
+                  <div className="h-7 rounded-lg border border-zinc-300 dark:border-zinc-700" />
+                </>
+              ) : (
+                <>
+                  <div className="col-span-2 h-5 rounded-lg border border-zinc-300 dark:border-zinc-700" />
+                  <div className="col-span-2 h-5 rounded-lg border border-zinc-300 dark:border-zinc-700" />
+                  <div className="col-span-2 h-5 rounded-lg border border-zinc-300 dark:border-zinc-700" />
+                </>
+              )}
+            </div>
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+              No Bento, até 2 hábitos em destaque ocupam a largura toda. Escolha-os ao editar um hábito.
+            </p>
+          </div>
         </section>
 
         {/* Acessibilidade */}

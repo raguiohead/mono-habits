@@ -1,4 +1,5 @@
 export type TextSize = 'normal' | 'large' | 'xlarge';
+export type FocusLayout = 'list' | 'bento';
 export type MotionPref = 'system' | 'reduce' | 'full';
 
 export interface AppSettings {
@@ -6,6 +7,8 @@ export interface AppSettings {
   textSize: TextSize;
   motion: MotionPref;
   highContrast: boolean;
+  // Aparência
+  focusLayout: FocusLayout; // lista de hábitos do Foco
   // Ofensiva
   graceDaysPerMonth: 0 | 1 | 2; // dias de graça por hábito, por mês
   // Notificações
@@ -21,6 +24,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   textSize: 'normal',
   motion: 'system',
   highContrast: false,
+  focusLayout: 'list',
   graceDaysPerMonth: 1,
   reminderEnabled: false,
   reminderTime: '20:00',
@@ -48,6 +52,7 @@ export function sanitizeSettings(raw: unknown): AppSettings {
     textSize: p.textSize === 'large' || p.textSize === 'xlarge' ? p.textSize : 'normal',
     motion: p.motion === 'reduce' || p.motion === 'full' ? p.motion : 'system',
     highContrast: bool(p.highContrast, d.highContrast),
+    focusLayout: p.focusLayout === 'bento' ? 'bento' : 'list',
     graceDaysPerMonth: p.graceDaysPerMonth === 0 || p.graceDaysPerMonth === 2 ? p.graceDaysPerMonth : 1,
     reminderEnabled: bool(p.reminderEnabled, d.reminderEnabled),
     reminderTime: isValidTime(p.reminderTime) ? p.reminderTime : d.reminderTime,
