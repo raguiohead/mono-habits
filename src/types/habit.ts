@@ -10,6 +10,9 @@ export type PomoGoal = { type: 'sessions'; target: number } | { type: 'minutes';
 /** Período do dia em que o hábito costuma acontecer ('any' = sem horário definido) */
 export type HabitPeriod = 'morning' | 'afternoon' | 'evening' | 'any';
 
+/** 'build' = hábito a construir (padrão); 'avoid' = hábito a evitar (lógica invertida) */
+export type HabitKind = 'build' | 'avoid';
+
 export interface Habit {
   id: string;
   title: string;
@@ -17,6 +20,7 @@ export interface Habit {
   icon: string;
   hideTitle?: boolean;
   period?: HabitPeriod; // ausente em dados antigos = 'any'
+  kind?: HabitKind; // ausente em dados antigos = 'build'
   pomoGoal?: PomoGoal; // meta diária com o Pomo (ausente = sem meta)
   // Meta semanal ("X vezes por semana") em vez de dias fixos; `frequency` é ignorada enquanto ativa
   weeklyTarget?: number; // 1-7: meta mais recente
@@ -28,6 +32,9 @@ export interface Habit {
 }
 
 export type LogsMap = Record<string, string[]>; // { 'YYYY-MM-DD': ['habit-1', 'habit-2'] }
+
+/** Escorregões: hábitos a evitar em que o usuário escorregou em cada dia (o dia vira falha) */
+export type SlipsMap = Record<string, string[]>; // { 'YYYY-MM-DD': ['habit-1'] }
 
 /** Dias de graça: hábitos perdoados em cada dia, sem contar como concluídos */
 export type GracesMap = Record<string, string[]>; // { 'YYYY-MM-DD': ['habit-1'] }

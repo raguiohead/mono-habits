@@ -1,4 +1,5 @@
-import { type Habit, type LogsMap, type GracesMap, type HeatmapDay, type GraphRange } from '@/types/habit';
+import { type Habit, type LogsMap, type GracesMap, type SlipsMap, type HeatmapDay, type GraphRange } from '@/types/habit';
+import { calculateAvoidStreak, calculateBestAvoidStreak, isAvoid, isAvoidScheduled, isSlipped } from './avoid';
 import { toDateKey, addDays, parseDateKey } from './dateUtils';
 import {
   calculateBestWeeklyStreak,
@@ -15,13 +16,16 @@ import {
  * Se o hábito ainda não foi concluído hoje, verifica a partir de ontem para não zerar no meio do dia.
  * Um dia de graça (hábito agendado, não concluído e perdoado) não quebra a sequência nem soma +1.
  * Hábitos com meta semanal contam SEMANAS consecutivas cumpridas (ver lib/weekly.ts).
+ * Hábitos a evitar contam os dias seguidos sem escorregão (`slips`), com hoje já contando.
  */
 export function calculateStreak(
   habit: Habit,
   logs: LogsMap,
   today: Date = new Date(),
-  graces: GracesMap = {}
+  graces: GracesMap = {},
+  slips: SlipsMap = {}
 ): number {
+  if (isAvoid(habit)) return calculateAvoidStreak(habit, slips, today);
   if (isWeeklyOn(habit, today)) return calculateWeeklyStreak(habit, logs, today, graces);
   let streak = 0;
   const freq = habit.frequency || [0, 1, 2, 3, 4, 5, 6];
@@ -79,13 +83,15 @@ export function calculateDailyProgress(habitsForDay: Habit[], completedIds: stri
  * Dias de graça não contam como concluídos (a taxa os trata como não concluídos); só são sinalizados.
  * Hábitos semanais: o dia com conclusão conta cheio e os demais dias nunca penalizam a célula;
  * para a taxa, cada semana encerrada é um sucesso ou uma falha (contado no domingo).
+ * Hábitos a evitar: todo dia agendado (a partir da criação, até hoje) é sucesso, exceto os com escorregão.
  */
 export function generateHeatmapDays(
   habits: Habit[],
   logs: LogsMap,
   today: Date = new Date(),
   totalDays: number = 91,
-  graces: GracesMap = {}
+  graces: GracesMap = {},
+  slips: SlipsMap = {}
 ): HeatmapDay[] {
   const result: HeatmapDay[] = [];
   const active = habits.filter((h) => !h.archived);
@@ -98,16 +104,20 @@ export function generateHeatmapDays(
     const gracedIds = graces[key] || [];
 
     // Hábitos de dias fixos agendados neste dia da semana (em semana sem modo semanal)
-    const fixed = active.filter((h) => !isWeeklyOn(h, d) && (h.frequency || []).includes(dow));
+    const fixed = active.filter((h) =>
+      isAvoid(h) ? isAvoidScheduled(h, d) : !isWeeklyOn(h, d) && (h.frequency || []).includes(dow)
+    );
     const weekly = active.filter((h) => isWeeklyOn(h, d));
+    // Hábito a evitar: feito por padrão, a menos que tenha escorregão no dia
+    const isDone = (h: Habit) => (isAvoid(h) ? !isSlipped(slips, key, h.id) : completedIds.includes(h.id));
     const weeklyDone = weekly.filter((h) => completedIds.includes(h.id));
 
     const scheduledCount = fixed.length + weeklyDone.length;
-    const fixedDone = fixed.filter((h) => completedIds.includes(h.id)).length;
+    const fixedDone = fixed.filter(isDone).length;
     const completedCount = fixedDone + weeklyDone.length;
     const ratio = scheduledCount > 0 ? completedCount / scheduledCount : 0;
     const gracedCount = [...fixed, ...weekly].filter(
-      (h) => !completedIds.includes(h.id) && gracedIds.includes(h.id)
+      (h) => !isAvoid(h) && !completedIds.includes(h.id) && gracedIds.includes(h.id)
     ).length;
 
     // Taxa: fixos por dia; semanais por semana encerrada (contada no domingo)
@@ -160,14 +170,16 @@ export function calculateRetentionRate(heatmapDays: HeatmapDay[], daysCount: num
  * Calcula a maior sequência consecutiva histórica (best streak) de um hábito,
  * varrendo desde habit.createdAt até hoje.
  * Dias não agendados (fora de habit.frequency) não quebram nem somam; dias de graça também não.
- * Hábitos com meta semanal: maior sequência de SEMANAS cumpridas.
+ * Hábitos com meta semanal: maior sequência de SEMANAS cumpridas. Hábitos a evitar: maior sequência sem escorregão.
  */
 export function calculateBestStreak(
   habit: Habit,
   logs: LogsMap,
   today: Date = new Date(),
-  graces: GracesMap = {}
+  graces: GracesMap = {},
+  slips: SlipsMap = {}
 ): number {
+  if (isAvoid(habit)) return calculateBestAvoidStreak(habit, slips, today);
   if (isWeeklyOn(habit, today)) return calculateBestWeeklyStreak(habit, logs, today, graces);
   const freq = habit.frequency || [0, 1, 2, 3, 4, 5, 6];
   if (freq.length === 0) return 0;
@@ -226,7 +238,7 @@ export function calculateBestStreak(
     cursor = addDays(cursor, 1);
   }
 
-  const current = calculateStreak(habit, logs, today, graces);
+  const current = calculateStreak(habit, logs, today, graces, slips);
   return Math.max(bestStreak, current);
 }
 
@@ -238,11 +250,12 @@ export function getBestStreak(
   habits: Habit[],
   logs: LogsMap,
   today: Date = new Date(),
-  graces: GracesMap = {}
+  graces: GracesMap = {},
+  slips: SlipsMap = {}
 ): number {
   const active = habits.filter((h) => !h.archived && !isWeeklyOn(h, today));
   if (active.length === 0) return 0;
-  return Math.max(...active.map((h) => calculateBestStreak(h, logs, today, graces)), 0);
+  return Math.max(...active.map((h) => calculateBestStreak(h, logs, today, graces, slips)), 0);
 }
 
 /**
@@ -252,11 +265,12 @@ export function getBestCurrentStreak(
   habits: Habit[],
   logs: LogsMap,
   today: Date = new Date(),
-  graces: GracesMap = {}
+  graces: GracesMap = {},
+  slips: SlipsMap = {}
 ): number {
   const active = habits.filter((h) => !h.archived && !isWeeklyOn(h, today));
   if (active.length === 0) return 0;
-  return Math.max(...active.map((h) => calculateStreak(h, logs, today, graces)), 0);
+  return Math.max(...active.map((h) => calculateStreak(h, logs, today, graces, slips)), 0);
 }
 
 /** Ofensivas em SEMANAS (melhor e atual) entre os hábitos ativos com meta semanal */

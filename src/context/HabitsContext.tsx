@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { type Habit, type LogsMap, type GracesMap, type TabType, type SyncStatus, type PomoSession } from '@/types/habit';
+import { type Habit, type LogsMap, type GracesMap, type SlipsMap, type TabType, type SyncStatus, type PomoSession } from '@/types/habit';
 import { useSettings } from '@/context/SettingsContext';
 import { GRACE_BLOCK_MESSAGE, addGrace, getGraceBlock, graceRemaining, isGraced, monthKeyOf, removeGrace } from '@/lib/graces';
 import { sortSessions } from '@/lib/pomo';
 import { normalizePeriod } from '@/lib/periods';
 import { applyWeeklyTargetChange } from '@/lib/weekly';
+import { addSlip, canSlipOn, normalizeKind, removeSlip } from '@/lib/avoid';
 import { addDismissal, getGoalLock, normalizePomoGoal, shouldAutoComplete } from '@/lib/pomoGoals';
 import { toDateKey, addDays } from '@/lib/dateUtils';
 import {
@@ -21,7 +22,9 @@ import {
   loadGoalDismissals,
   saveGoalDismissals,
   loadLocalGraces,
-  saveLocalGraces
+  saveLocalGraces,
+  loadLocalSlips,
+  saveLocalSlips
 } from '@/lib/storage';
 import {
   auth,
@@ -44,6 +47,12 @@ import {
   type User
 } from '@/lib/firebase';
 
+/** Ação opcional do toast (ex.: Desfazer) */
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 interface HabitsContextType {
   // Tema
   darkMode: boolean;
@@ -63,6 +72,7 @@ interface HabitsContextType {
   activeHabits: Habit[];
   logs: LogsMap;
   graces: GracesMap;
+  slips: SlipsMap;
   pomoSessions: PomoSession[];
   initialLoaded: boolean;
 
@@ -77,6 +87,10 @@ interface HabitsContextType {
   // Ações CRUD
   saveHabit: (habitData: Omit<Habit, 'id' | 'createdAt'> & { id?: string; createdAt?: number }) => Promise<void>;
   toggleHabitCompletion: (habitId: string, dateKey?: string) => Promise<void>;
+  /** Registra um escorregão em um hábito a evitar (o dia vira falha e a ofensiva recomeça). Com toast de desfazer. */
+  markSlip: (habitId: string, dateKey: string) => Promise<boolean>;
+  /** Desfaz o escorregão */
+  undoSlip: (habitId: string, dateKey: string) => Promise<boolean>;
   /** Usa um dia de graça do hábito no dia (valida janela, agendamento e cota). Retorna true se aplicou. */
   applyGrace: (habitId: string, dateKey: string) => Promise<boolean>;
   /** Desfaz o dia de graça e devolve a cota */
@@ -91,7 +105,9 @@ interface HabitsContextType {
 
   // Notificações
   toastMessage: string | null;
-  showToast: (msg: string) => void;
+  toastAction: ToastAction | null;
+  showToast: (msg: string, action?: ToastAction) => void;
+  dismissToast: () => void;
 }
 
 const HabitsContext = createContext<HabitsContextType | undefined>(undefined);
@@ -108,6 +124,9 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [logs, setLogs] = useState<LogsMap>(() => loadLocalLogs());
   const logsRef = useRef<LogsMap>(logs);
   logsRef.current = logs;
+  const [slips, setSlips] = useState<SlipsMap>(() => loadLocalSlips());
+  const slipsRef = useRef<SlipsMap>(slips);
+  slipsRef.current = slips;
   const [graces, setGraces] = useState<GracesMap>(() => loadLocalGraces());
   const gracesRef = useRef<GracesMap>(graces);
   gracesRef.current = graces;
@@ -128,11 +147,26 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const showToast = useCallback((msg: string) => {
+  const [toastAction, setToastAction] = useState<ToastAction | null>(null);
+  const toastSeq = useRef(0);
+
+  const dismissToast = useCallback(() => {
+    toastSeq.current += 1; // invalida o temporizador do toast atual
+    setToastMessage(null);
+    setToastAction(null);
+  }, []);
+
+  // Só o toast mais recente é fechado pelo seu temporizador; com ação (ex.: Desfazer) dura mais
+  const showToast = useCallback((msg: string, action?: ToastAction) => {
+    const id = ++toastSeq.current;
     setToastMessage(msg);
+    setToastAction(action ?? null);
     setTimeout(() => {
-      setToastMessage((prev) => (prev === msg ? null : prev));
-    }, 3200);
+      if (toastSeq.current === id) {
+        setToastMessage(null);
+        setToastAction(null);
+      }
+    }, action ? 6000 : 3200);
   }, []);
 
   // Alternar Dark Mode e sincronizar com DOM e localStorage
@@ -276,6 +310,36 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     );
 
+    // Listener de Escorregões (um documento por dia, como os logs)
+    const slipsCol = collection(activeDb, 'artifacts', appId, 'users', user.uid, 'slips');
+    const unsubSlips = onSnapshot(
+      slipsCol,
+      (snapshot) => {
+        const remote: SlipsMap = {};
+        snapshot.forEach((docSnap) => {
+          const ids = docSnap.data().habitIds;
+          if (Array.isArray(ids) && ids.length > 0) remote[docSnap.id] = ids;
+        });
+
+        const local = loadLocalSlips();
+        if (Object.keys(remote).length === 0 && Object.keys(local).length > 0) {
+          Object.entries(local).forEach(([dateKey, ids]) => {
+            const sRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'slips', dateKey);
+            setDoc(sRef, { date: dateKey, habitIds: ids, updatedAt: Date.now() }).catch((err) =>
+              console.warn('[Firestore] Falha ao enviar escorregão:', err)
+            );
+          });
+          setSlips(local);
+        } else {
+          setSlips(remote);
+          saveLocalSlips(remote);
+        }
+      },
+      (error) => {
+        console.warn('[Firestore] Erro ao carregar escorregões:', error);
+      }
+    );
+
     // Listener de Dias de Graça (um documento por dia, como os logs)
     const gracesCol = collection(activeDb, 'artifacts', appId, 'users', user.uid, 'graces');
     const unsubGraces = onSnapshot(
@@ -339,6 +403,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       unsubHabits();
       unsubLogs();
       unsubGraces();
+      unsubSlips();
       unsubPomo();
     };
   }, [user]);
@@ -426,14 +491,23 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       icon: habitData.icon || 'target',
       hideTitle: Boolean(habitData.hideTitle),
       period: normalizePeriod(habitData.period), // o Firestore não aceita undefined
+      // Só grava 'avoid' (padrão 'build' fica ausente, como nos dados antigos)
+      ...(normalizeKind(habitData.kind) === 'avoid' ? { kind: 'avoid' as const } : {}),
       frequency: [...habitData.frequency].sort(),
       archived: Boolean(habitData.archived),
       createdAt: habitData.createdAt || Date.now(),
       // Só inclui quando há meta válida: o Firestore não aceita undefined
-      ...(normalizePomoGoal(habitData.pomoGoal) ? { pomoGoal: normalizePomoGoal(habitData.pomoGoal) } : {}),
+      // Hábito a evitar não tem meta do Pomo nem meta semanal
+      ...(normalizeKind(habitData.kind) !== 'avoid' && normalizePomoGoal(habitData.pomoGoal)
+        ? { pomoGoal: normalizePomoGoal(habitData.pomoGoal) }
+        : {}),
       // Meta semanal: só inclui quando houver (sem undefined). Mudar a meta vale a partir da próxima semana;
       // sem meta (dias fixos) os campos somem e `frequency` volta a valer.
-      ...applyWeeklyTargetChange(habitsRef.current.find((h) => h.id === id), habitData.weeklyTarget, new Date())
+      ...applyWeeklyTargetChange(
+        habitsRef.current.find((h) => h.id === id),
+        normalizeKind(habitData.kind) === 'avoid' ? undefined : habitData.weeklyTarget,
+        new Date()
+      )
     };
 
     // 1. Atualiza estado e localStorage (Local-First)
@@ -482,6 +556,48 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  // Grava os escorregões (local primeiro, depois nuvem) para o dia alterado
+  const persistSlips = async (next: SlipsMap, dateKey: string) => {
+    slipsRef.current = next;
+    setSlips(next);
+    saveLocalSlips(next);
+    if (user && db && isFirebaseConfigured) {
+      try {
+        const sRef = doc(db, 'artifacts', appId, 'users', user.uid, 'slips', dateKey);
+        if (next[dateKey]?.length) {
+          await setDoc(sRef, { date: dateKey, habitIds: next[dateKey], updatedAt: Date.now() });
+        } else {
+          await deleteDoc(sRef);
+        }
+      } catch (err) {
+        console.error('Falha ao salvar escorregão no Firestore:', err);
+      }
+    }
+  };
+
+  // Registrar um escorregão: o dia vira falha e a ofensiva recomeça. O toast oferece desfazer.
+  const markSlip = async (habitId: string, dateKey: string): Promise<boolean> => {
+    const habit = habitsRef.current.find((h) => h.id === habitId);
+    if (!habit || !canSlipOn(habit, dateKey, new Date())) return false;
+    const next = addSlip(slipsRef.current, dateKey, habitId);
+    if (next === slipsRef.current) return false;
+    showToast('Tudo bem. Amanhã é um novo dia.', {
+      label: 'Desfazer',
+      onClick: () => void undoSlip(habitId, dateKey, true)
+    });
+    await persistSlips(next, dateKey);
+    return true;
+  };
+
+  // Desfazer o escorregão (silencioso quando vem do botão do toast, que já fecha o aviso)
+  const undoSlip = async (habitId: string, dateKey: string, fromToast = false): Promise<boolean> => {
+    const next = removeSlip(slipsRef.current, dateKey, habitId);
+    if (next === slipsRef.current) return false;
+    showToast(fromToast ? 'Registro desfeito. Você segue limpo.' : 'Registro desfeito.');
+    await persistSlips(next, dateKey);
+    return true;
+  };
+
   // Usar dia de graça: perdoa um dia perdido sem quebrar a ofensiva (não conta como concluído)
   const applyGrace = async (habitId: string, dateKey: string): Promise<boolean> => {
     const habit = habitsRef.current.find((h) => h.id === habitId);
@@ -519,6 +635,8 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const completeHabit = async (habitId: string, dateKey: string): Promise<boolean> => {
     const current = logsRef.current[dateKey] || [];
     if (current.includes(habitId)) return false;
+    // Hábito a evitar não se "conclui": só registra escorregões
+    if (habitsRef.current.find((h) => h.id === habitId)?.kind === 'avoid') return false;
     // Hábito com meta do Pomo só conclui depois de cumprida a meta (vale também para a notificação)
     const target = habitsRef.current.find((h) => h.id === habitId);
     if (target && getGoalLock(target, pomoSessionsRef.current, dateKey)) return false;
@@ -557,6 +675,9 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const updatedCompleted = exists
       ? currentCompleted.filter((id) => id !== habitId)
       : [...currentCompleted, habitId];
+
+    // Hábito a evitar não tem check-in: a ação dele é o escorregão
+    if (habitsRef.current.find((h) => h.id === habitId)?.kind === 'avoid') return;
 
     // Marcar um hábito com meta do Pomo exige a meta cumprida no dia
     if (!exists) {
@@ -774,6 +895,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         activeHabits,
         logs,
         graces,
+        slips,
         pomoSessions,
         initialLoaded,
         selectedDateKey,
@@ -785,6 +907,8 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         saveHabit,
         toggleHabitCompletion,
         completeHabit,
+        markSlip,
+        undoSlip,
         applyGrace,
         undoGrace,
         toggleHideTitle,
@@ -793,7 +917,9 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         seedStarterHabits,
         savePomoSession,
         toastMessage,
-        showToast
+        toastAction,
+        showToast,
+        dismissToast
       }}
     >
       {children}

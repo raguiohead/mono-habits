@@ -1,5 +1,6 @@
 import { type Habit, type LogsMap, type GracesMap, type WeeklyTargetEntry } from '@/types/habit';
 import { addDays, parseDateKey, toDateKey } from './dateUtils';
+import { isAvoid, isAvoidScheduled } from './avoid';
 
 export const MIN_WEEKLY_TARGET = 1;
 export const MAX_WEEKLY_TARGET = 7;
@@ -68,6 +69,7 @@ export function targetForWeek(habit: Habit, weekKey: string): number | null {
 
 /** O hábito segue meta semanal na semana desta data? Antes disso ele segue os dias fixos */
 export function isWeeklyOn(habit: Habit, date: Date): boolean {
+  if (habit.kind === 'avoid') return false;
   return targetForWeek(habit, weekStartKey(date)) !== null;
 }
 
@@ -153,6 +155,8 @@ function firstWeekKey(habit: Habit): string {
 /** O hábito aparece na lista do dia? (semanal: todos os dias; fixo: pelos dias da semana) */
 export function isScheduledOn(habit: Habit, date: Date): boolean {
   if (habit.archived) return false;
+  // Hábito a evitar: dias da semana agendados, a partir do dia da criação (nunca semanal)
+  if (isAvoid(habit)) return isAvoidScheduled(habit, date);
   return isWeeklyOn(habit, date) || (habit.frequency || []).includes(date.getDay());
 }
 

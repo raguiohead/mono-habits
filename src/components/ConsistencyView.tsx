@@ -61,7 +61,7 @@ function bucketLabel(bucket: GraphBucket, index: number, total: number, range: G
 }
 
 export const ConsistencyView: React.FC = () => {
-  const { activeHabits, logs, graces, darkMode, setSelectedDateKey, setActiveTab } = useHabits();
+  const { activeHabits, logs, graces, slips, darkMode, setSelectedDateKey, setActiveTab } = useHabits();
   const [range, setRange] = useState<GraphRange>(() => loadRange());
   const [selectedCell, setSelectedCell] = useState<HeatmapDay | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -80,23 +80,23 @@ export const ConsistencyView: React.FC = () => {
   };
 
   const days = useMemo(
-    () => generateHeatmapDays(activeHabits, logs, today, range, graces),
-    [activeHabits, logs, today, range, graces]
+    () => generateHeatmapDays(activeHabits, logs, today, range, graces, slips),
+    [activeHabits, logs, today, range, graces, slips]
   );
 
   const periodRate = useMemo(() => calculateRetentionRate(days, range), [days, range]);
   const perfectDays = useMemo(() => countPerfectDays(days), [days]);
   const bestStreak = useMemo(
-    () => getBestStreak(activeHabits, logs, today, graces),
-    [activeHabits, logs, today, graces]
+    () => getBestStreak(activeHabits, logs, today, graces, slips),
+    [activeHabits, logs, today, graces, slips]
   );
   const weeklySummary = useMemo(
     () => getWeeklyStreakSummary(activeHabits, logs, today, graces),
     [activeHabits, logs, today, graces]
   );
   const currentBestStreak = useMemo(
-    () => getBestCurrentStreak(activeHabits, logs, today, graces),
-    [activeHabits, logs, today, graces]
+    () => getBestCurrentStreak(activeHabits, logs, today, graces, slips),
+    [activeHabits, logs, today, graces, slips]
   );
 
   const buckets = useMemo(() => aggregateBuckets(days, getBucketSize(range)), [days, range]);

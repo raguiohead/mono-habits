@@ -3,7 +3,8 @@ import { X, Eye, EyeOff, Minus, Plus } from 'lucide-react';
 import { HABIT_ICONS } from './HabitIcon';
 import { ModalShell } from './ModalShell';
 import { DAYS_SHORT } from '@/lib/dateUtils';
-import { type Habit, type HabitPeriod } from '@/types/habit';
+import { type Habit, type HabitKind, type HabitPeriod } from '@/types/habit';
+import { normalizeKind } from '@/lib/avoid';
 import {
   MAX_WEEKLY_TARGET,
   MIN_WEEKLY_TARGET,
@@ -44,6 +45,8 @@ export const HabitModal: React.FC<HabitModalProps> = ({
   const [icon, setIcon] = useState('target');
   const [hideTitle, setHideTitle] = useState(false);
   const [period, setPeriod] = useState<HabitPeriod>('any');
+  // Construir (marcar quando fizer) ou evitar (registrar só quando escorregar)
+  const [kind, setKind] = useState<HabitKind>('build');
   // Meta com Pomo (desligada por padrão); guarda o alvo de cada tipo separadamente
   const [goalEnabled, setGoalEnabled] = useState(false);
   const [goalType, setGoalType] = useState<'minutes' | 'sessions'>('minutes');
@@ -61,6 +64,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       setIcon(initialHabit.icon || 'target');
       setHideTitle(Boolean(initialHabit.hideTitle));
       setPeriod(normalizePeriod(initialHabit.period));
+      setKind(normalizeKind(initialHabit.kind));
       const goal = normalizePomoGoal(initialHabit.pomoGoal);
       setGoalEnabled(Boolean(goal));
       setGoalType(goal?.type ?? 'minutes');
@@ -75,6 +79,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       setIcon('target');
       setHideTitle(false);
       setPeriod('any');
+      setKind('build');
       setGoalEnabled(false);
       setGoalType('minutes');
       setGoalMinutes(DEFAULT_GOAL_MINUTES);
@@ -101,7 +106,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-    if (scheduleMode === 'days' && frequency.length === 0) return;
+    if ((scheduleMode === 'days' || kind === 'avoid') && frequency.length === 0) return;
 
     onSave({
       id: initialHabit ? initialHabit.id : undefined,
@@ -110,11 +115,13 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       icon: icon || 'target',
       hideTitle,
       period,
-      pomoGoal: goalEnabled
+      // Hábito a evitar não tem meta do Pomo nem meta semanal
+      kind,
+      pomoGoal: goalEnabled && kind === 'build'
         ? normalizePomoGoal({ type: goalType, target: goalType === 'minutes' ? goalMinutes : goalSessions })
         : undefined,
       frequency: [...frequency].sort(),
-      weeklyTarget: scheduleMode === 'weekly' ? weeklyTarget : undefined,
+      weeklyTarget: scheduleMode === 'weekly' && kind === 'build' ? weeklyTarget : undefined,
       archived: initialHabit ? initialHabit.archived : false,
       createdAt: initialHabit ? initialHabit.createdAt : Date.now()
     });
@@ -153,6 +160,39 @@ export const HabitModal: React.FC<HabitModalProps> = ({
 
         {/* Formulário */}
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+          {/* Tipo: construir ou evitar */}
+          <div>
+            <span id="habit-kind-label" className="block mb-1.5 font-medium text-zinc-700 dark:text-zinc-300">
+              Tipo de hábito
+            </span>
+            <div role="radiogroup" aria-labelledby="habit-kind-label" className="grid grid-cols-2 gap-1.5">
+              {([
+                { value: 'build', label: 'Construir hábito' },
+                { value: 'avoid', label: 'Evitar hábito' }
+              ] as const).map((opt) => (
+                <button
+                  type="button"
+                  key={opt.value}
+                  role="radio"
+                  aria-checked={kind === opt.value}
+                  onClick={() => setKind(opt.value)}
+                  className={`min-h-[44px] rounded-xl text-xs font-mono border transition-all ${
+                    kind === opt.value
+                      ? 'bg-zinc-950 text-zinc-50 border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50 font-semibold'
+                      : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              {kind === 'avoid'
+                ? 'Você só registra quando escorregar. Os dias sem registro contam como limpos, e um escorregão não apaga o que você já conquistou.'
+                : 'Você marca o hábito nos dias em que o fizer.'}
+            </p>
+          </div>
+
           {/* Nome */}
           <div>
             <label className="block font-medium mb-1.5 text-zinc-700 dark:text-zinc-300">
@@ -268,9 +308,13 @@ export const HabitModal: React.FC<HabitModalProps> = ({
           {/* Frequência: dias fixos ou meta semanal */}
           <div className="space-y-2">
             <span id="habit-schedule-label" className="block font-medium text-zinc-700 dark:text-zinc-300">
-              Frequência
+              {kind === 'avoid' ? 'Dias em que quero evitar' : 'Frequência'}
             </span>
-            <div role="radiogroup" aria-labelledby="habit-schedule-label" className="grid grid-cols-2 gap-1.5">
+            <div
+              role="radiogroup"
+              aria-labelledby="habit-schedule-label"
+              className={`grid grid-cols-2 gap-1.5 ${kind === 'avoid' ? 'hidden' : ''}`}
+            >
               {([
                 { value: 'days', label: 'Dias fixos' },
                 { value: 'weekly', label: 'X vezes por semana' }
@@ -292,7 +336,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
               ))}
             </div>
 
-            {scheduleMode === 'days' ? (
+            {scheduleMode === 'days' || kind === 'avoid' ? (
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">Dias da semana</label>
@@ -390,6 +434,8 @@ export const HabitModal: React.FC<HabitModalProps> = ({
             </div>
           </div>
 
+          {kind === 'build' && (
+            <>
           {/* Meta com Pomo */}
           <div
             className={`p-3 rounded-2xl border space-y-3 transition-colors ${
@@ -481,6 +527,9 @@ export const HabitModal: React.FC<HabitModalProps> = ({
               </>
             )}
           </div>
+
+            </>
+          )}
 
           {/* Ações Inferiores */}
           <div className="flex items-center justify-end gap-2 pt-4 border-t border-zinc-200/80 dark:border-zinc-800">
