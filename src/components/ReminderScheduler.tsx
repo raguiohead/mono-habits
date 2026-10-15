@@ -8,7 +8,8 @@ import { shouldSendReminder } from '@/lib/settings';
 import { getHabitsForDate } from '@/lib/analytics';
 import { isDueOn } from '@/lib/weekly';
 import { getGoalLock } from '@/lib/pomoGoals';
-import { toDateKey } from '@/lib/dateUtils';
+import { addDays, toDateKey } from '@/lib/dateUtils';
+import { buildWeeklySummary } from '@/lib/weeklySummary';
 
 /**
  * Lembrete diário de hábitos pendentes.
@@ -17,7 +18,7 @@ import { toDateKey } from '@/lib/dateUtils';
  * O botão "Marcar como feito" é tratado pelo Service Worker (src/sw.ts) e aplicado por CompletionQueueSync.
  */
 export const ReminderScheduler: React.FC = () => {
-  const { activeHabits, logs, pomoSessions, initialLoaded } = useHabits();
+  const { activeHabits, logs, slips, pomoSessions, initialLoaded } = useHabits();
   const { settings } = useSettings();
 
   useEffect(() => {
@@ -35,13 +36,22 @@ export const ReminderScheduler: React.FC = () => {
       const pending = scheduled.filter((h) => !done.includes(h.id));
       const pendingCount = pending.length;
 
+      // Domingo, se permitido: acrescenta a taxa da semana. Só a frase da taxa, que não tem nomes de
+      // hábitos (a notificação aparece na tela de bloqueio). Conta o domingo como dia encerrado.
+      let summaryLine: string | null = null;
+      if (settings.weeklySummaryInReminder && now.getDay() === 0) {
+        const summary = buildWeeklySummary(activeHabits, logs, now, { slips, today: addDays(now, 1) });
+        if (summary.rate !== null) summaryLine = summary.sentences[0];
+      }
+
       if (
         !shouldSendReminder({
           now,
           time: settings.reminderTime,
           lastSentKey: getLastReminderKey(),
           todayKey,
-          pendingCount
+          pendingCount,
+          allowEmpty: summaryLine !== null
         })
       ) {
         return;
@@ -51,7 +61,16 @@ export const ReminderScheduler: React.FC = () => {
       // então nada vaza com o Modo Discreto/hideTitle; com vários pendentes, o toque só abre o app.
       void showSystemNotification(
         'MONO // HABITS',
-        pendingCount === 1 ? 'Falta 1 hábito para hoje.' : `Faltam ${pendingCount} hábitos para hoje.`,
+        [
+          pendingCount === 0
+            ? null
+            : pendingCount === 1
+            ? 'Falta 1 hábito para hoje.'
+            : `Faltam ${pendingCount} hábitos para hoje.`,
+          summaryLine
+        ]
+          .filter(Boolean)
+          .join(' '),
         'daily-reminder',
         // Hábito com meta do Pomo ainda não cumprida não pode ser marcado: sem o botão
         pendingCount === 1 && !getGoalLock(pending[0], pomoSessions, todayKey)
@@ -70,7 +89,16 @@ export const ReminderScheduler: React.FC = () => {
       window.clearInterval(id);
       document.removeEventListener('visibilitychange', check);
     };
-  }, [settings.reminderEnabled, settings.reminderTime, activeHabits, logs, pomoSessions, initialLoaded]);
+  }, [
+    settings.reminderEnabled,
+    settings.reminderTime,
+    settings.weeklySummaryInReminder,
+    activeHabits,
+    logs,
+    slips,
+    pomoSessions,
+    initialLoaded
+  ]);
 
   return null;
 };

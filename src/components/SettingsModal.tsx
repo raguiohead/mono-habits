@@ -348,6 +348,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               />
             </div>
           )}
+          {settings.reminderEnabled && (
+            <Switch
+              label="Resumo semanal no domingo"
+              description="Acrescenta ao lembrete de domingo a taxa da semana. Sem nomes de hábitos."
+              checked={settings.weeklySummaryInReminder}
+              onChange={(weeklySummaryInReminder) => updateSettings({ weeklySummaryInReminder })}
+            />
+          )}
           <Switch
             label="Aviso de fim do Pomo"
             description="Notificação do sistema quando o app estiver em segundo plano."
