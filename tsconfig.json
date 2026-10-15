@@ -27,5 +27,6 @@
     }
   },
   "include": ["src", "tests"],
+  "exclude": ["src/sw.ts"], // tem tsconfig próprio (lib WebWorker): tsconfig.sw.json
   "references": [{ "path": "./tsconfig.node.json" }]
 }

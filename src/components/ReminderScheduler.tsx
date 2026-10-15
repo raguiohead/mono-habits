@@ -12,6 +12,7 @@ import { toDateKey } from '@/lib/dateUtils';
  * Lembrete diário de hábitos pendentes.
  * Sem servidor de push, o aviso é disparado enquanto o app está aberto (inclusive em segundo
  * plano / PWA instalado). Não inclui nomes de hábitos, respeitando o Modo Discreto.
+ * O botão "Marcar como feito" é tratado pelo Service Worker (src/sw.ts) e aplicado por CompletionQueueSync.
  */
 export const ReminderScheduler: React.FC = () => {
   const { activeHabits, logs, initialLoaded } = useHabits();
@@ -25,7 +26,8 @@ export const ReminderScheduler: React.FC = () => {
       const todayKey = toDateKey(now);
       const scheduled = getHabitsForDay(activeHabits, now.getDay());
       const done = logs[todayKey] || [];
-      const pendingCount = scheduled.filter((h) => !done.includes(h.id)).length;
+      const pending = scheduled.filter((h) => !done.includes(h.id));
+      const pendingCount = pending.length;
 
       if (
         !shouldSendReminder({
@@ -39,10 +41,18 @@ export const ReminderScheduler: React.FC = () => {
         return;
       }
       setLastReminderKey(todayKey);
+      // Com exatamente 1 pendente, oferece "Marcar como feito". O texto é sempre genérico (sem título),
+      // então nada vaza com o Modo Discreto/hideTitle; com vários pendentes, o toque só abre o app.
       void showSystemNotification(
         'MONO // HABITS',
         pendingCount === 1 ? 'Falta 1 hábito para hoje.' : `Faltam ${pendingCount} hábitos para hoje.`,
-        'daily-reminder'
+        'daily-reminder',
+        pendingCount === 1
+          ? {
+              actions: [{ action: 'complete', title: 'Marcar como feito' }],
+              data: { habitId: pending[0].id, dateKey: todayKey }
+            }
+          : {}
       );
     };
 
