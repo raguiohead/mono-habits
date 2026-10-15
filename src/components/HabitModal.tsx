@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { X, Eye, EyeOff } from 'lucide-react';
+import { X, Eye, EyeOff, Minus, Plus } from 'lucide-react';
 import { HABIT_ICONS } from './HabitIcon';
 import { ModalShell } from './ModalShell';
 import { DAYS_SHORT } from '@/lib/dateUtils';
 import { type Habit, type HabitPeriod } from '@/types/habit';
+import {
+  DEFAULT_GOAL_MINUTES,
+  DEFAULT_GOAL_SESSIONS,
+  GOAL_LIMITS,
+  normalizePomoGoal
+} from '@/lib/pomoGoals';
 import { PERIOD_LABEL, normalizePeriod } from '@/lib/periods';
 
 interface HabitModalProps {
@@ -28,6 +34,11 @@ export const HabitModal: React.FC<HabitModalProps> = ({
   const [icon, setIcon] = useState('target');
   const [hideTitle, setHideTitle] = useState(false);
   const [period, setPeriod] = useState<HabitPeriod>('any');
+  // Meta com Pomo (desligada por padrão); guarda o alvo de cada tipo separadamente
+  const [goalEnabled, setGoalEnabled] = useState(false);
+  const [goalType, setGoalType] = useState<'minutes' | 'sessions'>('minutes');
+  const [goalMinutes, setGoalMinutes] = useState(DEFAULT_GOAL_MINUTES);
+  const [goalSessions, setGoalSessions] = useState(DEFAULT_GOAL_SESSIONS);
   const [frequency, setFrequency] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
 
   useEffect(() => {
@@ -37,6 +48,11 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       setIcon(initialHabit.icon || 'target');
       setHideTitle(Boolean(initialHabit.hideTitle));
       setPeriod(normalizePeriod(initialHabit.period));
+      const goal = normalizePomoGoal(initialHabit.pomoGoal);
+      setGoalEnabled(Boolean(goal));
+      setGoalType(goal?.type ?? 'minutes');
+      setGoalMinutes(goal?.type === 'minutes' ? goal.target : DEFAULT_GOAL_MINUTES);
+      setGoalSessions(goal?.type === 'sessions' ? goal.target : DEFAULT_GOAL_SESSIONS);
       setFrequency(initialHabit.frequency || [0, 1, 2, 3, 4, 5, 6]);
     } else {
       setTitle('');
@@ -44,6 +60,10 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       setIcon('target');
       setHideTitle(false);
       setPeriod('any');
+      setGoalEnabled(false);
+      setGoalType('minutes');
+      setGoalMinutes(DEFAULT_GOAL_MINUTES);
+      setGoalSessions(DEFAULT_GOAL_SESSIONS);
       setFrequency([0, 1, 2, 3, 4, 5, 6]);
     }
   }, [initialHabit, isOpen]);
@@ -62,6 +82,9 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       icon: icon || 'target',
       hideTitle,
       period,
+      pomoGoal: goalEnabled
+        ? normalizePomoGoal({ type: goalType, target: goalType === 'minutes' ? goalMinutes : goalSessions })
+        : undefined,
       frequency: [...frequency].sort(),
       archived: initialHabit ? initialHabit.archived : false,
       createdAt: initialHabit ? initialHabit.createdAt : Date.now()
@@ -274,6 +297,98 @@ export const HabitModal: React.FC<HabitModalProps> = ({
                 );
               })}
             </div>
+          </div>
+
+          {/* Meta com Pomo */}
+          <div
+            className={`p-3 rounded-2xl border space-y-3 transition-colors ${
+              goalEnabled
+                ? 'bg-zinc-100 dark:bg-zinc-900 border-zinc-400 dark:border-zinc-700'
+                : 'bg-zinc-50 dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800'
+            }`}
+          >
+            <button
+              type="button"
+              role="switch"
+              aria-checked={goalEnabled}
+              onClick={() => setGoalEnabled(!goalEnabled)}
+              className="w-full min-h-[44px] flex items-center justify-between gap-3 text-left"
+            >
+              <span>
+                <span className="block font-medium text-xs">Meta com Pomo</span>
+                <span className="block text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  O hábito é concluído sozinho ao atingir a meta do dia com sessões de foco vinculadas
+                </span>
+              </span>
+              <span
+                className={`w-9 h-5 rounded-full p-0.5 transition-colors shrink-0 ${
+                  goalEnabled ? 'bg-zinc-950 dark:bg-zinc-50' : 'bg-zinc-300 dark:bg-zinc-700'
+                }`}
+              >
+                <span
+                  className={`block w-4 h-4 rounded-full transition-transform ${
+                    goalEnabled ? 'translate-x-4 bg-white dark:bg-zinc-950' : 'translate-x-0 bg-white'
+                  }`}
+                />
+              </span>
+            </button>
+
+            {goalEnabled && (
+              <>
+                <div role="radiogroup" aria-label="Tipo de meta" className="grid grid-cols-2 gap-1.5">
+                  {(['minutes', 'sessions'] as const).map((type) => (
+                    <button
+                      type="button"
+                      key={type}
+                      role="radio"
+                      aria-checked={goalType === type}
+                      onClick={() => setGoalType(type)}
+                      className={`min-h-[44px] rounded-xl text-xs font-mono border transition-all ${
+                        goalType === type
+                          ? 'bg-zinc-950 text-zinc-50 border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50 font-semibold'
+                          : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400'
+                      }`}
+                    >
+                      {type === 'minutes' ? 'Minutos focados' : 'Sessões de foco'}
+                    </button>
+                  ))}
+                </div>
+
+                {(() => {
+                  const limits = GOAL_LIMITS[goalType];
+                  const value = goalType === 'minutes' ? goalMinutes : goalSessions;
+                  const setValue = goalType === 'minutes' ? setGoalMinutes : setGoalSessions;
+                  const change = (delta: number) =>
+                    setValue(Math.min(limits.max, Math.max(limits.min, value + delta)));
+                  return (
+                    <div className="flex items-center justify-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => change(-limits.step)}
+                        disabled={value <= limits.min}
+                        aria-label="Diminuir meta"
+                        className="w-11 h-11 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <div className="min-w-[8ch] text-center font-mono" aria-live="polite">
+                        <span className="text-2xl font-bold tabular-nums">{value}</span>{' '}
+                        <span className="text-xs text-zinc-500">{goalType === 'minutes' ? 'min/dia' : value === 1 ? 'foco/dia' : 'focos/dia'}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => change(limits.step)}
+                        disabled={value >= limits.max}
+                        aria-label="Aumentar meta"
+                        className="w-11 h-11 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })()}
+              </>
+            )}
           </div>
 
           {/* Ações Inferiores */}

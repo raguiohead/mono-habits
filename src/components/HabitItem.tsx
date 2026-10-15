@@ -4,6 +4,7 @@ import { type Habit } from '@/types/habit';
 import { HabitIcon } from './HabitIcon';
 import { useHabits } from '@/context/HabitsContext';
 import { useSettings } from '@/context/SettingsContext';
+import { goalLabel, goalProgress } from '@/lib/pomoGoals';
 import { calculateStreak, calculateBestStreak } from '@/lib/analytics';
 
 interface HabitItemProps {
@@ -19,7 +20,7 @@ export const HabitItem: React.FC<HabitItemProps> = ({
   onToggle,
   onEdit
 }) => {
-  const { logs, toggleHideTitle } = useHabits();
+  const { logs, toggleHideTitle, pomoSessions, selectedDateKey } = useHabits();
   const { settings } = useSettings();
 
   const handleToggle = () => {
@@ -33,6 +34,9 @@ export const HabitItem: React.FC<HabitItemProps> = ({
 
   const isRecord = streak > 0 && streak === bestStreak;
   const isBroken = streak === 0 && bestStreak > 0;
+
+  // Meta diária com o Pomo (dia exibido na tela)
+  const progress = habit.pomoGoal ? goalProgress(habit.pomoGoal, habit.id, pomoSessions, selectedDateKey) : null;
 
   return (
     <div
@@ -114,6 +118,26 @@ export const HabitItem: React.FC<HabitItemProps> = ({
               </>
             )}
           </div>
+          {progress && (
+            <div className="mt-1.5 space-y-1">
+              <span className="block text-[10px] font-mono tabular-nums text-zinc-500 dark:text-zinc-400">
+                {goalLabel(progress)}
+              </span>
+              <div
+                role="progressbar"
+                aria-label="Meta com Pomo"
+                aria-valuemin={0}
+                aria-valuemax={progress.target}
+                aria-valuenow={progress.current}
+                className="h-1 w-full max-w-[120px] rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden"
+              >
+                <div
+                  className="h-full rounded-full bg-zinc-950 dark:bg-zinc-50 transition-[width] duration-300"
+                  style={{ width: `${Math.round(progress.ratio * 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

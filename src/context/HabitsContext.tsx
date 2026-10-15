@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import { type Habit, type LogsMap, type TabType, type SyncStatus, type PomoSession } from '@/types/habit';
 import { sortSessions } from '@/lib/pomo';
 import { normalizePeriod } from '@/lib/periods';
+import { addDismissal, normalizePomoGoal, shouldAutoComplete } from '@/lib/pomoGoals';
 import { toDateKey, addDays } from '@/lib/dateUtils';
 import {
   DEFAULT_HABITS,
@@ -13,7 +14,9 @@ import {
   setStoredTheme,
   loadLocalPomoSessions,
   saveLocalPomoSessions,
-  clearLocalUserData
+  clearLocalUserData,
+  loadGoalDismissals,
+  saveGoalDismissals
 } from '@/lib/storage';
 import {
   auth,
@@ -94,7 +97,12 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [logs, setLogs] = useState<LogsMap>(() => loadLocalLogs());
   const logsRef = useRef<LogsMap>(logs);
   logsRef.current = logs;
+  const habitsRef = useRef<Habit[]>(habits);
+  habitsRef.current = habits;
+  const goalDismissalsRef = useRef(loadGoalDismissals());
   const [pomoSessions, setPomoSessions] = useState<PomoSession[]>(() => sortSessions(loadLocalPomoSessions()));
+  const pomoSessionsRef = useRef<PomoSession[]>(pomoSessions);
+  pomoSessionsRef.current = pomoSessions;
   const [initialLoaded, setInitialLoaded] = useState<boolean>(false);
 
   // Navegação e datas
@@ -375,7 +383,9 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       period: normalizePeriod(habitData.period), // o Firestore não aceita undefined
       frequency: [...habitData.frequency].sort(),
       archived: Boolean(habitData.archived),
-      createdAt: habitData.createdAt || Date.now()
+      createdAt: habitData.createdAt || Date.now(),
+      // Só inclui quando há meta válida: o Firestore não aceita undefined
+      ...(normalizePomoGoal(habitData.pomoGoal) ? { pomoGoal: normalizePomoGoal(habitData.pomoGoal) } : {})
     };
 
     // 1. Atualiza estado e localStorage (Local-First)
@@ -441,6 +451,12 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const updatedCompleted = exists
       ? currentCompleted.filter((id) => id !== habitId)
       : [...currentCompleted, habitId];
+
+    // Desmarcar um hábito com meta do Pomo: o Pomo não o remarca de novo neste dia
+    if (exists && habitsRef.current.find((h) => h.id === habitId)?.pomoGoal) {
+      goalDismissalsRef.current = addDismissal(goalDismissalsRef.current, dateKey, habitId, new Date());
+      saveGoalDismissals(goalDismissalsRef.current);
+    }
 
     // Atualização otimista local
     setLogs((prev) => {
@@ -530,13 +546,41 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     showToast('Hábito excluído permanentemente.');
   };
 
+  // Meta do Pomo: ao atingir a meta do hábito vinculado, marca o hábito automaticamente
+  const applyPomoGoal = async (session: PomoSession, allSessions: PomoSession[]) => {
+    if (session.kind !== 'focus' || !session.habitId) return;
+    const habit = habitsRef.current.find((h) => h.id === session.habitId);
+    if (!habit?.pomoGoal) return;
+    const dateKey = toDateKey(new Date(session.startedAt));
+    const should = shouldAutoComplete({
+      goal: habit.pomoGoal,
+      habitId: habit.id,
+      sessions: allSessions,
+      dateKey,
+      completedIds: logsRef.current[dateKey] || [],
+      dismissedIds: goalDismissalsRef.current[dateKey] || []
+    });
+    if (!should) return;
+    if (await completeHabit(habit.id, dateKey)) {
+      showToast(
+        habit.hideTitle
+          ? 'Meta do Pomo atingida: hábito concluído.'
+          : `Meta do Pomo atingida: ${habit.title} concluído.`
+      );
+    }
+  };
+
   // Registrar sessão do Pomo (concluída ou interrompida)
   const savePomoSession = async (session: PomoSession) => {
+    const allSessions = sortSessions([...pomoSessionsRef.current.filter((s) => s.id !== session.id), session]);
+    pomoSessionsRef.current = allSessions;
     setPomoSessions((prev) => {
       const next = sortSessions([...prev.filter((s) => s.id !== session.id), session]);
       saveLocalPomoSessions(next);
       return next;
     });
+
+    void applyPomoGoal(session, allSessions);
 
     if (user && db && isFirebaseConfigured) {
       try {

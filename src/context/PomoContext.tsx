@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { type PomoKind, type PomoSession } from '@/types/habit';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { type Habit, type PomoKind, type PomoSession } from '@/types/habit';
 import { useHabits } from '@/context/HabitsContext';
 import { useSettings } from '@/context/SettingsContext';
 import { showSystemNotification } from '@/lib/notifications';
@@ -11,6 +11,8 @@ import {
   type PomoSettings,
   type PomoTimerState
 } from '@/lib/storage';
+import { toDateKey } from '@/lib/dateUtils';
+import { getLinkableHabits } from '@/lib/pomoGoals';
 import { clampMinutes, formatClock, getNextKind, KIND_LABEL, type PomoDurations } from '@/lib/pomo';
 
 interface PomoContextType {
@@ -26,6 +28,11 @@ interface PomoContextType {
   stop: () => void;
   selectKind: (kind: PomoKind) => void;
   setMinutes: (kind: PomoKind, minutes: number) => void;
+  /** Hábitos com meta do Pomo que ainda podem ser vinculados a um foco hoje */
+  linkableHabits: Habit[];
+  /** Hábito vinculado ao foco (o selecionado, ou o da sessão em andamento) */
+  linkedHabitId: string | null;
+  setLinkedHabit: (habitId: string | null) => void;
 }
 
 const PomoContext = createContext<PomoContextType | undefined>(undefined);
@@ -52,7 +59,7 @@ function playBeeps(ctx: AudioContext | null) {
 }
 
 export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { savePomoSession, showToast } = useHabits();
+  const { savePomoSession, showToast, activeHabits, logs, pomoSessions } = useHabits();
   const { settings: appSettings } = useSettings();
 
   const [settings, setSettings] = useState<PomoSettings>(() => loadPomoSettings());
@@ -82,7 +89,9 @@ export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     endedAt,
     plannedSeconds: Math.round(t.plannedMs / 1000),
     actualSeconds: Math.round(actualMs / 1000),
-    completed
+    completed,
+    // Só quando há vínculo: o Firestore não aceita undefined
+    ...(t.habitId ? { habitId: t.habitId } : {})
   });
 
   // Conclusão natural da sessão
@@ -167,7 +176,19 @@ export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [timer?.status]);
 
+  // Hábitos vinculáveis hoje e o vínculo escolhido (o último usado, se ainda for válido)
+  const todayKey = toDateKey(new Date());
+  const linkableHabits = useMemo(
+    () => getLinkableHabits(activeHabits, logs, pomoSessions, todayKey, new Date().getDay()),
+    [activeHabits, logs, pomoSessions, todayKey]
+  );
+  const selectedHabitId =
+    settings.lastHabitId && linkableHabits.some((h) => h.id === settings.lastHabitId)
+      ? settings.lastHabitId
+      : null;
+
   const kind = timer?.kind ?? settings.kind;
+  const linkedHabitId = timer ? timer.habitId ?? null : selectedHabitId;
   const status: PomoContextType['status'] = timer ? timer.status : 'idle';
   const totalSeconds = timer ? Math.round(timer.plannedMs / 1000) : settings.durations[kind] * 60;
   const remainingSeconds = timer
@@ -206,9 +227,11 @@ export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       startedAt,
       status: 'running',
       endsAt: startedAt + plannedMs,
-      remainingMs: plannedMs
+      remainingMs: plannedMs,
+      // O vínculo só vale para foco
+      ...(settings.kind === 'focus' && selectedHabitId ? { habitId: selectedHabitId } : {})
     });
-  }, [timer, settings, updateTimer]);
+  }, [timer, settings, selectedHabitId, updateTimer]);
 
   const pause = useCallback(() => {
     if (timer?.status !== 'running') return;
@@ -254,6 +277,18 @@ export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [timer, updateSettings]
   );
 
+  const setLinkedHabit = useCallback(
+    (habitId: string | null) => {
+      if (timer) return;
+      updateSettings((prev) => {
+        const { lastHabitId: _previous, ...rest } = prev;
+        void _previous;
+        return habitId ? { ...rest, lastHabitId: habitId } : rest;
+      });
+    },
+    [timer, updateSettings]
+  );
+
   return (
     <PomoContext.Provider
       value={{
@@ -268,7 +303,10 @@ export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children
         resume,
         stop,
         selectKind,
-        setMinutes
+        setMinutes,
+        linkableHabits,
+        linkedHabitId,
+        setLinkedHabit
       }}
     >
       {children}
