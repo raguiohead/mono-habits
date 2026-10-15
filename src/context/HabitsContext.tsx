@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { type Habit, type LogsMap, type TabType, type SyncStatus, type PomoSession } from '@/types/habit';
+import { type Habit, type LogsMap, type GracesMap, type TabType, type SyncStatus, type PomoSession } from '@/types/habit';
+import { useSettings } from '@/context/SettingsContext';
+import { GRACE_BLOCK_MESSAGE, addGrace, getGraceBlock, graceRemaining, isGraced, monthKeyOf, removeGrace } from '@/lib/graces';
 import { sortSessions } from '@/lib/pomo';
 import { normalizePeriod } from '@/lib/periods';
 import { addDismissal, getGoalLock, normalizePomoGoal, shouldAutoComplete } from '@/lib/pomoGoals';
@@ -16,7 +18,9 @@ import {
   saveLocalPomoSessions,
   clearLocalUserData,
   loadGoalDismissals,
-  saveGoalDismissals
+  saveGoalDismissals,
+  loadLocalGraces,
+  saveLocalGraces
 } from '@/lib/storage';
 import {
   auth,
@@ -57,6 +61,7 @@ interface HabitsContextType {
   habits: Habit[];
   activeHabits: Habit[];
   logs: LogsMap;
+  graces: GracesMap;
   pomoSessions: PomoSession[];
   initialLoaded: boolean;
 
@@ -71,6 +76,10 @@ interface HabitsContextType {
   // Ações CRUD
   saveHabit: (habitData: Omit<Habit, 'id' | 'createdAt'> & { id?: string; createdAt?: number }) => Promise<void>;
   toggleHabitCompletion: (habitId: string, dateKey?: string) => Promise<void>;
+  /** Usa um dia de graça do hábito no dia (valida janela, agendamento e cota). Retorna true se aplicou. */
+  applyGrace: (habitId: string, dateKey: string) => Promise<boolean>;
+  /** Desfaz o dia de graça e devolve a cota */
+  undoGrace: (habitId: string, dateKey: string) => Promise<boolean>;
   /** Marca como concluído de forma idempotente (nunca desmarca). Retorna true se mudou algo. */
   completeHabit: (habitId: string, dateKey: string) => Promise<boolean>;
   toggleHideTitle: (habit: Habit) => Promise<void>;
@@ -87,6 +96,7 @@ interface HabitsContextType {
 const HabitsContext = createContext<HabitsContextType | undefined>(undefined);
 
 export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { settings } = useSettings();
   const [darkMode, setDarkMode] = useState<boolean>(() => getStoredTheme());
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
@@ -97,6 +107,9 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [logs, setLogs] = useState<LogsMap>(() => loadLocalLogs());
   const logsRef = useRef<LogsMap>(logs);
   logsRef.current = logs;
+  const [graces, setGraces] = useState<GracesMap>(() => loadLocalGraces());
+  const gracesRef = useRef<GracesMap>(graces);
+  gracesRef.current = graces;
   const habitsRef = useRef<Habit[]>(habits);
   habitsRef.current = habits;
   const goalDismissalsRef = useRef(loadGoalDismissals());
@@ -262,6 +275,36 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     );
 
+    // Listener de Dias de Graça (um documento por dia, como os logs)
+    const gracesCol = collection(activeDb, 'artifacts', appId, 'users', user.uid, 'graces');
+    const unsubGraces = onSnapshot(
+      gracesCol,
+      (snapshot) => {
+        const remote: GracesMap = {};
+        snapshot.forEach((docSnap) => {
+          const ids = docSnap.data().habitIds;
+          if (Array.isArray(ids) && ids.length > 0) remote[docSnap.id] = ids;
+        });
+
+        const local = loadLocalGraces();
+        if (Object.keys(remote).length === 0 && Object.keys(local).length > 0) {
+          Object.entries(local).forEach(([dateKey, ids]) => {
+            const gRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'graces', dateKey);
+            setDoc(gRef, { date: dateKey, habitIds: ids, updatedAt: Date.now() }).catch((err) =>
+              console.warn('[Firestore] Falha ao enviar dia de graça:', err)
+            );
+          });
+          setGraces(local);
+        } else {
+          setGraces(remote);
+          saveLocalGraces(remote);
+        }
+      },
+      (error) => {
+        console.warn('[Firestore] Erro ao carregar dias de graça:', error);
+      }
+    );
+
     // Listener de Sessões Pomo
     const pomoRef = collection(activeDb, 'artifacts', appId, 'users', user.uid, 'pomoSessions');
     const unsubPomo = onSnapshot(
@@ -294,6 +337,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => {
       unsubHabits();
       unsubLogs();
+      unsubGraces();
       unsubPomo();
     };
   }, [user]);
@@ -415,6 +459,57 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     showToast(habitData.id ? 'Hábito atualizado.' : 'Novo hábito criado.');
   };
 
+  // Grava os dias de graça (local primeiro, depois nuvem) para o dia alterado
+  const persistGraces = async (next: GracesMap, dateKey: string) => {
+    gracesRef.current = next;
+    setGraces(next);
+    saveLocalGraces(next);
+    if (user && db && isFirebaseConfigured) {
+      try {
+        const gRef = doc(db, 'artifacts', appId, 'users', user.uid, 'graces', dateKey);
+        if (next[dateKey]?.length) {
+          await setDoc(gRef, { date: dateKey, habitIds: next[dateKey], updatedAt: Date.now() });
+        } else {
+          await deleteDoc(gRef);
+        }
+      } catch (err) {
+        console.error('Falha ao salvar dia de graça no Firestore:', err);
+      }
+    }
+  };
+
+  // Usar dia de graça: perdoa um dia perdido sem quebrar a ofensiva (não conta como concluído)
+  const applyGrace = async (habitId: string, dateKey: string): Promise<boolean> => {
+    const habit = habitsRef.current.find((h) => h.id === habitId);
+    if (!habit) return false;
+    const block = getGraceBlock({
+      habit,
+      dateKey,
+      today: new Date(),
+      logs: logsRef.current,
+      graces: gracesRef.current,
+      perMonth: settings.graceDaysPerMonth
+    });
+    if (block) {
+      showToast(GRACE_BLOCK_MESSAGE[block]);
+      return false;
+    }
+    const next = addGrace(gracesRef.current, dateKey, habitId);
+    const left = graceRemaining(habitId, monthKeyOf(dateKey), next, settings.graceDaysPerMonth);
+    showToast(`Dia de graça usado. Restam ${left} de ${settings.graceDaysPerMonth} neste mês.`);
+    await persistGraces(next, dateKey);
+    return true;
+  };
+
+  // Desfazer o dia de graça devolve a cota
+  const undoGrace = async (habitId: string, dateKey: string): Promise<boolean> => {
+    const next = removeGrace(gracesRef.current, dateKey, habitId);
+    if (next === gracesRef.current) return false;
+    showToast('Dia de graça desfeito.');
+    await persistGraces(next, dateKey);
+    return true;
+  };
+
   // Marcar como concluído (idempotente). Usa um ref para que chamadas em sequência, como ao
   // aplicar a fila da notificação, enxerguem as anteriores sem esperar a renderização.
   const completeHabit = async (habitId: string, dateKey: string): Promise<boolean> => {
@@ -423,6 +518,10 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Hábito com meta do Pomo só conclui depois de cumprida a meta (vale também para a notificação)
     const target = habitsRef.current.find((h) => h.id === habitId);
     if (target && getGoalLock(target, pomoSessionsRef.current, dateKey)) return false;
+    // Concluir de verdade um dia perdoado devolve a cota do dia de graça
+    if (isGraced(gracesRef.current, dateKey, habitId)) {
+      void persistGraces(removeGrace(gracesRef.current, dateKey, habitId), dateKey);
+    }
     const updatedCompleted = [...current, habitId];
     logsRef.current = { ...logsRef.current, [dateKey]: updatedCompleted };
 
@@ -462,6 +561,10 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (lock) {
         showToast(`Cumpra a meta do Pomo para marcar este hábito (${lock.label}).`);
         return;
+      }
+      // Concluir de verdade um dia perdoado devolve a cota do dia de graça
+      if (isGraced(gracesRef.current, dateKey, habitId)) {
+        void persistGraces(removeGrace(gracesRef.current, dateKey, habitId), dateKey);
       }
     }
 
@@ -666,6 +769,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         habits,
         activeHabits,
         logs,
+        graces,
         pomoSessions,
         initialLoaded,
         selectedDateKey,
@@ -677,6 +781,8 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         saveHabit,
         toggleHabitCompletion,
         completeHabit,
+        applyGrace,
+        undoGrace,
         toggleHideTitle,
         toggleArchiveHabit,
         deleteHabit,

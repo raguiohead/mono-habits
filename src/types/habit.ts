@@ -19,6 +19,9 @@ export interface Habit {
 
 export type LogsMap = Record<string, string[]>; // { 'YYYY-MM-DD': ['habit-1', 'habit-2'] }
 
+/** Dias de graça: hábitos perdoados em cada dia, sem contar como concluídos */
+export type GracesMap = Record<string, string[]>; // { 'YYYY-MM-DD': ['habit-1'] }
+
 export interface WeekDay {
   date: Date;
   key: string;
@@ -34,6 +37,8 @@ export interface HeatmapDay {
   completedCount: number;
   scheduledCount: number;
   ratio: number;
+  /** Hábitos agendados, não concluídos e perdoados por dia de graça */
+  gracedCount?: number;
 }
 
 export type TabType = 'today' | 'stats' | 'pomo' | 'manage';

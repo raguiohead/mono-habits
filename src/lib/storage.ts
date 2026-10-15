@@ -1,4 +1,5 @@
-import { type Habit, type LogsMap, type PomoSession, type PomoKind } from '@/types/habit';
+import { type Habit, type LogsMap, type GracesMap, type PomoSession, type PomoKind } from '@/types/habit';
+import { sanitizeGraces } from './graces';
 import { DEFAULT_DURATIONS, clampMinutes, type PomoDurations } from './pomo';
 import { DEFAULT_SETTINGS, sanitizeSettings, type AppSettings } from './settings';
 import { pruneDismissals, type GoalDismissals } from './pomoGoals';
@@ -10,6 +11,7 @@ const SETTINGS_STORAGE_KEY = 'mono_habits_settings_v1';
 const WELCOME_KEY = 'mono_habits_welcome_v1';
 const REMINDER_SENT_KEY = 'mono_habits_reminder_sent_v1';
 const GOAL_DISMISSED_KEY = 'mono_habits_goal_dismissed_v1';
+const GRACES_STORAGE_KEY = 'mono_habits_graces_v1';
 
 export const DEFAULT_HABITS: Habit[] = [
   {
@@ -112,6 +114,25 @@ export function saveLocalLogs(logs: LogsMap): void {
     localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(logs));
   } catch (error) {
     console.error('Falha ao salvar logs no localStorage:', error);
+  }
+}
+
+// ---------- Dias de graça ----------
+
+export function loadLocalGraces(): GracesMap {
+  try {
+    const raw = localStorage.getItem(GRACES_STORAGE_KEY);
+    return raw ? sanitizeGraces(JSON.parse(raw)) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveLocalGraces(graces: GracesMap): void {
+  try {
+    localStorage.setItem(GRACES_STORAGE_KEY, JSON.stringify(graces));
+  } catch (error) {
+    console.error('Falha ao salvar dias de graça no localStorage:', error);
   }
 }
 
@@ -275,6 +296,7 @@ export function exportLocalData() {
     exportedAt: new Date().toISOString(),
     habits: loadLocalHabits(),
     logs: loadLocalLogs(),
+    graces: loadLocalGraces(),
     pomoSessions: loadLocalPomoSessions(),
     pomoSettings: loadPomoSettings(),
     settings: loadSettings()
@@ -287,6 +309,7 @@ export function clearLocalUserData(): void {
     [
       HABITS_STORAGE_KEY,
       LOGS_STORAGE_KEY,
+      GRACES_STORAGE_KEY,
       POMO_SESSIONS_KEY,
       POMO_SETTINGS_KEY,
       POMO_TIMER_KEY,

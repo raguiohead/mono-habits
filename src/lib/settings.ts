@@ -6,6 +6,8 @@ export interface AppSettings {
   textSize: TextSize;
   motion: MotionPref;
   highContrast: boolean;
+  // Ofensiva
+  graceDaysPerMonth: 0 | 1 | 2; // dias de graça por hábito, por mês
   // Notificações
   reminderEnabled: boolean;
   reminderTime: string; // 'HH:MM'
@@ -18,6 +20,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   textSize: 'normal',
   motion: 'system',
   highContrast: false,
+  graceDaysPerMonth: 1,
   reminderEnabled: false,
   reminderTime: '20:00',
   pomoAlerts: true,
@@ -43,6 +46,7 @@ export function sanitizeSettings(raw: unknown): AppSettings {
     textSize: p.textSize === 'large' || p.textSize === 'xlarge' ? p.textSize : 'normal',
     motion: p.motion === 'reduce' || p.motion === 'full' ? p.motion : 'system',
     highContrast: bool(p.highContrast, d.highContrast),
+    graceDaysPerMonth: p.graceDaysPerMonth === 0 || p.graceDaysPerMonth === 2 ? p.graceDaysPerMonth : 1,
     reminderEnabled: bool(p.reminderEnabled, d.reminderEnabled),
     reminderTime: isValidTime(p.reminderTime) ? p.reminderTime : d.reminderTime,
     pomoAlerts: bool(p.pomoAlerts, d.pomoAlerts),

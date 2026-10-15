@@ -60,7 +60,7 @@ function bucketLabel(bucket: GraphBucket, index: number, total: number, range: G
 }
 
 export const ConsistencyView: React.FC = () => {
-  const { activeHabits, logs, darkMode, setSelectedDateKey, setActiveTab } = useHabits();
+  const { activeHabits, logs, graces, darkMode, setSelectedDateKey, setActiveTab } = useHabits();
   const [range, setRange] = useState<GraphRange>(() => loadRange());
   const [selectedCell, setSelectedCell] = useState<HeatmapDay | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -79,19 +79,19 @@ export const ConsistencyView: React.FC = () => {
   };
 
   const days = useMemo(
-    () => generateHeatmapDays(activeHabits, logs, today, range),
-    [activeHabits, logs, today, range]
+    () => generateHeatmapDays(activeHabits, logs, today, range, graces),
+    [activeHabits, logs, today, range, graces]
   );
 
   const periodRate = useMemo(() => calculateRetentionRate(days, range), [days, range]);
   const perfectDays = useMemo(() => countPerfectDays(days), [days]);
   const bestStreak = useMemo(
-    () => getBestStreak(activeHabits, logs, today),
-    [activeHabits, logs, today]
+    () => getBestStreak(activeHabits, logs, today, graces),
+    [activeHabits, logs, today, graces]
   );
   const currentBestStreak = useMemo(
-    () => getBestCurrentStreak(activeHabits, logs, today),
-    [activeHabits, logs, today]
+    () => getBestCurrentStreak(activeHabits, logs, today, graces),
+    [activeHabits, logs, today, graces]
   );
 
   const buckets = useMemo(() => aggregateBuckets(days, getBucketSize(range)), [days, range]);
@@ -126,9 +126,10 @@ export const ConsistencyView: React.FC = () => {
             ? 'w-full aspect-square text-[10px] font-mono flex items-center justify-center rounded-md'
             : `${cellSize} rounded-xs`
         } border transition-all ${getHeatmapCellClass(day.ratio, darkMode)} ${
-          isSelected ? 'ring-2 ring-zinc-500 scale-110 z-10' : ''
-        }`}
-        title={`${formatFriendlyDate(day.key)}: ${day.completedCount}/${day.scheduledCount} (${Math.round(day.ratio * 100)}%)`}
+          // Dia de graça: borda tracejada (não é um dia concluído)
+          day.gracedCount ? `${range > 90 ? 'border' : 'border-2'} !border-dashed !border-zinc-500` : ''
+        } ${isSelected ? 'ring-2 ring-zinc-500 scale-110 z-10' : ''}`}
+        title={`${formatFriendlyDate(day.key)}: ${day.completedCount}/${day.scheduledCount} (${Math.round(day.ratio * 100)}%)${day.gracedCount ? ` · ${day.gracedCount} dia(s) de graça` : ''}`}
         aria-label={day.key}
       >
         {isCalendar && (
@@ -278,6 +279,8 @@ export const ConsistencyView: React.FC = () => {
             <span className="w-2.5 h-2.5 rounded-xs border border-zinc-700 dark:border-zinc-300 bg-zinc-700 dark:bg-zinc-300" />
             <span className="w-2.5 h-2.5 rounded-xs border border-zinc-950 dark:border-white bg-zinc-950 dark:bg-white" />
             <span>Mais</span>
+            <span className="ml-2 w-2.5 h-2.5 rounded-xs border border-dashed border-zinc-500" aria-hidden="true" />
+            <span>Graça</span>
           </div>
         </div>
 
@@ -321,7 +324,7 @@ export const ConsistencyView: React.FC = () => {
             <Calendar className="w-3.5 h-3.5 shrink-0" />
             <span>
               {selectedCell
-                ? `${formatFriendlyDate(selectedCell.key)} — ${selectedCell.completedCount} de ${selectedCell.scheduledCount} concluídos (${Math.round(selectedCell.ratio * 100)}%)`
+                ? `${formatFriendlyDate(selectedCell.key)} — ${selectedCell.completedCount} de ${selectedCell.scheduledCount} concluídos (${Math.round(selectedCell.ratio * 100)}%)${selectedCell.gracedCount ? ` · ${selectedCell.gracedCount} de graça` : ''}`
                 : 'Toque em uma célula para inspecionar'}
             </span>
           </div>

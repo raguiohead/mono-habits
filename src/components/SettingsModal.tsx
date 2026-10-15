@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Accessibility,
   Bell,
+  Flame,
   ShieldCheck,
   Download,
   Trash2,
@@ -110,6 +111,12 @@ function Segmented<T extends string>({
     </div>
   );
 }
+
+const GRACE_OPTIONS: { value: '0' | '1' | '2'; label: string }[] = [
+  { value: '0', label: 'Desativado' },
+  { value: '1', label: '1 por mês' },
+  { value: '2', label: '2 por mês' }
+];
 
 const TEXT_OPTIONS: { value: TextSize; label: string }[] = [
   { value: 'normal', label: 'Normal' },
@@ -299,6 +306,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             checked={settings.highContrast}
             onChange={(highContrast) => updateSettings({ highContrast })}
           />
+        </section>
+
+        {/* Ofensiva */}
+        <section className="space-y-3">
+          <SectionTitle icon={<Flame className="w-3.5 h-3.5" />}>Ofensiva</SectionTitle>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium">Dias de graça por hábito, por mês</p>
+            <Segmented
+              label="Dias de graça por mês"
+              value={String(settings.graceDaysPerMonth) as '0' | '1' | '2'}
+              options={GRACE_OPTIONS}
+              onChange={(value) => updateSettings({ graceDaysPerMonth: Number(value) as 0 | 1 | 2 })}
+            />
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              Um dia de graça perdoa um dia perdido (dos últimos 7) sem quebrar a ofensiva. Ele não conta como
+              concluído nem soma à ofensiva, e a cota é por hábito, em cada mês.
+            </p>
+          </div>
         </section>
 
         {/* Notificações */}

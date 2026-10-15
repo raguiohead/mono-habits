@@ -5,6 +5,7 @@ import { HabitIcon } from './HabitIcon';
 import { useHabits } from '@/context/HabitsContext';
 import { useSettings } from '@/context/SettingsContext';
 import { getGoalLock, goalLabel, goalProgress } from '@/lib/pomoGoals';
+import { getGraceBlock, graceRemaining, isGraced, monthKeyOf } from '@/lib/graces';
 import { calculateStreak, calculateBestStreak } from '@/lib/analytics';
 
 interface HabitItemProps {
@@ -20,7 +21,7 @@ export const HabitItem: React.FC<HabitItemProps> = ({
   onToggle,
   onEdit
 }) => {
-  const { logs, toggleHideTitle, pomoSessions, selectedDateKey } = useHabits();
+  const { logs, graces, toggleHideTitle, pomoSessions, selectedDateKey, applyGrace, undoGrace } = useHabits();
   const { settings } = useSettings();
 
   // Hábito com meta do Pomo não cumprida: marcação bloqueada (o contexto avisa por toast ao tocar)
@@ -32,8 +33,26 @@ export const HabitItem: React.FC<HabitItemProps> = ({
     }
     onToggle();
   };
-  const streak = calculateStreak(habit, logs);
-  const bestStreak = calculateBestStreak(habit, logs);
+  const streak = calculateStreak(habit, logs, new Date(), graces);
+  const bestStreak = calculateBestStreak(habit, logs, new Date(), graces);
+
+  // Dia de graça: perdoa o dia sem quebrar a ofensiva (não conta como concluído)
+  const perMonth = settings.graceDaysPerMonth;
+  const graced = !isCompleted && isGraced(graces, selectedDateKey, habit.id);
+  const graceBlock = getGraceBlock({
+    habit,
+    dateKey: selectedDateKey,
+    today: new Date(),
+    logs,
+    graces,
+    perMonth
+  });
+  const graceLeft = graceRemaining(habit.id, monthKeyOf(selectedDateKey), graces, perMonth);
+  // Só aparece quando há ofensiva a proteger (evita poluir hábitos novos)
+  const showGraceAction = !isCompleted && !graced && bestStreak > 0 && graceBlock === null;
+  const showNoGrace = !isCompleted && !graced && bestStreak > 0 && graceBlock === 'no-quota';
+  const graceButton =
+    `relative text-[10px] font-mono underline underline-offset-2 text-left text-zinc-600 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-zinc-50 before:absolute before:-inset-x-1 before:-inset-y-4 before:content-['']`;
 
   const isRecord = streak > 0 && streak === bestStreak;
   const isBroken = streak === 0 && bestStreak > 0;
@@ -45,6 +64,8 @@ export const HabitItem: React.FC<HabitItemProps> = ({
     <div
       onClick={handleToggle}
       className={`group relative flex items-center justify-between p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer select-none min-h-[58px] ${
+        graced ? '!border-dashed' : ''
+      } ${
         isCompleted
           ? 'bg-zinc-100/90 dark:bg-zinc-900/40 border-zinc-300/80 dark:border-zinc-800/60 opacity-90'
           : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs'
@@ -149,6 +170,39 @@ export const HabitItem: React.FC<HabitItemProps> = ({
                 />
               </div>
             </div>
+          )}
+          {graced && (
+            <p className="mt-1.5 text-[10px] font-mono text-zinc-500 dark:text-zinc-400 leading-tight">
+              Graça usada ·{' '}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void undoGrace(habit.id, selectedDateKey);
+                }}
+                className={graceButton}
+              >
+                Desfazer
+              </button>
+            </p>
+          )}
+          {showGraceAction && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                void applyGrace(habit.id, selectedDateKey);
+              }}
+              className={`${graceButton} block mt-1.5 leading-tight`}
+              aria-label={`Usar dia de graça: ${graceLeft} de ${perMonth} neste mês`}
+            >
+              Usar dia de graça ({graceLeft} de {perMonth} neste mês)
+            </button>
+          )}
+          {showNoGrace && (
+            <p className="mt-1.5 text-[10px] font-mono text-zinc-400 dark:text-zinc-500 leading-tight">
+              Sem dia de graça neste mês
+            </p>
           )}
         </div>
       </div>
