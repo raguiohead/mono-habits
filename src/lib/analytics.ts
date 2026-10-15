@@ -1,5 +1,5 @@
 import { type Habit, type LogsMap, type HeatmapDay, type GraphRange } from '@/types/habit';
-import { toDateKey, addDays } from './dateUtils';
+import { toDateKey, addDays, parseDateKey } from './dateUtils';
 
 /**
  * Calcula a sequência consecutiva (streak) de um hábito até a data de referência.
@@ -101,13 +101,96 @@ export function calculateRetentionRate(heatmapDays: HeatmapDay[], daysCount: num
 }
 
 /**
- * Retorna a maior ofensiva entre todos os hábitos ativos
+ * Calcula a maior sequência consecutiva histórica (best streak) de um hábito,
+ * varrendo desde habit.createdAt até hoje.
+ * Dias não agendados (fora de habit.frequency) não quebram nem somam.
+ */
+export function calculateBestStreak(
+  habit: Habit,
+  logs: LogsMap,
+  today: Date = new Date()
+): number {
+  const freq = habit.frequency || [0, 1, 2, 3, 4, 5, 6];
+  if (freq.length === 0) return 0;
+
+  const todayKey = toDateKey(today);
+  const todayDate = parseDateKey(todayKey);
+
+  // Determina a data inicial (habit.createdAt ou data do primeiro registro)
+  const validCreated = habit.createdAt && habit.createdAt > 0 ? habit.createdAt : todayDate.getTime();
+  let startMs = validCreated;
+
+  for (const dateKey of Object.keys(logs)) {
+    if ((logs[dateKey] || []).includes(habit.id)) {
+      const logTime = parseDateKey(dateKey).getTime();
+      if (logTime < startMs) {
+        startMs = logTime;
+      }
+    }
+  }
+
+  // Limite razoável de segurança contra timestamps inconsistentes (ex: epoch 0)
+  const minAllowed = new Date(2020, 0, 1).getTime();
+  if (startMs < minAllowed) {
+    startMs = minAllowed;
+  }
+
+  let cursor = parseDateKey(toDateKey(new Date(startMs)));
+  if (cursor.getTime() > todayDate.getTime()) {
+    cursor = new Date(todayDate);
+  }
+
+  let currentStreak = 0;
+  let bestStreak = 0;
+
+  while (cursor.getTime() <= todayDate.getTime()) {
+    const dKey = toDateKey(cursor);
+    const dayOfWeek = cursor.getDay();
+
+    if (freq.includes(dayOfWeek)) {
+      const isToday = dKey === todayKey;
+      const completedOnDay = (logs[dKey] || []).includes(habit.id);
+
+      if (completedOnDay) {
+        currentStreak++;
+        if (currentStreak > bestStreak) {
+          bestStreak = currentStreak;
+        }
+      } else {
+        // Se for hoje e ainda não foi concluído, não quebra a sequência histórica
+        if (!isToday) {
+          currentStreak = 0;
+        }
+      }
+    }
+
+    cursor = addDays(cursor, 1);
+  }
+
+  const current = calculateStreak(habit, logs, today);
+  return Math.max(bestStreak, current);
+}
+
+/**
+ * Retorna a maior ofensiva histórica real entre todos os hábitos ativos
  */
 export function getBestStreak(habits: Habit[], logs: LogsMap, today: Date = new Date()): number {
   const active = habits.filter((h) => !h.archived);
   if (active.length === 0) return 0;
+  return Math.max(...active.map((h) => calculateBestStreak(h, logs, today)), 0);
+}
+
+/**
+ * Retorna a maior ofensiva atual entre todos os hábitos ativos
+ */
+export function getBestCurrentStreak(habits: Habit[], logs: LogsMap, today: Date = new Date()): number {
+  const active = habits.filter((h) => !h.archived);
+  if (active.length === 0) return 0;
   return Math.max(...active.map((h) => calculateStreak(h, logs, today)), 0);
 }
+
+export const getCurrentBestStreak = getBestCurrentStreak;
+export const getBestHistoricalStreak = getBestStreak;
 
 /**
  * Classes Tailwind estritamente monocromáticas para as células do Heatmap

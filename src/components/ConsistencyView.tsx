@@ -5,6 +5,7 @@ import {
   generateHeatmapDays,
   calculateRetentionRate,
   getBestStreak,
+  getBestCurrentStreak,
   getHeatmapCellClass,
   aggregateBuckets,
   getBucketSize,
@@ -86,6 +87,10 @@ export const ConsistencyView: React.FC = () => {
   const perfectDays = useMemo(() => countPerfectDays(days), [days]);
   const bestStreak = useMemo(
     () => getBestStreak(activeHabits, logs, today),
+    [activeHabits, logs, today]
+  );
+  const currentBestStreak = useMemo(
+    () => getBestCurrentStreak(activeHabits, logs, today),
     [activeHabits, logs, today]
   );
 
@@ -200,7 +205,12 @@ export const ConsistencyView: React.FC = () => {
             <span className="text-[11px] font-mono uppercase tracking-wider">Maior Streak</span>
           </div>
           <p className="text-xl sm:text-2xl font-bold font-mono mt-2">{bestStreak} dias</p>
-          <p className="text-[11px] text-zinc-500 mt-0.5">Ofensiva ativa</p>
+          <p className="text-[11px] text-zinc-500 mt-0.5 font-mono">atual: {currentBestStreak}</p>
+          {currentBestStreak === 0 && bestStreak > 0 && (
+            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1 leading-snug">
+              Sua melhor continua em {bestStreak} {bestStreak === 1 ? 'dia' : 'dias'}.
+            </p>
+          )}
         </div>
 
         <div className="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-xs">

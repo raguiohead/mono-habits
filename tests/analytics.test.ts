@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
   calculateStreak,
+  calculateBestStreak,
   getHabitsForDay,
   calculateDailyProgress,
   generateHeatmapDays,
   calculateRetentionRate,
   getBestStreak,
+  getBestCurrentStreak,
   aggregateBuckets,
   getBucketSize,
   countPerfectDays
@@ -114,18 +116,151 @@ describe('analytics', () => {
     expect(rate).toBeGreaterThan(0);
   });
 
-  it('identifica a maior ofensiva entre hábitos ativos', () => {
-    const today = new Date(2026, 9, 14);
-    const habitA = { ...sampleHabit, id: 'ha' };
-    const habitB = { ...sampleHabit, id: 'hb' };
-    const logs: LogsMap = {
-      '2026-10-14': ['ha', 'hb'],
-      '2026-10-13': ['hb'],
-      '2026-10-12': ['hb']
-    };
+  describe('calculateBestStreak e getBestStreak', () => {
+    it('calcula melhor sequência para sequência simples', () => {
+      const today = new Date(2026, 9, 14);
+      const habit: Habit = {
+        ...sampleHabit,
+        id: 'h-simple',
+        createdAt: new Date(2026, 9, 10).getTime()
+      };
+      const logs: LogsMap = {
+        '2026-10-10': ['h-simple'],
+        '2026-10-11': ['h-simple'],
+        '2026-10-12': ['h-simple'],
+        '2026-10-13': ['h-simple'],
+        '2026-10-14': ['h-simple']
+      };
 
-    const best = getBestStreak([habitA, habitB], logs, today);
-    expect(best).toBe(3);
+      expect(calculateStreak(habit, logs, today)).toBe(5);
+      expect(calculateBestStreak(habit, logs, today)).toBe(5);
+    });
+
+    it('calcula melhor sequência com lacunas mantendo o recorde histórico', () => {
+      const today = new Date(2026, 9, 20);
+      const habit: Habit = {
+        ...sampleHabit,
+        id: 'h-gaps',
+        createdAt: new Date(2026, 9, 1).getTime()
+      };
+      // Sequência de 4 dias (10 a 13), lacuna (14 a 18), sequência atual de 2 dias (19 e 20)
+      const logs: LogsMap = {
+        '2026-10-10': ['h-gaps'],
+        '2026-10-11': ['h-gaps'],
+        '2026-10-12': ['h-gaps'],
+        '2026-10-13': ['h-gaps'],
+        // 14 a 18 não concluídos
+        '2026-10-19': ['h-gaps'],
+        '2026-10-20': ['h-gaps']
+      };
+
+      expect(calculateStreak(habit, logs, today)).toBe(2);
+      expect(calculateBestStreak(habit, logs, today)).toBe(4);
+    });
+
+    it('calcula melhor sequência com frequência parcial (dias não agendados não quebram nem somam)', () => {
+      // 2026-10-12 (Seg = 1), 14 (Qua = 3), 16 (Sex = 5)
+      // 2026-10-19 (Seg = 1) não feito
+      // 2026-10-21 (Qua = 3) feito
+      const today = new Date(2026, 9, 21);
+      const habit: Habit = {
+        ...sampleHabit,
+        id: 'h-partial',
+        frequency: [1, 3, 5], // Seg, Qua, Sex
+        createdAt: new Date(2026, 9, 10).getTime()
+      };
+      const logs: LogsMap = {
+        '2026-10-12': ['h-partial'],
+        '2026-10-14': ['h-partial'],
+        '2026-10-16': ['h-partial'],
+        // 2026-10-19 (Seg) quebrou
+        '2026-10-21': ['h-partial'] // Hoje (Qua)
+      };
+
+      expect(calculateStreak(habit, logs, today)).toBe(1);
+      expect(calculateBestStreak(habit, logs, today)).toBe(3);
+    });
+
+    it('calcula corretamente para hábito recém-criado', () => {
+      const today = new Date(2026, 9, 14);
+      const newHabit: Habit = {
+        ...sampleHabit,
+        id: 'h-new',
+        createdAt: today.getTime()
+      };
+
+      // Sem logs
+      expect(calculateStreak(newHabit, {}, today)).toBe(0);
+      expect(calculateBestStreak(newHabit, {}, today)).toBe(0);
+
+      // Concluído hoje
+      const logsToday: LogsMap = {
+        '2026-10-14': ['h-new']
+      };
+      expect(calculateStreak(newHabit, logsToday, today)).toBe(1);
+      expect(calculateBestStreak(newHabit, logsToday, today)).toBe(1);
+    });
+
+    it('calcula corretamente para hábito antigo sem logs', () => {
+      const today = new Date(2026, 9, 14);
+      const habitNoLogs: Habit = {
+        ...sampleHabit,
+        id: 'h-empty',
+        createdAt: new Date(2026, 8, 1).getTime()
+      };
+
+      expect(calculateStreak(habitNoLogs, {}, today)).toBe(0);
+      expect(calculateBestStreak(habitNoLogs, {}, today)).toBe(0);
+    });
+
+    it('preserva melhor sequência quando hoje ainda não foi marcado', () => {
+      const today = new Date(2026, 9, 14);
+      const habit: Habit = {
+        ...sampleHabit,
+        id: 'h-pending',
+        createdAt: new Date(2026, 9, 10).getTime()
+      };
+      const logs: LogsMap = {
+        '2026-10-11': ['h-pending'],
+        '2026-10-12': ['h-pending'],
+        '2026-10-13': ['h-pending']
+      };
+
+      expect(calculateStreak(habit, logs, today)).toBe(3);
+      expect(calculateBestStreak(habit, logs, today)).toBe(3);
+    });
+
+    it('distingue melhor ofensiva histórica de melhor ofensiva atual no conjunto de hábitos', () => {
+      const today = new Date(2026, 9, 20);
+      const habitA: Habit = {
+        ...sampleHabit,
+        id: 'ha',
+        createdAt: new Date(2026, 9, 1).getTime()
+      };
+      const habitB: Habit = {
+        ...sampleHabit,
+        id: 'hb',
+        createdAt: new Date(2026, 9, 1).getTime()
+      };
+
+      // Habit A: atual 2, melhor 2
+      // Habit B: histórico de 6 dias (01 a 06), depois quebrou e hoje está zerado (0)
+      const logs: LogsMap = {
+        '2026-10-19': ['ha'],
+        '2026-10-20': ['ha'],
+        '2026-10-01': ['hb'],
+        '2026-10-02': ['hb'],
+        '2026-10-03': ['hb'],
+        '2026-10-04': ['hb'],
+        '2026-10-05': ['hb'],
+        '2026-10-06': ['hb']
+      };
+
+      // A maior melhor ofensiva histórica é do habitB (6 dias)
+      expect(getBestStreak([habitA, habitB], logs, today)).toBe(6);
+      // A maior ofensiva atual ativa é do habitA (2 dias)
+      expect(getBestCurrentStreak([habitA, habitB], logs, today)).toBe(2);
+    });
   });
 
   describe('grafo', () => {

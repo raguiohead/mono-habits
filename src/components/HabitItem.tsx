@@ -3,7 +3,7 @@ import { Check, Flame, Eye, EyeOff, Edit3 } from 'lucide-react';
 import { type Habit } from '@/types/habit';
 import { HabitIcon } from './HabitIcon';
 import { useHabits } from '@/context/HabitsContext';
-import { calculateStreak } from '@/lib/analytics';
+import { calculateStreak, calculateBestStreak } from '@/lib/analytics';
 
 interface HabitItemProps {
   habit: Habit;
@@ -20,6 +20,10 @@ export const HabitItem: React.FC<HabitItemProps> = ({
 }) => {
   const { logs, toggleHideTitle } = useHabits();
   const streak = calculateStreak(habit, logs);
+  const bestStreak = calculateBestStreak(habit, logs);
+
+  const isRecord = streak > 0 && streak === bestStreak;
+  const isBroken = streak === 0 && bestStreak > 0;
 
   return (
     <div
@@ -31,7 +35,7 @@ export const HabitItem: React.FC<HabitItemProps> = ({
       }`}
     >
       {/* Lado Esquerdo: Checkbox + Ícone + Informações */}
-      <div className="flex items-center gap-3.5 min-w-0 pr-2">
+      <div className="flex items-center gap-3.5 min-w-0 pr-2 flex-1">
         {/* Checkbox Circular Monocromático */}
         <button
           type="button"
@@ -61,7 +65,7 @@ export const HabitItem: React.FC<HabitItemProps> = ({
         </div>
 
         {/* Textos */}
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p
               className={`text-sm font-medium tracking-tight truncate ${
@@ -77,16 +81,24 @@ export const HabitItem: React.FC<HabitItemProps> = ({
               )}
             </p>
           </div>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 shrink-0">
               {habit.category}
             </span>
+            {isBroken && (
+              <>
+                <span className="text-zinc-300 dark:text-zinc-700 text-[10px] shrink-0">·</span>
+                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-normal truncate">
+                  Sua melhor continua em {bestStreak} {bestStreak === 1 ? 'dia' : 'dias'}.
+                </span>
+              </>
+            )}
           </div>
         </div>
       </div>
 
       {/* Lado Direito: Ações Rápidas & Streak */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
         {/* Toggle Discreto (Olho) */}
         <button
           type="button"
@@ -113,23 +125,31 @@ export const HabitItem: React.FC<HabitItemProps> = ({
           <Edit3 className="w-3.5 h-3.5" />
         </button>
 
-        {/* Badge de Streak */}
+        {/* Badge de Streak: atual e melhor */}
         <div
-          className={`flex items-center gap-1 px-2 py-1 rounded-lg border font-mono text-xs ${
-            streak > 0
+          className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg border font-mono text-xs transition-all ${
+            isRecord
+              ? 'border-zinc-400 dark:border-zinc-600 bg-zinc-200/70 dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 font-bold shadow-xs'
+              : streak > 0
               ? 'border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 font-semibold'
-              : 'border-transparent text-zinc-400 dark:text-zinc-600'
+              : bestStreak > 0
+              ? 'border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/40 text-zinc-600 dark:text-zinc-400 font-normal'
+              : 'border-transparent text-zinc-400 dark:text-zinc-600 font-normal'
           }`}
-          title={`${streak} dia(s) de ofensiva`}
+          title={`Atual: ${streak} dia(s) · Melhor: ${bestStreak} dia(s)`}
         >
           <Flame
-            className={`w-3.5 h-3.5 ${
+            className={`w-3.5 h-3.5 shrink-0 ${
               streak > 0
                 ? 'text-zinc-950 dark:text-zinc-100 fill-zinc-950 dark:fill-zinc-100'
                 : 'text-zinc-400 dark:text-zinc-600'
             }`}
           />
           <span>{streak}</span>
+          <span className="opacity-40 font-normal">·</span>
+          <span className={`text-[10px] sm:text-xs ${isRecord ? 'font-bold' : 'font-normal opacity-90'}`}>
+            melhor {bestStreak}
+          </span>
         </div>
       </div>
     </div>
