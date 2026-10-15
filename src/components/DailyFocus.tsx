@@ -12,6 +12,8 @@ import {
 } from '@/lib/periods';
 import { getHabitsForDate, calculateDailyProgress } from '@/lib/analytics';
 import { isDueOn } from '@/lib/weekly';
+import { featuredIds } from '@/lib/bento';
+import { useSettings } from '@/context/SettingsContext';
 import { getEffectiveCompletedIds, isAvoid } from '@/lib/avoid';
 import { type Habit, type HabitPeriod } from '@/types/habit';
 
@@ -70,6 +72,31 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
     () => dueHabits.filter((h) => doneIds.includes(h.id)).length,
     [dueHabits, doneIds]
   );
+
+  // Layout bento: grade de 2 colunas, com os hábitos em destaque ocupando a largura toda
+  const { settings } = useSettings();
+  const bento = settings.focusLayout === 'bento';
+  const featured = useMemo(() => featuredIds(activeHabits), [activeHabits]);
+  const itemsClass = bento ? 'grid grid-cols-2 gap-2.5 items-stretch' : 'space-y-2.5';
+  const renderHabit = (habit: Habit) => {
+    const item = (
+      <HabitItem
+        key={habit.id}
+        habit={bento ? { ...habit, featured: featured.has(habit.id) } : habit}
+        variant={bento ? 'bento' : 'list'}
+        isCompleted={completedIds.includes(habit.id)}
+        onToggle={() => toggleHabitCompletion(habit.id, selectedDateKey)}
+        onEdit={() => onOpenEditModal(habit)}
+      />
+    );
+    return bento ? (
+      <div key={habit.id} className={featured.has(habit.id) ? 'col-span-2' : 'col-span-1 min-w-0'}>
+        {item}
+      </div>
+    ) : (
+      item
+    );
+  };
 
   // Agrupamento por período do dia (lista simples quando ninguém usa períodos)
   const { grouped, sections } = useMemo(() => groupHabitsByPeriod(scheduledHabits), [scheduledHabits]);
@@ -189,7 +216,7 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
             </p>
           </div>
         ) : (
-          <div className={grouped ? 'space-y-4' : 'space-y-2.5'}>
+          <div className={grouped ? 'space-y-4' : itemsClass}>
             {grouped
               ? sections.map((section) => {
                   const complete = isSectionComplete(section, completedIds);
@@ -227,30 +254,14 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
                         </span>
                       </button>
                       {open && (
-                        <div id={panelId} className="space-y-2.5 pb-1">
-                          {section.habits.map((habit) => (
-                            <HabitItem
-                              key={habit.id}
-                              habit={habit}
-                              isCompleted={completedIds.includes(habit.id)}
-                              onToggle={() => toggleHabitCompletion(habit.id, selectedDateKey)}
-                              onEdit={() => onOpenEditModal(habit)}
-                            />
-                          ))}
+                        <div id={panelId} className={`${itemsClass} pb-1`}>
+                          {section.habits.map(renderHabit)}
                         </div>
                       )}
                     </section>
                   );
                 })
-              : scheduledHabits.map((habit) => (
-                  <HabitItem
-                    key={habit.id}
-                    habit={habit}
-                    isCompleted={completedIds.includes(habit.id)}
-                    onToggle={() => toggleHabitCompletion(habit.id, selectedDateKey)}
-                    onEdit={() => onOpenEditModal(habit)}
-                  />
-                ))}
+              : scheduledHabits.map(renderHabit)}
           </div>
         )}
       </div>

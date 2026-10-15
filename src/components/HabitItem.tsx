@@ -17,13 +17,15 @@ interface HabitItemProps {
   isCompleted: boolean;
   onToggle: () => void;
   onEdit: () => void;
+  variant?: 'list' | 'bento';
 }
 
 export const HabitItem: React.FC<HabitItemProps> = ({
   habit,
   isCompleted: isCompletedProp,
   onToggle,
-  onEdit
+  onEdit,
+  variant = 'list'
 }) => {
   const { logs, graces, slips, toggleHideTitle, pomoSessions, selectedDateKey, applyGrace, undoGrace, markSlip, undoSlip } =
     useHabits();
@@ -98,21 +100,16 @@ export const HabitItem: React.FC<HabitItemProps> = ({
   // Meta diária com o Pomo (dia exibido na tela)
   const progress = habit.pomoGoal ? goalProgress(habit.pomoGoal, habit.id, pomoSessions, selectedDateKey) : null;
 
-  return (
-    <div
-      onClick={handleToggle}
-      className={`group relative flex flex-col gap-2 p-3.5 sm:p-4 rounded-2xl border transition-all select-none min-h-[58px] ${
-        avoid ? 'cursor-default' : 'cursor-pointer'
-      } ${
-        graced || slippedHere ? '!border-dashed' : ''
-      } ${weekDone ? 'opacity-60' : ''} ${
-        isCompleted
-          ? 'bg-zinc-100/90 dark:bg-zinc-900/40 border-zinc-300/80 dark:border-zinc-800/60 opacity-90'
-          : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs'
-      }`}
-    >
-      {/* Linha 1: checkbox + ícone + nome completo + ações */}
-      <div className="flex items-center gap-3.5">
+  // Variante "bento": células em grade; o hábito em destaque ocupa as 2 colunas e é maior
+  const bento = variant === 'bento';
+  const featured = bento && Boolean(habit.featured);
+  // Alvos de toque de 44px na célula (36px + área expandida), sem estourar a célula com texto grande
+  const actionBtn = bento
+    ? "relative w-9 h-9 flex items-center justify-center before:absolute before:-inset-1 before:content-['']"
+    : 'p-1.5';
+
+  const checkEl = (
+    <>
         {/* Hábito a evitar: indicador de estado no lugar do checkbox */}
         {avoid ? (
           <div
@@ -166,6 +163,10 @@ export const HabitItem: React.FC<HabitItemProps> = ({
         </button>
         )}
 
+    </>
+  );
+  const iconEl = (
+    <>
         {/* Ícone de Categoria */}
         <div
           className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
@@ -177,10 +178,13 @@ export const HabitItem: React.FC<HabitItemProps> = ({
           <HabitIcon iconKey={habit.icon} className="w-4 h-4" />
         </div>
 
+    </>
+  );
+  const titleEl = (
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p
-              className={`text-sm font-medium tracking-tight break-words leading-snug ${
+              className={`${featured ? 'text-lg font-semibold' : 'text-sm font-medium'} tracking-tight break-words leading-snug ${
                 isCompleted
                   ? 'line-through text-zinc-400 dark:text-zinc-500'
                   : 'text-zinc-900 dark:text-zinc-100'
@@ -194,7 +198,9 @@ export const HabitItem: React.FC<HabitItemProps> = ({
             </p>
           </div>
         </div>
-
+  );
+  const actionsEl = (
+    <>
       {/* Ações rápidas */}
         <div className="flex items-center gap-1 shrink-0">
         {/* Toggle Discreto (Olho) */}
@@ -204,7 +210,7 @@ export const HabitItem: React.FC<HabitItemProps> = ({
             e.stopPropagation();
             toggleHideTitle(habit);
           }}
-          className="p-1.5 rounded-lg opacity-60 hover:opacity-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors"
+          className={`${actionBtn} rounded-lg opacity-60 hover:opacity-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors`}
           title={habit.hideTitle ? 'Mostrar título do hábito' : 'Ocultar título do hábito'}
         >
           {habit.hideTitle ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -217,21 +223,21 @@ export const HabitItem: React.FC<HabitItemProps> = ({
             e.stopPropagation();
             onEdit();
           }}
-          className="p-1.5 rounded-lg opacity-60 hover:opacity-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors"
+          className={`${actionBtn} rounded-lg opacity-60 hover:opacity-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors`}
           title="Editar hábito"
         >
           <Edit3 className="w-3.5 h-3.5" />
         </button>
 
         </div>
-      </div>
-
-      {/* Linha 2: ofensiva e demais informações, alinhadas sob o nome */}
-      <div className="pl-[88px] min-w-0">
+    </>
+  );
+  const infoEl = (
+    <>
         <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
         {/* Badge de Streak: atual e melhor */}
         <div
-          className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg border font-mono text-xs transition-all ${
+          className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg border font-mono ${featured ? 'text-sm' : 'text-xs'} transition-all ${
             isRecord
               ? 'border-zinc-400 dark:border-zinc-600 bg-zinc-200/70 dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 font-bold shadow-xs'
               : streak > 0
@@ -379,7 +385,47 @@ export const HabitItem: React.FC<HabitItemProps> = ({
               Sem dia de graça neste mês
             </p>
           )}
-      </div>
+    </>
+  );
+
+  return (
+    <div
+      onClick={handleToggle}
+      className={`group relative flex flex-col gap-2 rounded-2xl border transition-all select-none min-h-[58px] ${bento ? (featured ? 'p-4 h-full' : 'p-3 h-full') : 'p-3.5 sm:p-4'} ${
+        avoid ? 'cursor-default' : 'cursor-pointer'
+      } ${
+        graced || slippedHere ? '!border-dashed' : ''
+      } ${weekDone ? 'opacity-60' : ''} ${
+        isCompleted
+          ? 'bg-zinc-100/90 dark:bg-zinc-900/40 border-zinc-300/80 dark:border-zinc-800/60 opacity-90'
+          : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs'
+      }`}
+    >
+      {bento ? (
+        <>
+          <div className="flex items-center gap-2">
+            {checkEl}
+            {featured && iconEl}
+            <div className="flex-1" />
+            {actionsEl}
+          </div>
+          {titleEl}
+          <div className="min-w-0">{infoEl}</div>
+        </>
+      ) : (
+        <>
+          {/* Linha 1: checkbox + ícone + nome completo + ações */}
+          <div className="flex items-center gap-3.5">
+            {checkEl}
+            {iconEl}
+            {titleEl}
+            {actionsEl}
+          </div>
+
+          {/* Linha 2: ofensiva e demais informações, alinhadas sob o nome */}
+          <div className="pl-[88px] min-w-0">{infoEl}</div>
+        </>
+      )}
     </div>
   );
 };

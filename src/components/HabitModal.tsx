@@ -21,6 +21,8 @@ import {
   GOAL_LIMITS,
   normalizePomoGoal
 } from '@/lib/pomoGoals';
+import { useHabits } from '@/context/HabitsContext';
+import { MAX_FEATURED, canFeature } from '@/lib/bento';
 import { PERIOD_LABEL, normalizePeriod } from '@/lib/periods';
 
 interface HabitModalProps {
@@ -45,6 +47,10 @@ export const HabitModal: React.FC<HabitModalProps> = ({
   const [icon, setIcon] = useState('target');
   const [hideTitle, setHideTitle] = useState(false);
   const [period, setPeriod] = useState<HabitPeriod>('any');
+  const [featured, setFeatured] = useState(false);
+  const { habits } = useHabits();
+  // Destaque do layout bento: limite de MAX_FEATURED (editar um já destacado não conta contra si)
+  const featuredAllowed = canFeature(habits, initialHabit?.id) || Boolean(initialHabit?.featured);
   // Construir (marcar quando fizer) ou evitar (registrar só quando escorregar)
   const [kind, setKind] = useState<HabitKind>('build');
   // Meta com Pomo (desligada por padrão); guarda o alvo de cada tipo separadamente
@@ -64,6 +70,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       setIcon(initialHabit.icon || 'target');
       setHideTitle(Boolean(initialHabit.hideTitle));
       setPeriod(normalizePeriod(initialHabit.period));
+      setFeatured(Boolean(initialHabit.featured));
       setKind(normalizeKind(initialHabit.kind));
       const goal = normalizePomoGoal(initialHabit.pomoGoal);
       setGoalEnabled(Boolean(goal));
@@ -78,6 +85,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       setCategory('Saúde');
       setIcon('target');
       setHideTitle(false);
+      setFeatured(false);
       setPeriod('any');
       setKind('build');
       setGoalEnabled(false);
@@ -114,6 +122,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       category: category.trim() || 'Geral',
       icon: icon || 'target',
       hideTitle,
+      featured: featured && featuredAllowed,
       period,
       // Hábito a evitar não tem meta do Pomo nem meta semanal
       kind,
@@ -303,6 +312,42 @@ export const HabitModal: React.FC<HabitModalProps> = ({
                 }`}
               />
             </div>
+          </div>
+
+          {/* Destaque no layout bento */}
+          <div className="space-y-1.5">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={featured && featuredAllowed}
+              disabled={!featuredAllowed && !featured}
+              onClick={() => setFeatured(!featured)}
+              className="w-full min-h-[44px] flex items-center justify-between gap-3 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 text-left disabled:opacity-50"
+            >
+              <span>
+                <span className="block font-medium text-xs">Destacar no layout Bento</span>
+                <span className="block text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  Ocupa a largura toda e ganha mais tamanho (até {MAX_FEATURED} hábitos)
+                </span>
+              </span>
+              <span
+                aria-hidden="true"
+                className={`w-9 h-5 rounded-full p-0.5 transition-colors shrink-0 ${
+                  featured && featuredAllowed ? 'bg-zinc-950 dark:bg-zinc-50' : 'bg-zinc-300 dark:bg-zinc-700'
+                }`}
+              >
+                <span
+                  className={`block w-4 h-4 rounded-full transition-transform ${
+                    featured && featuredAllowed ? 'translate-x-4 bg-white dark:bg-zinc-950' : 'translate-x-0 bg-white'
+                  }`}
+                />
+              </span>
+            </button>
+            {!featuredAllowed && !initialHabit?.featured && (
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                Limite de {MAX_FEATURED} hábitos em destaque atingido. Remova um destaque para escolher outro.
+              </p>
+            )}
           </div>
 
           {/* Frequência: dias fixos ou meta semanal */}

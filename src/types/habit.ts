@@ -19,6 +19,7 @@ export interface Habit {
   category: string;
   icon: string;
   hideTitle?: boolean;
+  featured?: boolean; // destaque no layout bento do Foco (no máximo 2 hábitos)
   period?: HabitPeriod; // ausente em dados antigos = 'any'
   kind?: HabitKind; // ausente em dados antigos = 'build'
   pomoGoal?: PomoGoal; // meta diária com o Pomo (ausente = sem meta)
