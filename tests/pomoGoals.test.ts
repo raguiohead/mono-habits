@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   addDismissal,
+  getGoalLock,
   getLinkableHabits,
   goalLabel,
   goalProgress,
@@ -177,5 +178,34 @@ describe('desmarcações do dia', () => {
 
   it('usa a mesma chave de data local do restante do app', () => {
     expect(toDateKey(new Date(day(2025, 6, 15)))).toBe(KEY);
+  });
+});
+
+describe('getGoalLock (marcação manual bloqueada)', () => {
+  it('bloqueia enquanto a meta de minutos não foi cumprida, informando o progresso', () => {
+    const lock = getGoalLock(habit(), [session({ actualSeconds: 600 })], KEY);
+    expect(lock).toEqual({ label: '10/30 min' });
+  });
+
+  it('libera quando a meta de minutos é cumprida (inclusive com sessões parciais somadas)', () => {
+    const sessions = [session({ actualSeconds: 1200, completed: false }), session({ actualSeconds: 600, completed: false })];
+    expect(getGoalLock(habit(), sessions, KEY)).toBeNull();
+  });
+
+  it('meta de sessões: interrompidas não liberam; concluídas sim', () => {
+    const h = habit({ pomoGoal: sessionsGoal(2) });
+    const partial = [session({}), session({ completed: false, actualSeconds: 1400 })];
+    expect(getGoalLock(h, partial, KEY)).toEqual({ label: '1/2 focos' });
+    expect(getGoalLock(h, [session({}), session({})], KEY)).toBeNull();
+  });
+
+  it('hábito sem meta nunca é bloqueado', () => {
+    expect(getGoalLock(habit({ pomoGoal: undefined }), [], KEY)).toBeNull();
+  });
+
+  it('só conta as sessões do dia consultado', () => {
+    const yesterday = session({ startedAt: day(2025, 6, 14), actualSeconds: 1800 });
+    expect(getGoalLock(habit(), [yesterday], KEY)).toEqual({ label: '0/30 min' });
+    expect(getGoalLock(habit(), [yesterday], '2025-06-14')).toBeNull();
   });
 });

@@ -85,6 +85,16 @@ export function goalLabel(progress: GoalProgress): string {
   return `${progress.current}/${progress.target} ${progress.unit}`;
 }
 
+/**
+ * Bloqueio de marcação: um hábito com meta do Pomo só pode ser concluído quando a meta do dia
+ * foi cumprida. Devolve o progresso (ex.: "12/30 min") enquanto estiver bloqueado, ou null.
+ */
+export function getGoalLock(habit: Habit, sessions: PomoSession[], dateKey: string): { label: string } | null {
+  if (!habit.pomoGoal) return null;
+  const progress = goalProgress(habit.pomoGoal, habit.id, sessions, dateKey);
+  return progress.met ? null : { label: goalLabel(progress) };
+}
+
 /** Hábitos que podem ser vinculados a um foco agora: agendados no dia, pendentes e com meta ainda não atingida */
 export function getLinkableHabits(
   habits: Habit[],
