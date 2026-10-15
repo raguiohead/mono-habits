@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { HabitsProvider, useHabits } from '@/context/HabitsContext';
 import { PomoProvider } from '@/context/PomoContext';
 import { SettingsProvider } from '@/context/SettingsContext';
+import { LockProvider } from '@/context/LockContext';
 import { Header } from '@/components/Header';
 import { DailyFocus } from '@/components/DailyFocus';
 import { ConsistencyView } from '@/components/ConsistencyView';
@@ -135,11 +136,14 @@ export default function App() {
   }
   return (
     <SettingsProvider>
-      <HabitsProvider>
-        <PomoProvider>
-          <MainContent />
-        </PomoProvider>
-      </HabitsProvider>
+      {/* O bloqueio fica acima dos dados: bloqueado, nada sensível é montado */}
+      <LockProvider>
+        <HabitsProvider>
+          <PomoProvider>
+            <MainContent />
+          </PomoProvider>
+        </HabitsProvider>
+      </LockProvider>
     </SettingsProvider>
   );
 }
