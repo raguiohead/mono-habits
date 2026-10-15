@@ -12,6 +12,7 @@ const THEME_STORAGE_KEY = 'mono_habits_theme_v1';
 const SETTINGS_STORAGE_KEY = 'mono_habits_settings_v1';
 const WELCOME_KEY = 'mono_habits_welcome_v1';
 const REMINDER_SENT_KEY = 'mono_habits_reminder_sent_v1';
+const DAY_COMPLETE_KEY = 'mono_habits_day_complete_v1';
 const GOAL_DISMISSED_KEY = 'mono_habits_goal_dismissed_v1';
 const GRACES_STORAGE_KEY = 'mono_habits_graces_v1';
 const SLIPS_STORAGE_KEY = 'mono_habits_slips_v1';
@@ -348,6 +349,23 @@ export function exportLocalData() {
 }
 
 /** Apaga hábitos, check-ins, Pomo e lembretes do navegador. Mantém tema e configurações. */
+/** Data (YYYY-MM-DD) da última transição de "dia completo", para tocar no máximo uma vez por dia */
+export function getLastDayCompleteKey(): string | null {
+  try {
+    return localStorage.getItem(DAY_COMPLETE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setLastDayCompleteKey(key: string): void {
+  try {
+    localStorage.setItem(DAY_COMPLETE_KEY, key);
+  } catch {
+    /* sem armazenamento */
+  }
+}
+
 export function clearLocalUserData(): void {
   try {
     [
@@ -360,6 +378,7 @@ export function clearLocalUserData(): void {
       POMO_SETTINGS_KEY,
       POMO_TIMER_KEY,
       REMINDER_SENT_KEY,
+      DAY_COMPLETE_KEY,
       GOAL_DISMISSED_KEY
     ].forEach((k) => localStorage.removeItem(k));
   } catch (error) {
