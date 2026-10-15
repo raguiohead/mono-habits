@@ -1,5 +1,6 @@
 import { type Habit, type LogsMap, type GracesMap, type SlipsMap, type PomoSession, type PomoKind } from '@/types/habit';
 import { sanitizeSlips } from './avoid';
+import { sanitizeLockConfig, type LockConfig } from './lock';
 import { sanitizeGraces } from './graces';
 import { DEFAULT_DURATIONS, clampMinutes, type PomoDurations } from './pomo';
 import { DEFAULT_SETTINGS, sanitizeSettings, type AppSettings } from './settings';
@@ -14,6 +15,7 @@ const REMINDER_SENT_KEY = 'mono_habits_reminder_sent_v1';
 const GOAL_DISMISSED_KEY = 'mono_habits_goal_dismissed_v1';
 const GRACES_STORAGE_KEY = 'mono_habits_graces_v1';
 const SLIPS_STORAGE_KEY = 'mono_habits_slips_v1';
+const LOCK_STORAGE_KEY = 'mono_habits_lock_v1';
 
 export const DEFAULT_HABITS: Habit[] = [
   {
@@ -116,6 +118,26 @@ export function saveLocalLogs(logs: LogsMap): void {
     localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(logs));
   } catch (error) {
     console.error('Falha ao salvar logs no localStorage:', error);
+  }
+}
+
+// ---------- Bloqueio do app (PIN / biometria) ----------
+
+/** Fica só neste aparelho e NÃO entra na exportação: guarda hash+sal do PIN, nunca o PIN */
+export function loadLockConfig(): LockConfig {
+  try {
+    const raw = localStorage.getItem(LOCK_STORAGE_KEY);
+    return sanitizeLockConfig(raw ? JSON.parse(raw) : null);
+  } catch {
+    return sanitizeLockConfig(null);
+  }
+}
+
+export function saveLockConfig(config: LockConfig): void {
+  try {
+    localStorage.setItem(LOCK_STORAGE_KEY, JSON.stringify(config));
+  } catch (error) {
+    console.error('Falha ao salvar o bloqueio no localStorage:', error);
   }
 }
 
@@ -333,6 +355,7 @@ export function clearLocalUserData(): void {
       LOGS_STORAGE_KEY,
       GRACES_STORAGE_KEY,
       SLIPS_STORAGE_KEY,
+      LOCK_STORAGE_KEY, // "apagar dados deste dispositivo" também remove o bloqueio (saída para quem esqueceu o PIN)
       POMO_SESSIONS_KEY,
       POMO_SETTINGS_KEY,
       POMO_TIMER_KEY,

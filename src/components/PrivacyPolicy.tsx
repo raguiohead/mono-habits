@@ -39,6 +39,12 @@ export const PrivacyContent: React.FC = () => (
           <strong>Preferências:</strong> tema, acessibilidade, notificações e durações do Pomo.
         </li>
         <li>
+          <strong>Bloqueio do app (opcional):</strong> se você ativar, guardamos neste aparelho apenas o hash
+          do seu PIN (PBKDF2 com sal), o tempo de bloqueio e, se usar biometria, o identificador da credencial
+          WebAuthn. O PIN em si e dados biométricos nunca são guardados nem enviados; nada disso vai para a
+          nuvem nem para a exportação.
+        </li>
+        <li>
           <strong>Conta (somente se a nuvem estiver ativa):</strong> um identificador anônimo
           criado automaticamente e, se você entrar com o Google, seu nome, e-mail e foto de
           perfil, que usamos apenas para identificar sua conta na tela de configurações.
@@ -116,6 +122,14 @@ export const PrivacyContent: React.FC = () => (
         A comunicação usa HTTPS e o acesso à nuvem é restrito por autenticação e regras do
         Firestore. Nenhum sistema é totalmente imune a falhas; por isso, recomendamos exportar
         seus dados periodicamente.
+      </p>
+      <p>
+        <strong>Sobre o bloqueio por PIN ou biometria:</strong> é uma trava de interface, não uma
+        criptografia. Ele impede que outra pessoa use o app aberto neste aparelho, mas os dados que ficam
+        no armazenamento do navegador (localStorage) <strong>não são criptografados</strong>: quem tiver
+        acesso ao navegador ou ao aparelho desbloqueado pode lê-los. O PIN não pode ser recuperado; se você
+        esquecer, é preciso apagar os dados deste dispositivo, e os dados da nuvem podem ser restaurados ao
+        entrar de novo com a Conta Google.
       </p>
     </Section>
 
