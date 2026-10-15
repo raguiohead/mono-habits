@@ -1,9 +1,12 @@
 import { type Habit, type LogsMap, type PomoSession, type PomoKind } from '@/types/habit';
 import { DEFAULT_DURATIONS, clampMinutes, type PomoDurations } from './pomo';
+import { DEFAULT_SETTINGS, sanitizeSettings, type AppSettings } from './settings';
 
 const HABITS_STORAGE_KEY = 'mono_habits_data_v1';
 const LOGS_STORAGE_KEY = 'mono_habits_logs_v1';
 const THEME_STORAGE_KEY = 'mono_habits_theme_v1';
+const SETTINGS_STORAGE_KEY = 'mono_habits_settings_v1';
+const REMINDER_SENT_KEY = 'mono_habits_reminder_sent_v1';
 
 export const DEFAULT_HABITS: Habit[] = [
   {
@@ -198,5 +201,72 @@ export function savePomoTimer(timer: PomoTimerState | null): void {
     else localStorage.removeItem(POMO_TIMER_KEY);
   } catch (error) {
     console.warn('Falha ao salvar estado do timer Pomo', error);
+  }
+}
+
+// ---------- Configurações do app ----------
+
+export function loadSettings(): AppSettings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    return sanitizeSettings(raw ? JSON.parse(raw) : null);
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+export function saveSettings(settings: AppSettings): void {
+  try {
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  } catch (error) {
+    console.warn('Falha ao salvar configurações', error);
+  }
+}
+
+/** Data (YYYY-MM-DD) do último lembrete enviado, para não repetir no mesmo dia */
+export function getLastReminderKey(): string | null {
+  try {
+    return localStorage.getItem(REMINDER_SENT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setLastReminderKey(key: string): void {
+  try {
+    localStorage.setItem(REMINDER_SENT_KEY, key);
+  } catch {
+    /* sem armazenamento */
+  }
+}
+
+// ---------- Exportação e limpeza (gestão de conta) ----------
+
+/** Dados do usuário (hábitos, check-ins, Pomo) para exportação em JSON */
+export function exportLocalData() {
+  return {
+    app: 'MONO // HABITS',
+    exportedAt: new Date().toISOString(),
+    habits: loadLocalHabits(),
+    logs: loadLocalLogs(),
+    pomoSessions: loadLocalPomoSessions(),
+    pomoSettings: loadPomoSettings(),
+    settings: loadSettings()
+  };
+}
+
+/** Apaga hábitos, check-ins, Pomo e lembretes do navegador. Mantém tema e configurações. */
+export function clearLocalUserData(): void {
+  try {
+    [
+      HABITS_STORAGE_KEY,
+      LOGS_STORAGE_KEY,
+      POMO_SESSIONS_KEY,
+      POMO_SETTINGS_KEY,
+      POMO_TIMER_KEY,
+      REMINDER_SENT_KEY
+    ].forEach((k) => localStorage.removeItem(k));
+  } catch (error) {
+    console.warn('Falha ao limpar dados locais', error);
   }
 }

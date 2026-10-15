@@ -36,7 +36,12 @@ O **MONO // HABITS** foi desenhado com um princípio radical: **eliminar o ruíd
 4. **Arquitetura Híbrida Local-First + Google Cloud:**
    - **Offline Imediato:** Funciona 100% no `localStorage` sem exigir login prévio.
    - **Google Cloud Firestore:** Ao conectar com sua Conta Google, os hábitos locais são migrados e sincronizados automaticamente em tempo real entre todos os seus dispositivos.
-5. **PWA Mobile Instalável:**
+5. **Configurações (Conta, Acessibilidade e Notificações):**
+   - Tamanho do texto, redução de animações, alto contraste e foco visível por teclado.
+   - Lembrete diário (apenas a contagem de pendentes, sem nomes de hábitos) e aviso de fim do Pomo.
+   - Exportação dos dados em JSON, limpeza dos dados do dispositivo e exclusão da conta e dos dados na nuvem.
+   - Política de Privacidade dentro do app e em `/privacidade`.
+6. **PWA Mobile Instalável:**
    - Ícone monocromático vetorial e meta tags para execução em tela cheia (*standalone*) no iOS e Android.
 
 ---
@@ -121,7 +126,7 @@ service cloud.firestore {
 
 ## 🌐 Deploy na Vercel
 
-O projeto possui `vercel.json` configurado com cabeçalhos de segurança (CSP, HSTS, X-Content-Type-Options) e reescrita SPA:
+O projeto possui `vercel.json` configurado com cabeçalhos de segurança (X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy) e reescrita SPA:
 
 1. Importe o repositório na [Vercel](https://vercel.com/new).
 2. Configure as variáveis de ambiente (`VITE_FIREBASE_*`) nas configurações do projeto na Vercel.
