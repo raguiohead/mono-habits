@@ -266,7 +266,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               )}
             </div>
             <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-              No Bento, até 2 hábitos em destaque ocupam a largura toda. Escolha-os ao editar um hábito.
+              Hábitos destacados (até 2, ao editar um hábito) ficam fixados no topo; no Bento ocupam a largura toda.
             </p>
           </div>
         </section>

@@ -16,3 +16,9 @@ export function canFeature(habits: Habit[], habitId?: string): boolean {
 export function featuredIds(habits: Habit[]): Set<string> {
   return new Set(habits.filter((h) => h.featured && !h.archived).slice(0, MAX_FEATURED).map((h) => h.id));
 }
+
+/** Hábitos em destaque (até MAX_FEATURED) primeiro, mantendo a ordem original nos demais */
+export function orderFeaturedFirst<T extends Habit>(habits: T[]): T[] {
+  const ids = featuredIds(habits);
+  return [...habits.filter((h) => ids.has(h.id)), ...habits.filter((h) => !ids.has(h.id))];
+}
