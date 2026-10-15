@@ -1,6 +1,7 @@
 import { type Habit, type LogsMap, type PomoSession, type PomoKind } from '@/types/habit';
 import { DEFAULT_DURATIONS, clampMinutes, type PomoDurations } from './pomo';
 import { DEFAULT_SETTINGS, sanitizeSettings, type AppSettings } from './settings';
+import { pruneDismissals, type GoalDismissals } from './pomoGoals';
 
 const HABITS_STORAGE_KEY = 'mono_habits_data_v1';
 const LOGS_STORAGE_KEY = 'mono_habits_logs_v1';
@@ -8,6 +9,7 @@ const THEME_STORAGE_KEY = 'mono_habits_theme_v1';
 const SETTINGS_STORAGE_KEY = 'mono_habits_settings_v1';
 const WELCOME_KEY = 'mono_habits_welcome_v1';
 const REMINDER_SENT_KEY = 'mono_habits_reminder_sent_v1';
+const GOAL_DISMISSED_KEY = 'mono_habits_goal_dismissed_v1';
 
 export const DEFAULT_HABITS: Habit[] = [
   {
@@ -113,6 +115,26 @@ export function saveLocalLogs(logs: LogsMap): void {
   }
 }
 
+// ---------- Metas do Pomo ----------
+
+/** Hábitos desmarcados manualmente no dia: o Pomo não os remarca automaticamente (só neste aparelho) */
+export function loadGoalDismissals(): GoalDismissals {
+  try {
+    const raw = localStorage.getItem(GOAL_DISMISSED_KEY);
+    return raw ? pruneDismissals(JSON.parse(raw), new Date()) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveGoalDismissals(map: GoalDismissals): void {
+  try {
+    localStorage.setItem(GOAL_DISMISSED_KEY, JSON.stringify(map));
+  } catch (error) {
+    console.warn('Falha ao salvar desmarcações de meta do Pomo', error);
+  }
+}
+
 // ---------- Pomodoro ----------
 
 const POMO_SESSIONS_KEY = 'mono_habits_pomo_sessions_v1';
@@ -143,6 +165,7 @@ export interface PomoSettings {
   durations: PomoDurations;
   cycleCount: number;
   kind: PomoKind;
+  lastHabitId?: string; // último hábito vinculado a um foco (ausente = sem vínculo)
 }
 
 export function loadPomoSettings(): PomoSettings {
@@ -158,7 +181,8 @@ export function loadPomoSettings(): PomoSettings {
         long: clampMinutes(p?.durations?.long ?? DEFAULT_DURATIONS.long)
       },
       cycleCount: Number.isInteger(p?.cycleCount) ? p.cycleCount : 0,
-      kind: ['focus', 'short', 'long'].includes(p?.kind) ? p.kind : 'focus'
+      kind: ['focus', 'short', 'long'].includes(p?.kind) ? p.kind : 'focus',
+      ...(typeof p?.lastHabitId === 'string' && p.lastHabitId ? { lastHabitId: p.lastHabitId } : {})
     };
   } catch {
     return fallback;
@@ -176,6 +200,7 @@ export function savePomoSettings(settings: PomoSettings): void {
 /** Timer em andamento: guardado por timestamps para sobreviver a recarga/segundo plano */
 export interface PomoTimerState {
   kind: PomoKind;
+  habitId?: string; // hábito vinculado a este foco
   plannedMs: number;
   startedAt: number;
   status: 'running' | 'paused';
@@ -265,7 +290,8 @@ export function clearLocalUserData(): void {
       POMO_SESSIONS_KEY,
       POMO_SETTINGS_KEY,
       POMO_TIMER_KEY,
-      REMINDER_SENT_KEY
+      REMINDER_SENT_KEY,
+      GOAL_DISMISSED_KEY
     ].forEach((k) => localStorage.removeItem(k));
   } catch (error) {
     console.warn('Falha ao limpar dados locais', error);

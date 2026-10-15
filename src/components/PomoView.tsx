@@ -14,14 +14,21 @@ import {
   formatDuration,
   summarizeDay
 } from '@/lib/pomo';
-import { type PomoKind } from '@/types/habit';
+import { goalLabel, goalProgress } from '@/lib/pomoGoals';
+import { type Habit, type PomoGoal, type PomoKind } from '@/types/habit';
 
 const KINDS: PomoKind[] = ['focus', 'short', 'long'];
 const RING_RADIUS = 104;
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 
+/** Nome do hábito sem vazar o título quando ele está oculto (Modo Discreto) */
+const habitName = (h: Habit) => (h.hideTitle ? `••••• (${h.category})` : h.title);
+
+const goalTarget = (goal: PomoGoal) =>
+  goal.type === 'minutes' ? `${goal.target} min/dia` : `${goal.target} ${goal.target === 1 ? 'foco' : 'focos'}/dia`;
+
 export const PomoView: React.FC = () => {
-  const { pomoSessions } = useHabits();
+  const { pomoSessions, activeHabits } = useHabits();
   const {
     kind,
     durations,
@@ -34,7 +41,10 @@ export const PomoView: React.FC = () => {
     resume,
     stop,
     selectKind,
-    setMinutes
+    setMinutes,
+    linkableHabits,
+    linkedHabitId,
+    setLinkedHabit
   } = usePomo();
 
   const idle = status === 'idle';
@@ -132,6 +142,16 @@ export const PomoView: React.FC = () => {
           </span>
         </div>
 
+        {/* Hábito vinculado à sessão em andamento */}
+        {!idle && kind === 'focus' && linkedHabitId && (() => {
+          const linked = activeHabits.find((h) => h.id === linkedHabitId);
+          return linked?.pomoGoal ? (
+            <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 text-center">
+              Vinculado a {habitName(linked)} · meta {goalTarget(linked.pomoGoal)}
+            </p>
+          ) : null;
+        })()}
+
         {/* Ajuste do tempo (somente ocioso) */}
         {idle && (
           <div className="w-full space-y-3">
@@ -187,6 +207,28 @@ export const PomoView: React.FC = () => {
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Vincular o foco a um hábito com meta (somente ocioso, em foco) */}
+        {idle && kind === 'focus' && linkableHabits.length > 0 && (
+          <div className="w-full space-y-1.5">
+            <label htmlFor="pomo-habit" className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+              Vincular a hábito
+            </label>
+            <select
+              id="pomo-habit"
+              value={linkedHabitId ?? ''}
+              onChange={(e) => setLinkedHabit(e.target.value || null)}
+              className="w-full min-h-[44px] px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm"
+            >
+              <option value="">Sem vínculo</option>
+              {linkableHabits.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {habitName(h)} — {goalLabel(goalProgress(h.pomoGoal!, h.id, pomoSessions, todayKey))}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 

@@ -44,10 +44,6 @@ Este documento define os padrões arquiteturais, padrões de código e convenç�
 2. Preferências ficam em `SettingsContext` (`src/lib/settings.ts`); novas chaves de dados do usuário devem entrar em `exportLocalData` e `clearLocalUserData` (`src/lib/storage.ts`).
 3. Ao alterar quais dados são coletados, atualize `PrivacyPolicy.tsx` e `PRIVACY_UPDATED_AT`.
 
-## Roadmap (ideias futuras)
-
-- **Hábitos com tempo mínimo via Pomo:** permitir que um hábito exija um tempo determinado pelo usuário para ser concluído, contabilizado a partir das sessões registradas no Pomo (`pomoSessions`). Exigirá vincular sessão ↔ hábito (ex.: campo `habitId` opcional em `PomoSession`). Ainda não implementado.
-
 ## Somente planos gratuitos
 
 O projeto deve rodar inteiramente em planos gratuitos (Firebase **Spark** + Vercel **Hobby**). Não adicionar nada que exija plano pago, por exemplo:
