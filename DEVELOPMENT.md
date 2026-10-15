@@ -38,6 +38,12 @@ Este documento define os padrões arquiteturais, padrões de código e convenç�
    ```
 2. Mantenha cobertura de testes unitários para qualquer cálculo envolvendo datas, sequências (*streaks*) ou agregações estatísticas em `src/lib/`.
 
+## 4. Acessibilidade & Privacidade
+
+1. Modais usam `ModalShell` (role `dialog`, Esc, foco preso). Não desative o zoom no `viewport`.
+2. Preferências ficam em `SettingsContext` (`src/lib/settings.ts`); novas chaves de dados do usuário devem entrar em `exportLocalData` e `clearLocalUserData` (`src/lib/storage.ts`).
+3. Ao alterar quais dados são coletados, atualize `PrivacyPolicy.tsx` e `PRIVACY_UPDATED_AT`.
+
 ## Roadmap (ideias futuras)
 
 - **Hábitos com tempo mínimo via Pomo:** permitir que um hábito exija um tempo determinado pelo usuário para ser concluído, contabilizado a partir das sessões registradas no Pomo (`pomoSessions`). Exigirá vincular sessão ↔ hábito (ex.: campo `habitId` opcional em `PomoSession`). Ainda não implementado.

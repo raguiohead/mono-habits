@@ -45,3 +45,65 @@
 .animate-fadeIn {
   animation: fadeIn 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* ---------- Acessibilidade ---------- */
+
+/* Foco visível para navegação por teclado */
+:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Reduz movimento: pelo sistema (padrão) ou por escolha do usuário */
+@media (prefers-reduced-motion: reduce) {
+  html:not(.full-motion) *,
+  html:not(.full-motion) *::before,
+  html:not(.full-motion) *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Alto contraste: textos secundários e bordas ganham contraste máximo (continua monocromático) */
+html.high-contrast {
+  --hc-fg: #09090b;
+  --hc-bg: #ffffff;
+}
+html.high-contrast.dark {
+  --hc-fg: #ffffff;
+  --hc-bg: #000000;
+}
+html.high-contrast body {
+  background-color: var(--hc-bg);
+  color: var(--hc-fg);
+}
+html.high-contrast [class*='text-zinc-400'],
+html.high-contrast [class*='text-zinc-500'],
+html.high-contrast [class*='text-zinc-600'] {
+  color: var(--hc-fg) !important;
+  opacity: 0.85;
+}
+html.high-contrast [class*='border-zinc-'] {
+  border-color: var(--hc-fg) !important;
+  border-color: color-mix(in srgb, var(--hc-fg) 55%, transparent) !important;
+}
+
+/* Evita o zoom automático do iOS ao focar campos (exige fonte >= 16px) sem bloquear o zoom do usuário */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

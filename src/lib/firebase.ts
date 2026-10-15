@@ -7,6 +7,8 @@ import {
   signInAnonymously,
   signOut,
   onAuthStateChanged,
+  deleteUser,
+  reauthenticateWithPopup,
   type Auth,
   type User
 } from 'firebase/auth';
@@ -54,6 +56,15 @@ if (isFirebaseConfigured) {
   }
 }
 
+/** Remove todos os documentos do usuário no Firestore (hábitos, check-ins e sessões Pomo) */
+export async function deleteAllCloudData(uid: string): Promise<void> {
+  if (!db) return;
+  for (const name of ['habits', 'logs', 'pomoSessions']) {
+    const snap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, name));
+    await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+  }
+}
+
 export {
   app,
   auth,
@@ -64,6 +75,8 @@ export {
   signInAnonymously,
   signOut,
   onAuthStateChanged,
+  deleteUser,
+  reauthenticateWithPopup,
   collection,
   doc,
   setDoc,

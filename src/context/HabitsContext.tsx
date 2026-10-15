@@ -11,7 +11,8 @@ import {
   getStoredTheme,
   setStoredTheme,
   loadLocalPomoSessions,
-  saveLocalPomoSessions
+  saveLocalPomoSessions,
+  clearLocalUserData
 } from '@/lib/storage';
 import {
   auth,
@@ -23,6 +24,9 @@ import {
   signInAnonymously,
   signOut,
   onAuthStateChanged,
+  deleteUser,
+  reauthenticateWithPopup,
+  deleteAllCloudData,
   collection,
   doc,
   setDoc,
@@ -42,6 +46,8 @@ interface HabitsContextType {
   syncState: SyncStatus;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
+  clearDeviceData: () => void;
 
   // Dados
   habits: Habit[];
@@ -302,14 +308,54 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  // Apaga dados locais e recarrega para zerar todo o estado em memória (hábitos, Pomo, timers)
+  const clearDeviceData = () => {
+    clearLocalUserData();
+    window.location.reload();
+  };
+
   const logout = async () => {
     if (!auth) return;
+    const wasGoogleAccount = Boolean(user && !user.isAnonymous);
     try {
       await signOut(auth);
-      showToast('Sessão encerrada com sucesso.');
     } catch (err) {
       console.error('Erro ao sair:', err);
+      showToast('Não foi possível encerrar a sessão. Tente novamente.');
+      return;
     }
+    // Os dados continuam na nuvem. Limpamos o espelho local para que a próxima pessoa
+    // que usar este navegador não veja nem migre estes hábitos para outra conta.
+    if (wasGoogleAccount) {
+      clearDeviceData();
+    } else {
+      showToast('Sessão encerrada com sucesso.');
+    }
+  };
+
+  // Exclui a conta: dados na nuvem, usuário no Firebase Auth e dados locais
+  const deleteAccount = async () => {
+    const currentUser = auth?.currentUser;
+    if (!auth || !currentUser) return;
+    try {
+      // Contas Google exigem login recente para exclusão
+      if (!currentUser.isAnonymous) {
+        await reauthenticateWithPopup(currentUser, new GoogleAuthProvider());
+      }
+      await deleteAllCloudData(currentUser.uid);
+      await deleteUser(currentUser);
+    } catch (error: any) {
+      console.error('[Delete Account Error]', error);
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        showToast('Exclusão cancelada. Confirme sua conta Google para continuar.');
+      } else if (error.code === 'auth/popup-blocked') {
+        showToast('Pop-up bloqueado pelo navegador. Habilite pop-ups e tente novamente.');
+      } else {
+        showToast('Não foi possível excluir a conta. Tente novamente.');
+      }
+      return;
+    }
+    clearDeviceData();
   };
 
   // Salvar Hábito (Criação ou Edição)
@@ -523,6 +569,8 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         syncState,
         loginWithGoogle,
         logout,
+        deleteAccount,
+        clearDeviceData,
         habits,
         activeHabits,
         logs,

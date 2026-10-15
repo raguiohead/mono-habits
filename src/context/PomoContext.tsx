@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { type PomoKind, type PomoSession } from '@/types/habit';
 import { useHabits } from '@/context/HabitsContext';
+import { useSettings } from '@/context/SettingsContext';
+import { showSystemNotification } from '@/lib/notifications';
 import {
   loadPomoSettings,
   savePomoSettings,
@@ -51,6 +53,7 @@ function playBeeps(ctx: AudioContext | null) {
 
 export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { savePomoSession, showToast } = useHabits();
+  const { settings: appSettings } = useSettings();
 
   const [settings, setSettings] = useState<PomoSettings>(() => loadPomoSettings());
   const [timer, setTimer] = useState<PomoTimerState | null>(() => loadPomoTimer());
@@ -96,19 +99,24 @@ export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateTimer(null);
 
       if (!wasAway) {
-        playBeeps(audioRef.current);
-        try {
-          navigator.vibrate?.([200, 100, 200, 100, 300]);
-        } catch {
-          /* vibração indisponível */
+        if (appSettings.sound) playBeeps(audioRef.current);
+        if (appSettings.vibration) {
+          try {
+            navigator.vibrate?.([200, 100, 200, 100, 300]);
+          } catch {
+            /* vibração indisponível */
+          }
         }
       }
-      showToast(
-        `${KIND_LABEL[t.kind]} concluído${wasAway ? ' enquanto você estava fora' : ''}. Próximo: ${KIND_LABEL[next.kind].toLowerCase()}.`
-      );
+      const message = `${KIND_LABEL[t.kind]} concluído${wasAway ? ' enquanto você estava fora' : ''}. Próximo: ${KIND_LABEL[next.kind].toLowerCase()}.`;
+      showToast(message);
+      // Com o app em segundo plano, o toast não é visto: avisa pelo sistema
+      if (appSettings.pomoAlerts && document.visibilityState === 'hidden') {
+        void showSystemNotification('MONO // HABITS · Pomo', message, 'pomo-finished');
+      }
       finishingRef.current = false;
     },
-    [savePomoSession, settings.cycleCount, showToast, updateSettings, updateTimer]
+    [savePomoSession, settings.cycleCount, showToast, updateSettings, updateTimer, appSettings.sound, appSettings.vibration, appSettings.pomoAlerts]
   );
 
   // Tick enquanto estiver rodando

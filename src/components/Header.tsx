@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Settings } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { LogoMark } from './LogoMark';
 import { type TabType } from '@/types/habit';
@@ -13,10 +13,10 @@ const TABS: { id: TabType; label: string }[] = [
 ];
 
 interface HeaderProps {
-  onOpenAccountModal: () => void;
+  onOpenSettings: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenAccountModal }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenSettings }) => {
   const {
     darkMode,
     toggleDarkMode,
@@ -54,10 +54,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAccountModal }) => {
         {/* Ações Topo: Status Nuvem + Tema */}
         <div className="flex items-center gap-2">
           <button
-            onClick={onOpenAccountModal}
-            className="relative rounded-full hover:opacity-80 transition-opacity"
-            title={`Conta Google e Nuvem · ${syncLabel}`}
-            aria-label={`Conta Google e Nuvem · ${syncLabel}`}
+            onClick={onOpenSettings}
+            className="relative w-11 h-11 flex items-center justify-center rounded-full hover:opacity-80 transition-opacity"
+            title={`Conta e configurações · ${syncLabel}`}
+            aria-label={`Abrir conta e configurações · ${syncLabel}`}
           >
             <Avatar
               photoURL={user?.photoURL}
@@ -70,10 +70,20 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAccountModal }) => {
           </button>
 
           <button
+            onClick={onOpenSettings}
+            className="w-11 h-11 flex items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            title="Configurações"
+            aria-label="Configurações"
+          >
+            <Settings className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
+          </button>
+
+          <button
             onClick={toggleDarkMode}
-            className="p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            className="w-11 h-11 flex items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
             title={darkMode ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
             aria-label="Alternar tema"
+            aria-pressed={darkMode}
           >
             {darkMode ? (
               <Sun className="w-4 h-4 text-zinc-300" />
