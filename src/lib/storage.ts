@@ -1,3 +1,4 @@
+import { sanitizeMilestonesSeen, type MilestonesSeen } from './milestones';
 import { type Habit, type LogsMap, type GracesMap, type SlipsMap, type PomoSession, type PomoKind } from '@/types/habit';
 import { sanitizeSlips } from './avoid';
 import { sanitizeLockConfig, type LockConfig } from './lock';
@@ -12,6 +13,7 @@ const THEME_STORAGE_KEY = 'mono_habits_theme_v1';
 const SETTINGS_STORAGE_KEY = 'mono_habits_settings_v1';
 const WELCOME_KEY = 'mono_habits_welcome_v1';
 const REMINDER_SENT_KEY = 'mono_habits_reminder_sent_v1';
+const MILESTONES_SEEN_KEY = 'mono_habits_milestones_seen_v1';
 const DAY_COMPLETE_KEY = 'mono_habits_day_complete_v1';
 const GOAL_DISMISSED_KEY = 'mono_habits_goal_dismissed_v1';
 const GRACES_STORAGE_KEY = 'mono_habits_graces_v1';
@@ -366,6 +368,24 @@ export function setLastDayCompleteKey(key: string): void {
   }
 }
 
+/** Marcos de ofensiva já avisados neste dispositivo; null = ainda não semeado (primeira execução) */
+export function loadMilestonesSeen(): MilestonesSeen | null {
+  try {
+    const raw = localStorage.getItem(MILESTONES_SEEN_KEY);
+    return raw ? sanitizeMilestonesSeen(JSON.parse(raw)) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveMilestonesSeen(seen: MilestonesSeen): void {
+  try {
+    localStorage.setItem(MILESTONES_SEEN_KEY, JSON.stringify(seen));
+  } catch {
+    /* sem armazenamento */
+  }
+}
+
 export function clearLocalUserData(): void {
   try {
     [
@@ -379,6 +399,7 @@ export function clearLocalUserData(): void {
       POMO_TIMER_KEY,
       REMINDER_SENT_KEY,
       DAY_COMPLETE_KEY,
+      MILESTONES_SEEN_KEY,
       GOAL_DISMISSED_KEY
     ].forEach((k) => localStorage.removeItem(k));
   } catch (error) {
