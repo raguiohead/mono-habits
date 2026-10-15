@@ -340,6 +340,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               : 'Os lembretes funcionam com o app aberto ou instalado e ativo em segundo plano. No iPhone, instale o app na tela de início.'}
           </p>
           {permission !== 'unsupported' && (
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              Não usamos servidor de push: se o navegador encerrar o app, o lembrete não é enviado. Quando
+              falta apenas 1 hábito, a notificação traz o botão "Marcar como feito" (no Android; o iPhone não
+              mostra botões). O hábito é marcado assim que o app abrir, se ele não estiver aberto.
+            </p>
+          )}
+          {permission !== 'unsupported' && (
             <button type="button" onClick={sendTest} className={`${BTN} w-full`}>
               <Bell className="w-3.5 h-3.5" />
               Enviar notificação de teste

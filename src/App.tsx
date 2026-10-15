@@ -13,6 +13,7 @@ import { PrivacyPolicy, PRIVACY_UPDATED_AT } from '@/components/PrivacyPolicy';
 import { WelcomeModal } from '@/components/WelcomeModal';
 import { getAcceptedPolicyVersion, setAcceptedPolicyVersion } from '@/lib/storage';
 import { ReminderScheduler } from '@/components/ReminderScheduler';
+import { CompletionQueueSync } from '@/components/CompletionQueueSync';
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import { BottomNav } from '@/components/BottomNav';
 import { Toast } from '@/components/Toast';
@@ -105,6 +106,7 @@ const MainContent: React.FC = () => {
       />
 
       <ReminderScheduler />
+      <CompletionQueueSync />
 
       {showWelcome && (
         <WelcomeModal

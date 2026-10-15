@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { type Habit, type LogsMap, type TabType, type SyncStatus, type PomoSession } from '@/types/habit';
 import { sortSessions } from '@/lib/pomo';
 import { normalizePeriod } from '@/lib/periods';
@@ -68,6 +68,8 @@ interface HabitsContextType {
   // Ações CRUD
   saveHabit: (habitData: Omit<Habit, 'id' | 'createdAt'> & { id?: string; createdAt?: number }) => Promise<void>;
   toggleHabitCompletion: (habitId: string, dateKey?: string) => Promise<void>;
+  /** Marca como concluído de forma idempotente (nunca desmarca). Retorna true se mudou algo. */
+  completeHabit: (habitId: string, dateKey: string) => Promise<boolean>;
   toggleHideTitle: (habit: Habit) => Promise<void>;
   toggleArchiveHabit: (habit: Habit) => Promise<void>;
   deleteHabit: (habitId: string) => Promise<void>;
@@ -90,6 +92,8 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Estado dos hábitos e logs (inicia com localStorage)
   const [habits, setHabits] = useState<Habit[]>(() => loadLocalHabits());
   const [logs, setLogs] = useState<LogsMap>(() => loadLocalLogs());
+  const logsRef = useRef<LogsMap>(logs);
+  logsRef.current = logs;
   const [pomoSessions, setPomoSessions] = useState<PomoSession[]>(() => sortSessions(loadLocalPomoSessions()));
   const [initialLoaded, setInitialLoaded] = useState<boolean>(false);
 
@@ -401,6 +405,35 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     showToast(habitData.id ? 'Hábito atualizado.' : 'Novo hábito criado.');
   };
 
+  // Marcar como concluído (idempotente). Usa um ref para que chamadas em sequência, como ao
+  // aplicar a fila da notificação, enxerguem as anteriores sem esperar a renderização.
+  const completeHabit = async (habitId: string, dateKey: string): Promise<boolean> => {
+    const current = logsRef.current[dateKey] || [];
+    if (current.includes(habitId)) return false;
+    const updatedCompleted = [...current, habitId];
+    logsRef.current = { ...logsRef.current, [dateKey]: updatedCompleted };
+
+    setLogs((prev) => {
+      const next = { ...prev, [dateKey]: updatedCompleted };
+      saveLocalLogs(next);
+      return next;
+    });
+
+    if (user && db && isFirebaseConfigured) {
+      try {
+        const logRef = doc(db, 'artifacts', appId, 'users', user.uid, 'logs', dateKey);
+        await setDoc(logRef, {
+          date: dateKey,
+          completedHabitIds: updatedCompleted,
+          updatedAt: Date.now()
+        });
+      } catch (err) {
+        console.error('Falha ao salvar log no Firestore:', err);
+      }
+    }
+    return true;
+  };
+
   // Alternar Conclusão do Hábito
   const toggleHabitCompletion = async (habitId: string, dateKey = selectedDateKey) => {
     const currentCompleted = logs[dateKey] || [];
@@ -586,6 +619,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setActiveTab,
         saveHabit,
         toggleHabitCompletion,
+        completeHabit,
         toggleHideTitle,
         toggleArchiveHabit,
         deleteHabit,
