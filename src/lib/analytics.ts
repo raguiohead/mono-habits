@@ -1,10 +1,20 @@
 import { type Habit, type LogsMap, type GracesMap, type HeatmapDay, type GraphRange } from '@/types/habit';
 import { toDateKey, addDays, parseDateKey } from './dateUtils';
+import {
+  calculateBestWeeklyStreak,
+  calculateWeeklyStreak,
+  hasWeeklyTarget,
+  isScheduledOn,
+  isWeeklyOn,
+  weekOutcome,
+  weekStartKey
+} from './weekly';
 
 /**
  * Calcula a sequência consecutiva (streak) de um hábito até a data de referência.
  * Se o hábito ainda não foi concluído hoje, verifica a partir de ontem para não zerar no meio do dia.
  * Um dia de graça (hábito agendado, não concluído e perdoado) não quebra a sequência nem soma +1.
+ * Hábitos com meta semanal contam SEMANAS consecutivas cumpridas (ver lib/weekly.ts).
  */
 export function calculateStreak(
   habit: Habit,
@@ -12,6 +22,7 @@ export function calculateStreak(
   today: Date = new Date(),
   graces: GracesMap = {}
 ): number {
+  if (isWeeklyOn(habit, today)) return calculateWeeklyStreak(habit, logs, today, graces);
   let streak = 0;
   const freq = habit.frequency || [0, 1, 2, 3, 4, 5, 6];
   const todayKey = toDateKey(today);
@@ -48,6 +59,13 @@ export function getHabitsForDay(habits: Habit[], dayOfWeek: number): Habit[] {
 }
 
 /**
+ * Hábitos que aparecem na data: os semanais aparecem todos os dias; os de dias fixos, pelos dias da semana
+ */
+export function getHabitsForDate(habits: Habit[], date: Date): Habit[] {
+  return habits.filter((h) => isScheduledOn(h, date));
+}
+
+/**
  * Calcula a porcentagem de conclusão diária
  */
 export function calculateDailyProgress(habitsForDay: Habit[], completedIds: string[]): number {
@@ -59,6 +77,8 @@ export function calculateDailyProgress(habitsForDay: Habit[], completedIds: stri
 /**
  * Gera a grade de dados do heatmap (padrão 91 dias / 13 semanas completas).
  * Dias de graça não contam como concluídos (a taxa os trata como não concluídos); só são sinalizados.
+ * Hábitos semanais: o dia com conclusão conta cheio e os demais dias nunca penalizam a célula;
+ * para a taxa, cada semana encerrada é um sucesso ou uma falha (contado no domingo).
  */
 export function generateHeatmapDays(
   habits: Habit[],
@@ -74,20 +94,45 @@ export function generateHeatmapDays(
     const d = addDays(today, -i);
     const key = toDateKey(d);
     const dow = d.getDay();
-    const scheduled = active.filter((h) => (h.frequency || []).includes(dow));
     const completedIds = logs[key] || [];
-    const completedCount = scheduled.filter((h) => completedIds.includes(h.id)).length;
-    const ratio = scheduled.length > 0 ? completedCount / scheduled.length : 0;
     const gracedIds = graces[key] || [];
-    const gracedCount = scheduled.filter((h) => !completedIds.includes(h.id) && gracedIds.includes(h.id)).length;
+
+    // Hábitos de dias fixos agendados neste dia da semana (em semana sem modo semanal)
+    const fixed = active.filter((h) => !isWeeklyOn(h, d) && (h.frequency || []).includes(dow));
+    const weekly = active.filter((h) => isWeeklyOn(h, d));
+    const weeklyDone = weekly.filter((h) => completedIds.includes(h.id));
+
+    const scheduledCount = fixed.length + weeklyDone.length;
+    const fixedDone = fixed.filter((h) => completedIds.includes(h.id)).length;
+    const completedCount = fixedDone + weeklyDone.length;
+    const ratio = scheduledCount > 0 ? completedCount / scheduledCount : 0;
+    const gracedCount = [...fixed, ...weekly].filter(
+      (h) => !completedIds.includes(h.id) && gracedIds.includes(h.id)
+    ).length;
+
+    // Taxa: fixos por dia; semanais por semana encerrada (contada no domingo)
+    let rateScheduled = fixed.length;
+    let rateCompleted = fixedDone;
+    if (dow === 0) {
+      const wk = weekStartKey(d);
+      for (const h of active) {
+        if (!hasWeeklyTarget(h)) continue;
+        const outcome = weekOutcome(h, wk, logs, today);
+        if (!outcome) continue;
+        rateScheduled += 1;
+        if (outcome.met) rateCompleted += 1;
+      }
+    }
 
     result.push({
       date: d,
       key,
       completedCount,
-      scheduledCount: scheduled.length,
+      scheduledCount,
       ratio,
-      gracedCount
+      gracedCount,
+      rateScheduled,
+      rateCompleted
     });
   }
 
@@ -103,8 +148,8 @@ export function calculateRetentionRate(heatmapDays: HeatmapDay[], daysCount: num
   let totalCompleted = 0;
 
   slice.forEach((item) => {
-    totalScheduled += item.scheduledCount;
-    totalCompleted += item.completedCount;
+    totalScheduled += item.rateScheduled ?? item.scheduledCount;
+    totalCompleted += item.rateCompleted ?? item.completedCount;
   });
 
   if (totalScheduled === 0) return 0;
@@ -115,6 +160,7 @@ export function calculateRetentionRate(heatmapDays: HeatmapDay[], daysCount: num
  * Calcula a maior sequência consecutiva histórica (best streak) de um hábito,
  * varrendo desde habit.createdAt até hoje.
  * Dias não agendados (fora de habit.frequency) não quebram nem somam; dias de graça também não.
+ * Hábitos com meta semanal: maior sequência de SEMANAS cumpridas.
  */
 export function calculateBestStreak(
   habit: Habit,
@@ -122,6 +168,7 @@ export function calculateBestStreak(
   today: Date = new Date(),
   graces: GracesMap = {}
 ): number {
+  if (isWeeklyOn(habit, today)) return calculateBestWeeklyStreak(habit, logs, today, graces);
   const freq = habit.frequency || [0, 1, 2, 3, 4, 5, 6];
   if (freq.length === 0) return 0;
 
@@ -184,7 +231,8 @@ export function calculateBestStreak(
 }
 
 /**
- * Retorna a maior ofensiva histórica real entre todos os hábitos ativos
+ * Retorna a maior ofensiva histórica real, em DIAS, entre os hábitos ativos de dias fixos
+ * (hábitos semanais contam semanas: veja getWeeklyStreakSummary)
  */
 export function getBestStreak(
   habits: Habit[],
@@ -192,13 +240,13 @@ export function getBestStreak(
   today: Date = new Date(),
   graces: GracesMap = {}
 ): number {
-  const active = habits.filter((h) => !h.archived);
+  const active = habits.filter((h) => !h.archived && !isWeeklyOn(h, today));
   if (active.length === 0) return 0;
   return Math.max(...active.map((h) => calculateBestStreak(h, logs, today, graces)), 0);
 }
 
 /**
- * Retorna a maior ofensiva atual entre todos os hábitos ativos
+ * Retorna a maior ofensiva atual, em DIAS, entre os hábitos ativos de dias fixos
  */
 export function getBestCurrentStreak(
   habits: Habit[],
@@ -206,9 +254,24 @@ export function getBestCurrentStreak(
   today: Date = new Date(),
   graces: GracesMap = {}
 ): number {
-  const active = habits.filter((h) => !h.archived);
+  const active = habits.filter((h) => !h.archived && !isWeeklyOn(h, today));
   if (active.length === 0) return 0;
   return Math.max(...active.map((h) => calculateStreak(h, logs, today, graces)), 0);
+}
+
+/** Ofensivas em SEMANAS (melhor e atual) entre os hábitos ativos com meta semanal */
+export function getWeeklyStreakSummary(
+  habits: Habit[],
+  logs: LogsMap,
+  today: Date = new Date(),
+  graces: GracesMap = {}
+): { best: number; current: number; count: number } {
+  const weekly = habits.filter((h) => !h.archived && isWeeklyOn(h, today));
+  return {
+    count: weekly.length,
+    best: Math.max(0, ...weekly.map((h) => calculateBestWeeklyStreak(h, logs, today, graces))),
+    current: Math.max(0, ...weekly.map((h) => calculateWeeklyStreak(h, logs, today, graces)))
+  };
 }
 
 export const getCurrentBestStreak = getBestCurrentStreak;

@@ -4,6 +4,7 @@ import { useSettings } from '@/context/SettingsContext';
 import { GRACE_BLOCK_MESSAGE, addGrace, getGraceBlock, graceRemaining, isGraced, monthKeyOf, removeGrace } from '@/lib/graces';
 import { sortSessions } from '@/lib/pomo';
 import { normalizePeriod } from '@/lib/periods';
+import { applyWeeklyTargetChange } from '@/lib/weekly';
 import { addDismissal, getGoalLock, normalizePomoGoal, shouldAutoComplete } from '@/lib/pomoGoals';
 import { toDateKey, addDays } from '@/lib/dateUtils';
 import {
@@ -429,7 +430,10 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       archived: Boolean(habitData.archived),
       createdAt: habitData.createdAt || Date.now(),
       // Só inclui quando há meta válida: o Firestore não aceita undefined
-      ...(normalizePomoGoal(habitData.pomoGoal) ? { pomoGoal: normalizePomoGoal(habitData.pomoGoal) } : {})
+      ...(normalizePomoGoal(habitData.pomoGoal) ? { pomoGoal: normalizePomoGoal(habitData.pomoGoal) } : {}),
+      // Meta semanal: só inclui quando houver (sem undefined). Mudar a meta vale a partir da próxima semana;
+      // sem meta (dias fixos) os campos somem e `frequency` volta a valer.
+      ...applyWeeklyTargetChange(habitsRef.current.find((h) => h.id === id), habitData.weeklyTarget, new Date())
     };
 
     // 1. Atualiza estado e localStorage (Local-First)

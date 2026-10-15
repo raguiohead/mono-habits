@@ -1,5 +1,6 @@
 import { type Habit, type GracesMap, type LogsMap } from '@/types/habit';
 import { addDays, toDateKey } from './dateUtils';
+import { isWeeklyOn, weekGraced, weekStartKey, weekStatus } from './weekly';
 
 /** Só dá para perdoar dias dentro desta janela (hoje + 6 anteriores) */
 export const GRACE_WINDOW_DAYS = 7;
@@ -33,6 +34,7 @@ export type GraceBlock =
   | 'too-old'
   | 'not-scheduled'
   | 'completed'
+  | 'week-met'
   | 'already'
   | 'no-quota';
 
@@ -41,6 +43,7 @@ export type GraceBlock =
  * - desativado (cota 0), futuro, fora dos últimos 7 dias;
  * - hábito arquivado, não agendado no dia da semana ou ainda não criado;
  * - dia concluído de verdade (nunca consome cota) ou já perdoado;
+ * - hábito semanal: a graça perdoa a SEMANA não cumprida (uma por semana); semana já cumprida não precisa;
  * - cota do mês esgotada.
  */
 export function getGraceBlock(opts: {
@@ -58,12 +61,18 @@ export function getGraceBlock(opts: {
 
   const [y, m, d] = dateKey.split('-').map(Number);
   const date = new Date(y, m - 1, d);
-  const scheduled = !habit.archived && (habit.frequency || []).includes(date.getDay());
+  const weekly = isWeeklyOn(habit, date);
+  const scheduled = !habit.archived && (weekly || (habit.frequency || []).includes(date.getDay()));
   const existedThen = !habit.createdAt || habit.createdAt <= 0 || dateKey >= toDateKey(new Date(habit.createdAt));
   if (!scheduled || !existedThen) return 'not-scheduled';
 
   if ((logs[dateKey] || []).includes(habit.id)) return 'completed';
   if (isGraced(graces, dateKey, habit.id)) return 'already';
+  if (weekly) {
+    const wk = weekStartKey(date);
+    if (weekStatus(habit, wk, logs)?.met) return 'week-met';
+    if (weekGraced(habit, wk, graces)) return 'already';
+  }
   if (graceRemaining(habit.id, monthKeyOf(dateKey), graces, perMonth) <= 0) return 'no-quota';
   return null;
 }
@@ -78,6 +87,7 @@ export const GRACE_BLOCK_MESSAGE: Record<GraceBlock, string> = {
   'too-old': `Só é possível usar dia de graça nos últimos ${GRACE_WINDOW_DAYS} dias.`,
   'not-scheduled': 'Este hábito não estava agendado neste dia.',
   completed: 'Este dia já foi concluído.',
+  'week-met': 'A meta desta semana já foi cumprida.',
   already: 'Este dia já usa um dia de graça.',
   'no-quota': 'Seus dias de graça deste mês já acabaram para este hábito.'
 };

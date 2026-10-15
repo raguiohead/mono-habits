@@ -5,7 +5,8 @@ import { useSettings } from '@/context/SettingsContext';
 import { getLastReminderKey, setLastReminderKey } from '@/lib/storage';
 import { showSystemNotification } from '@/lib/notifications';
 import { shouldSendReminder } from '@/lib/settings';
-import { getHabitsForDay } from '@/lib/analytics';
+import { getHabitsForDate } from '@/lib/analytics';
+import { isDueOn } from '@/lib/weekly';
 import { getGoalLock } from '@/lib/pomoGoals';
 import { toDateKey } from '@/lib/dateUtils';
 
@@ -25,7 +26,8 @@ export const ReminderScheduler: React.FC = () => {
     const check = () => {
       const now = new Date();
       const todayKey = toDateKey(now);
-      const scheduled = getHabitsForDay(activeHabits, now.getDay());
+      // Hábitos semanais só contam como pendentes enquanto a meta da semana não foi cumprida
+      const scheduled = getHabitsForDate(activeHabits, now).filter((h) => isDueOn(h, now, logs));
       const done = logs[todayKey] || [];
       const pending = scheduled.filter((h) => !done.includes(h.id));
       const pendingCount = pending.length;

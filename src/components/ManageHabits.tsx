@@ -4,6 +4,7 @@ import { useHabits } from '@/context/HabitsContext';
 import { HabitIcon } from './HabitIcon';
 import { DAYS_SHORT } from '@/lib/dateUtils';
 import { type Habit } from '@/types/habit';
+import { hasWeeklyTarget, targetForWeek, weekStartKey } from '@/lib/weekly';
 
 interface ManageHabitsProps {
   onOpenCreateModal: () => void;
@@ -22,6 +23,12 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
   const filteredHabits = habits.filter((h) =>
     filter === 'active' ? !h.archived : h.archived
   );
+
+  // Meta semanal vigente (ou a mais recente, se a vigente ainda não começou)
+  const weeklyLabel = (habit: Habit) => {
+    const target = targetForWeek(habit, weekStartKey(new Date())) ?? habit.weeklyTarget ?? 0;
+    return `${target}x por semana`;
+  };
 
   const formatFrequency = (freq: number[]) => {
     if (!freq || freq.length === 0) return 'Nenhum dia';
@@ -104,7 +111,7 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
                     </span>
                     <span className="text-[10px] text-zinc-400 dark:text-zinc-600">•</span>
                     <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 truncate">
-                      {formatFrequency(habit.frequency)}
+                      {hasWeeklyTarget(habit) ? weeklyLabel(habit) : formatFrequency(habit.frequency)}
                     </span>
                   </div>
                 </div>
