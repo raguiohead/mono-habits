@@ -1,11 +1,17 @@
-import { type Habit, type LogsMap, type HeatmapDay, type GraphRange } from '@/types/habit';
+import { type Habit, type LogsMap, type GracesMap, type HeatmapDay, type GraphRange } from '@/types/habit';
 import { toDateKey, addDays, parseDateKey } from './dateUtils';
 
 /**
  * Calcula a sequência consecutiva (streak) de um hábito até a data de referência.
  * Se o hábito ainda não foi concluído hoje, verifica a partir de ontem para não zerar no meio do dia.
+ * Um dia de graça (hábito agendado, não concluído e perdoado) não quebra a sequência nem soma +1.
  */
-export function calculateStreak(habit: Habit, logs: LogsMap, today: Date = new Date()): number {
+export function calculateStreak(
+  habit: Habit,
+  logs: LogsMap,
+  today: Date = new Date(),
+  graces: GracesMap = {}
+): number {
   let streak = 0;
   const freq = habit.frequency || [0, 1, 2, 3, 4, 5, 6];
   const todayKey = toDateKey(today);
@@ -24,7 +30,7 @@ export function calculateStreak(habit: Habit, logs: LogsMap, today: Date = new D
       const completedOnDay = (logs[dKey] || []).includes(habit.id);
       if (completedOnDay) {
         streak++;
-      } else {
+      } else if (!(graces[dKey] || []).includes(habit.id)) {
         break;
       }
     }
@@ -51,13 +57,15 @@ export function calculateDailyProgress(habitsForDay: Habit[], completedIds: stri
 }
 
 /**
- * Gera a grade de dados do heatmap (padrão 91 dias / 13 semanas completas)
+ * Gera a grade de dados do heatmap (padrão 91 dias / 13 semanas completas).
+ * Dias de graça não contam como concluídos (a taxa os trata como não concluídos); só são sinalizados.
  */
 export function generateHeatmapDays(
   habits: Habit[],
   logs: LogsMap,
   today: Date = new Date(),
-  totalDays: number = 91
+  totalDays: number = 91,
+  graces: GracesMap = {}
 ): HeatmapDay[] {
   const result: HeatmapDay[] = [];
   const active = habits.filter((h) => !h.archived);
@@ -70,13 +78,16 @@ export function generateHeatmapDays(
     const completedIds = logs[key] || [];
     const completedCount = scheduled.filter((h) => completedIds.includes(h.id)).length;
     const ratio = scheduled.length > 0 ? completedCount / scheduled.length : 0;
+    const gracedIds = graces[key] || [];
+    const gracedCount = scheduled.filter((h) => !completedIds.includes(h.id) && gracedIds.includes(h.id)).length;
 
     result.push({
       date: d,
       key,
       completedCount,
       scheduledCount: scheduled.length,
-      ratio
+      ratio,
+      gracedCount
     });
   }
 
@@ -103,12 +114,13 @@ export function calculateRetentionRate(heatmapDays: HeatmapDay[], daysCount: num
 /**
  * Calcula a maior sequência consecutiva histórica (best streak) de um hábito,
  * varrendo desde habit.createdAt até hoje.
- * Dias não agendados (fora de habit.frequency) não quebram nem somam.
+ * Dias não agendados (fora de habit.frequency) não quebram nem somam; dias de graça também não.
  */
 export function calculateBestStreak(
   habit: Habit,
   logs: LogsMap,
-  today: Date = new Date()
+  today: Date = new Date(),
+  graces: GracesMap = {}
 ): number {
   const freq = habit.frequency || [0, 1, 2, 3, 4, 5, 6];
   if (freq.length === 0) return 0;
@@ -156,7 +168,7 @@ export function calculateBestStreak(
         if (currentStreak > bestStreak) {
           bestStreak = currentStreak;
         }
-      } else {
+      } else if (!(graces[dKey] || []).includes(habit.id)) {
         // Se for hoje e ainda não foi concluído, não quebra a sequência histórica
         if (!isToday) {
           currentStreak = 0;
@@ -167,26 +179,36 @@ export function calculateBestStreak(
     cursor = addDays(cursor, 1);
   }
 
-  const current = calculateStreak(habit, logs, today);
+  const current = calculateStreak(habit, logs, today, graces);
   return Math.max(bestStreak, current);
 }
 
 /**
  * Retorna a maior ofensiva histórica real entre todos os hábitos ativos
  */
-export function getBestStreak(habits: Habit[], logs: LogsMap, today: Date = new Date()): number {
+export function getBestStreak(
+  habits: Habit[],
+  logs: LogsMap,
+  today: Date = new Date(),
+  graces: GracesMap = {}
+): number {
   const active = habits.filter((h) => !h.archived);
   if (active.length === 0) return 0;
-  return Math.max(...active.map((h) => calculateBestStreak(h, logs, today)), 0);
+  return Math.max(...active.map((h) => calculateBestStreak(h, logs, today, graces)), 0);
 }
 
 /**
  * Retorna a maior ofensiva atual entre todos os hábitos ativos
  */
-export function getBestCurrentStreak(habits: Habit[], logs: LogsMap, today: Date = new Date()): number {
+export function getBestCurrentStreak(
+  habits: Habit[],
+  logs: LogsMap,
+  today: Date = new Date(),
+  graces: GracesMap = {}
+): number {
   const active = habits.filter((h) => !h.archived);
   if (active.length === 0) return 0;
-  return Math.max(...active.map((h) => calculateStreak(h, logs, today)), 0);
+  return Math.max(...active.map((h) => calculateStreak(h, logs, today, graces)), 0);
 }
 
 export const getCurrentBestStreak = getBestCurrentStreak;

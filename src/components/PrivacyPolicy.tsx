@@ -31,7 +31,7 @@ export const PrivacyContent: React.FC = () => (
       <ul className="list-disc pl-4 space-y-1">
         <li>
           <strong>Conteúdo que você cria:</strong> nomes, categorias, ícones e frequência dos
-          hábitos, metas diárias com o Pomo, check-ins diários e sessões do Pomo (com o hábito
+          hábitos, metas diárias com o Pomo, check-ins diários, dias de graça usados e sessões do Pomo (com o hábito
           vinculado, quando houver). Nomes de hábitos podem revelar informações
           sensíveis (por exemplo, de saúde); evite incluir dados que você não queira armazenar.
         </li>
