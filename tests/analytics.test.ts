@@ -5,7 +5,10 @@ import {
   calculateDailyProgress,
   generateHeatmapDays,
   calculateRetentionRate,
-  getBestStreak
+  getBestStreak,
+  aggregateBuckets,
+  getBucketSize,
+  countPerfectDays
 } from '@/lib/analytics';
 import { type Habit, type LogsMap } from '@/types/habit';
 
@@ -123,5 +126,33 @@ describe('analytics', () => {
 
     const best = getBestStreak([habitA, habitB], logs, today);
     expect(best).toBe(3);
+  });
+
+  describe('grafo', () => {
+    const habits: Habit[] = [
+      { ...sampleHabit, id: 'a' },
+      { ...sampleHabit, id: 'b' }
+    ];
+    const today = new Date(2025, 5, 15);
+
+    it('define o tamanho do bloco por período', () => {
+      expect([7, 15, 30, 90, 365].map((r) => getBucketSize(r as 7))).toEqual([1, 1, 1, 7, 30]);
+    });
+
+    it('agrupa a partir do dia mais recente', () => {
+      const days = generateHeatmapDays(habits, { '2025-06-15': ['a', 'b'] }, today, 15);
+      const buckets = aggregateBuckets(days, 7);
+      expect(buckets).toHaveLength(3);
+      expect(buckets[2].endKey).toBe('2025-06-15');
+      expect(buckets[2].completedCount).toBe(2);
+      expect(buckets[2].scheduledCount).toBe(14);
+      expect(buckets[0].startKey).toBe(days[0].key);
+    });
+
+    it('conta dias perfeitos', () => {
+      const logs: LogsMap = { '2025-06-15': ['a', 'b'], '2025-06-14': ['a'] };
+      const days = generateHeatmapDays(habits, logs, today, 7);
+      expect(countPerfectDays(days)).toBe(1);
+    });
   });
 });

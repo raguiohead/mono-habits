@@ -1,4 +1,4 @@
-import { type Habit, type LogsMap, type HeatmapDay } from '@/types/habit';
+import { type Habit, type LogsMap, type HeatmapDay, type GraphRange } from '@/types/habit';
 import { toDateKey, addDays } from './dateUtils';
 
 /**
@@ -126,4 +126,45 @@ export function getHeatmapCellClass(ratio: number, darkMode: boolean): string {
     return darkMode ? 'bg-zinc-200 border-zinc-100' : 'bg-zinc-700 border-zinc-700';
   }
   return darkMode ? 'bg-white border-white' : 'bg-zinc-950 border-zinc-950';
+}
+
+export interface GraphBucket {
+  key: string;
+  startKey: string;
+  endKey: string;
+  completedCount: number;
+  scheduledCount: number;
+  ratio: number;
+}
+
+/** Agrupa os dias em blocos (1 dia, 1 semana, ~1 mês) conforme o período do Grafo */
+export function getBucketSize(range: GraphRange): number {
+  if (range <= 30) return 1;
+  if (range <= 90) return 7;
+  return 30;
+}
+
+export function aggregateBuckets(days: HeatmapDay[], bucketSize: number): GraphBucket[] {
+  const buckets: GraphBucket[] = [];
+  const size = Math.max(1, bucketSize);
+  // Agrupa a partir do dia mais recente para que o último bloco esteja sempre completo
+  for (let end = days.length; end > 0; end -= size) {
+    const slice = days.slice(Math.max(0, end - size), end);
+    const completedCount = slice.reduce((acc, d) => acc + d.completedCount, 0);
+    const scheduledCount = slice.reduce((acc, d) => acc + d.scheduledCount, 0);
+    buckets.unshift({
+      key: slice[0].key,
+      startKey: slice[0].key,
+      endKey: slice[slice.length - 1].key,
+      completedCount,
+      scheduledCount,
+      ratio: scheduledCount > 0 ? completedCount / scheduledCount : 0
+    });
+  }
+  return buckets;
+}
+
+/** Dias em que todos os hábitos agendados foram concluídos */
+export function countPerfectDays(days: HeatmapDay[]): number {
+  return days.filter((d) => d.scheduledCount > 0 && d.completedCount === d.scheduledCount).length;
 }

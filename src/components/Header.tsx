@@ -1,6 +1,16 @@
 import React from 'react';
-import { Sun, Moon, Cloud, CheckCircle2 } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
+import { Avatar } from './Avatar';
+import { LogoMark } from './LogoMark';
+import { type TabType } from '@/types/habit';
 import { useHabits } from '@/context/HabitsContext';
+
+const TABS: { id: TabType; label: string }[] = [
+  { id: 'today', label: 'Foco Diário' },
+  { id: 'stats', label: 'Grafo' },
+  { id: 'pomo', label: 'Pomo' },
+  { id: 'manage', label: 'Hábitos & Rotinas' }
+];
 
 interface HeaderProps {
   onOpenAccountModal: () => void;
@@ -16,39 +26,21 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAccountModal }) => {
     setActiveTab
   } = useHabits();
 
-  const getSyncBadge = () => {
-    if (syncState === 'synced' && user) {
-      return (
-        <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300">
-          <CheckCircle2 className="w-3 h-3 text-zinc-400" />
-          <span className="hidden sm:inline">Nuvem Ativa</span>
-        </span>
-      );
-    }
-    if (syncState === 'connecting') {
-      return (
-        <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 text-zinc-500">
-          <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-pulse" />
-          <span className="hidden sm:inline">Conectando...</span>
-        </span>
-      );
-    }
-    return (
-      <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 text-zinc-500">
-        <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
-        <span className="hidden sm:inline">Modo Local</span>
-      </span>
-    );
-  };
+  const syncDot =
+    syncState === 'synced' && user
+      ? 'bg-zinc-950 dark:bg-zinc-50'
+      : syncState === 'connecting'
+      ? 'bg-zinc-400 animate-pulse'
+      : 'bg-transparent border border-zinc-400';
+  const syncLabel =
+    syncState === 'synced' && user ? 'Nuvem ativa' : syncState === 'connecting' ? 'Conectando' : 'Modo local';
 
   return (
     <header className="flex flex-col gap-5 pb-6 border-b border-zinc-200 dark:border-zinc-800/80">
       <div className="flex items-center justify-between gap-4">
         {/* Marca Monocromática */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center font-mono font-bold text-sm tracking-tighter bg-zinc-950 text-zinc-50 dark:bg-zinc-50 dark:text-zinc-950 shadow-xs">
-            M//H
-          </div>
+          <LogoMark className="w-9 h-9" />
           <div>
             <h1 className="text-base font-semibold tracking-tight leading-none">
               MONO // HABITS
@@ -63,12 +55,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAccountModal }) => {
         <div className="flex items-center gap-2">
           <button
             onClick={onOpenAccountModal}
-            className="flex items-center gap-2 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-            title="Conta Google e Nuvem"
-            aria-label="Conta Google e Nuvem"
+            className="relative rounded-full hover:opacity-80 transition-opacity"
+            title={`Conta Google e Nuvem · ${syncLabel}`}
+            aria-label={`Conta Google e Nuvem · ${syncLabel}`}
           >
-            <Cloud className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
-            {getSyncBadge()}
+            <Avatar
+              photoURL={user?.photoURL}
+              name={user?.displayName || user?.email}
+              className="w-9 h-9"
+            />
+            <span
+              className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-[#FAFAFA] dark:ring-[#09090B] ${syncDot}`}
+            />
           </button>
 
           <button
@@ -88,36 +86,19 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAccountModal }) => {
 
       {/* Navegação por Abas (Desktop & Tablets) */}
       <nav className="flex items-center gap-1 p-1 rounded-xl bg-zinc-100 dark:bg-zinc-900/70 border border-zinc-200/80 dark:border-zinc-800 text-xs font-medium">
-        <button
-          onClick={() => setActiveTab('today')}
-          className={`flex-1 py-2 px-3 rounded-lg transition-all text-center ${
-            activeTab === 'today'
-              ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-xs font-semibold'
-              : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
-          }`}
-        >
-          Foco Diário
-        </button>
-        <button
-          onClick={() => setActiveTab('stats')}
-          className={`flex-1 py-2 px-3 rounded-lg transition-all text-center ${
-            activeTab === 'stats'
-              ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-xs font-semibold'
-              : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
-          }`}
-        >
-          Consistência (90d)
-        </button>
-        <button
-          onClick={() => setActiveTab('manage')}
-          className={`flex-1 py-2 px-3 rounded-lg transition-all text-center ${
-            activeTab === 'manage'
-              ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-xs font-semibold'
-              : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
-          }`}
-        >
-          Hábitos & Rotinas
-        </button>
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 py-2 px-2 sm:px-3 rounded-lg transition-all text-center ${
+              activeTab === tab.id
+                ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-xs font-semibold'
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </nav>
     </header>
   );

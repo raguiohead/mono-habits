@@ -37,3 +37,7 @@ Este documento define os padrões arquiteturais, padrões de código e convenç�
    npm run build
    ```
 2. Mantenha cobertura de testes unitários para qualquer cálculo envolvendo datas, sequências (*streaks*) ou agregações estatísticas em `src/lib/`.
+
+## Roadmap (ideias futuras)
+
+- **Hábitos com tempo mínimo via Pomo:** permitir que um hábito exija um tempo determinado pelo usuário para ser concluído, contabilizado a partir das sessões registradas no Pomo (`pomoSessions`). Exigirá vincular sessão ↔ hábito (ex.: campo `habitId` opcional em `PomoSession`). Ainda não implementado.
