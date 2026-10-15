@@ -1,3 +1,9 @@
+/** Uma meta semanal e a segunda-feira a partir da qual ela vale */
+export interface WeeklyTargetEntry {
+  from: string;
+  target: number;
+}
+
 /** Meta diária de foco com o Pomo: N sessões concluídas ou X minutos focados */
 export type PomoGoal = { type: 'sessions'; target: number } | { type: 'minutes'; target: number };
 
@@ -12,6 +18,10 @@ export interface Habit {
   hideTitle?: boolean;
   period?: HabitPeriod; // ausente em dados antigos = 'any'
   pomoGoal?: PomoGoal; // meta diária com o Pomo (ausente = sem meta)
+  // Meta semanal ("X vezes por semana") em vez de dias fixos; `frequency` é ignorada enquanto ativa
+  weeklyTarget?: number; // 1-7: meta mais recente
+  weeklyTargetFrom?: string; // segunda-feira ('YYYY-MM-DD') a partir da qual `weeklyTarget` vale
+  weeklyTargets?: WeeklyTargetEntry[]; // cronograma de metas, em ordem; guarda o histórico
   frequency: number[]; // 0 = Domingo, 1 = Segunda, ..., 6 = Sábado
   archived?: boolean;
   createdAt: number;
@@ -39,6 +49,9 @@ export interface HeatmapDay {
   ratio: number;
   /** Hábitos agendados, não concluídos e perdoados por dia de graça */
   gracedCount?: number;
+  /** Contagens para a taxa de conclusão (hábitos semanais entram como semana cumprida/falha) */
+  rateScheduled?: number;
+  rateCompleted?: number;
 }
 
 export type TabType = 'today' | 'stats' | 'pomo' | 'manage';

@@ -5,6 +5,16 @@ import { ModalShell } from './ModalShell';
 import { DAYS_SHORT } from '@/lib/dateUtils';
 import { type Habit, type HabitPeriod } from '@/types/habit';
 import {
+  MAX_WEEKLY_TARGET,
+  MIN_WEEKLY_TARGET,
+  applyWeeklyTargetChange,
+  hasWeeklyTarget,
+  normalizeWeeklyTarget,
+  targetForWeek,
+  weekStartKey
+} from '@/lib/weekly';
+import { formatFriendlyDate } from '@/lib/dateUtils';
+import {
   DEFAULT_GOAL_MINUTES,
   DEFAULT_GOAL_SESSIONS,
   GOAL_LIMITS,
@@ -40,6 +50,9 @@ export const HabitModal: React.FC<HabitModalProps> = ({
   const [goalMinutes, setGoalMinutes] = useState(DEFAULT_GOAL_MINUTES);
   const [goalSessions, setGoalSessions] = useState(DEFAULT_GOAL_SESSIONS);
   const [frequency, setFrequency] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
+  // Dias fixos ou meta semanal (o hábito semanal aparece todos os dias)
+  const [scheduleMode, setScheduleMode] = useState<'days' | 'weekly'>('days');
+  const [weeklyTarget, setWeeklyTarget] = useState(3);
 
   useEffect(() => {
     if (initialHabit) {
@@ -54,6 +67,8 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       setGoalMinutes(goal?.type === 'minutes' ? goal.target : DEFAULT_GOAL_MINUTES);
       setGoalSessions(goal?.type === 'sessions' ? goal.target : DEFAULT_GOAL_SESSIONS);
       setFrequency(initialHabit.frequency || [0, 1, 2, 3, 4, 5, 6]);
+      setScheduleMode(hasWeeklyTarget(initialHabit) ? 'weekly' : 'days');
+      setWeeklyTarget(normalizeWeeklyTarget(initialHabit.weeklyTarget) ?? 3);
     } else {
       setTitle('');
       setCategory('Saúde');
@@ -65,15 +80,28 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       setGoalMinutes(DEFAULT_GOAL_MINUTES);
       setGoalSessions(DEFAULT_GOAL_SESSIONS);
       setFrequency([0, 1, 2, 3, 4, 5, 6]);
+      setScheduleMode('days');
+      setWeeklyTarget(3);
     }
   }, [initialHabit, isOpen]);
+
+  // Mudar a meta de um hábito semanal vale só a partir da próxima semana
+  const pendingNote = (() => {
+    if (!initialHabit || scheduleMode !== 'weekly' || !hasWeeklyTarget(initialHabit)) return null;
+    const today = new Date();
+    const current = targetForWeek(initialHabit, weekStartKey(today));
+    if (current === null) return null;
+    const next = applyWeeklyTargetChange(initialHabit, weeklyTarget, today);
+    if (next.weeklyTarget === undefined || next.weeklyTarget === current) return null;
+    return `Esta semana continua ${current}x; a nova meta (${weeklyTarget}x) vale a partir de ${formatFriendlyDate(next.weeklyTargetFrom ?? '')}.`;
+  })();
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-    if (frequency.length === 0) return;
+    if (scheduleMode === 'days' && frequency.length === 0) return;
 
     onSave({
       id: initialHabit ? initialHabit.id : undefined,
@@ -86,6 +114,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
         ? normalizePomoGoal({ type: goalType, target: goalType === 'minutes' ? goalMinutes : goalSessions })
         : undefined,
       frequency: [...frequency].sort(),
+      weeklyTarget: scheduleMode === 'weekly' ? weeklyTarget : undefined,
       archived: initialHabit ? initialHabit.archived : false,
       createdAt: initialHabit ? initialHabit.createdAt : Date.now()
     });
@@ -236,39 +265,101 @@ export const HabitModal: React.FC<HabitModalProps> = ({
             </div>
           </div>
 
-          {/* Frequência Semanal */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="font-medium text-zinc-700 dark:text-zinc-300">
-                Frequência Semanal
-              </label>
-              <button
-                type="button"
-                onClick={() => setFrequency([0, 1, 2, 3, 4, 5, 6])}
-                className="text-[11px] font-mono underline opacity-75 hover:opacity-100"
-              >
-                Marcar todos
-              </button>
+          {/* Frequência: dias fixos ou meta semanal */}
+          <div className="space-y-2">
+            <span id="habit-schedule-label" className="block font-medium text-zinc-700 dark:text-zinc-300">
+              Frequência
+            </span>
+            <div role="radiogroup" aria-labelledby="habit-schedule-label" className="grid grid-cols-2 gap-1.5">
+              {([
+                { value: 'days', label: 'Dias fixos' },
+                { value: 'weekly', label: 'X vezes por semana' }
+              ] as const).map((opt) => (
+                <button
+                  type="button"
+                  key={opt.value}
+                  role="radio"
+                  aria-checked={scheduleMode === opt.value}
+                  onClick={() => setScheduleMode(opt.value)}
+                  className={`min-h-[44px] rounded-xl text-xs font-mono border transition-all ${
+                    scheduleMode === opt.value
+                      ? 'bg-zinc-950 text-zinc-50 border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50 font-semibold'
+                      : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
-            <div className="grid grid-cols-7 gap-1.5">
-              {DAYS_SHORT.map((dayLabel, idx) => {
-                const selected = frequency.includes(idx);
-                return (
+
+            {scheduleMode === 'days' ? (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">Dias da semana</label>
                   <button
                     type="button"
-                    key={dayLabel}
-                    onClick={() => toggleDay(idx)}
-                    className={`py-2 rounded-xl text-xs font-mono border transition-all ${
-                      selected
-                        ? 'bg-zinc-950 text-zinc-50 border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50 font-semibold'
-                        : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400'
-                    }`}
+                    onClick={() => setFrequency([0, 1, 2, 3, 4, 5, 6])}
+                    className="text-[11px] font-mono underline opacity-75 hover:opacity-100"
                   >
-                    {dayLabel}
+                    Marcar todos
                   </button>
-                );
-              })}
-            </div>
+                </div>
+                <div className="grid grid-cols-7 gap-1.5">
+                  {DAYS_SHORT.map((dayLabel, idx) => {
+                    const selected = frequency.includes(idx);
+                    return (
+                      <button
+                        type="button"
+                        key={dayLabel}
+                        onClick={() => toggleDay(idx)}
+                        className={`py-2 rounded-xl text-xs font-mono border transition-all ${
+                          selected
+                            ? 'bg-zinc-950 text-zinc-50 border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50 font-semibold'
+                            : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400'
+                        }`}
+                      >
+                        {dayLabel}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 space-y-2">
+                <div className="flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setWeeklyTarget((v) => Math.max(MIN_WEEKLY_TARGET, v - 1))}
+                    disabled={weeklyTarget <= MIN_WEEKLY_TARGET}
+                    aria-label="Diminuir meta semanal"
+                    className="w-11 h-11 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <div className="min-w-[10ch] text-center font-mono" aria-live="polite">
+                    <span className="text-2xl font-bold tabular-nums">{weeklyTarget}</span>{' '}
+                    <span className="text-xs text-zinc-500">{weeklyTarget === 1 ? 'vez/semana' : 'vezes/semana'}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setWeeklyTarget((v) => Math.min(MAX_WEEKLY_TARGET, v + 1))}
+                    disabled={weeklyTarget >= MAX_WEEKLY_TARGET}
+                    aria-label="Aumentar meta semanal"
+                    className="w-11 h-11 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed text-center">
+                  O hábito aparece todos os dias e vale na semana (segunda a domingo) ao atingir a meta.
+                </p>
+                {pendingNote && (
+                  <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed text-center font-medium">
+                    {pendingNote}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Período do Dia */}

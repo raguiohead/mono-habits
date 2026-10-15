@@ -6,6 +6,7 @@ import {
   calculateRetentionRate,
   getBestStreak,
   getBestCurrentStreak,
+  getWeeklyStreakSummary,
   getHeatmapCellClass,
   aggregateBuckets,
   getBucketSize,
@@ -87,6 +88,10 @@ export const ConsistencyView: React.FC = () => {
   const perfectDays = useMemo(() => countPerfectDays(days), [days]);
   const bestStreak = useMemo(
     () => getBestStreak(activeHabits, logs, today, graces),
+    [activeHabits, logs, today, graces]
+  );
+  const weeklySummary = useMemo(
+    () => getWeeklyStreakSummary(activeHabits, logs, today, graces),
     [activeHabits, logs, today, graces]
   );
   const currentBestStreak = useMemo(
@@ -207,6 +212,11 @@ export const ConsistencyView: React.FC = () => {
           </div>
           <p className="text-xl sm:text-2xl font-bold font-mono mt-2">{bestStreak} dias</p>
           <p className="text-[11px] text-zinc-500 mt-0.5 font-mono">atual: {currentBestStreak}</p>
+          {weeklySummary.count > 0 && (
+            <p className="text-[11px] text-zinc-500 mt-0.5 font-mono">
+              semanal: {weeklySummary.best} {weeklySummary.best === 1 ? 'semana' : 'semanas'}
+            </p>
+          )}
           {currentBestStreak === 0 && bestStreak > 0 && (
             <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1 leading-snug">
               Sua melhor continua em {bestStreak} {bestStreak === 1 ? 'dia' : 'dias'}.

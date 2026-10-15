@@ -1,5 +1,6 @@
 import { type Habit, type PomoGoal, type PomoSession, type LogsMap } from '@/types/habit';
-import { toDateKey } from './dateUtils';
+import { parseDateKey, toDateKey } from './dateUtils';
+import { isWeeklyOn } from './weekly';
 
 export const MIN_GOAL_SESSIONS = 1;
 export const MAX_GOAL_SESSIONS = 12;
@@ -108,7 +109,7 @@ export function getLinkableHabits(
     (h) =>
       !h.archived &&
       h.pomoGoal &&
-      (h.frequency || []).includes(dayOfWeek) &&
+      (isWeeklyOn(h, parseDateKey(dateKey)) || (h.frequency || []).includes(dayOfWeek)) &&
       !done.includes(h.id) &&
       !isGoalMet(h.pomoGoal, h.id, sessions, dateKey)
   );

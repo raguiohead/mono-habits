@@ -10,7 +10,8 @@ import {
   groupHabitsByPeriod,
   isSectionComplete
 } from '@/lib/periods';
-import { getHabitsForDay, calculateDailyProgress } from '@/lib/analytics';
+import { getHabitsForDate, calculateDailyProgress } from '@/lib/analytics';
+import { isDueOn } from '@/lib/weekly';
 import { type Habit, type HabitPeriod } from '@/types/habit';
 
 interface DailyFocusProps {
@@ -31,12 +32,11 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
   } = useHabits();
 
   const selectedDate = useMemo(() => parseDateKey(selectedDateKey), [selectedDateKey]);
-  const dayOfWeek = selectedDate.getDay();
 
-  // Hábitos agendados para este dia da semana
+  // Hábitos do dia: os de dias fixos pelo dia da semana; os de meta semanal aparecem todos os dias
   const scheduledHabits = useMemo(
-    () => getHabitsForDay(activeHabits, dayOfWeek),
-    [activeHabits, dayOfWeek]
+    () => getHabitsForDate(activeHabits, selectedDate),
+    [activeHabits, selectedDate]
   );
 
   const completedIds = useMemo(
@@ -44,14 +44,21 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
     [logs, selectedDateKey]
   );
 
+  // O progresso do dia só conta o que ainda é devido: um hábito semanal com a meta da semana
+  // cumprida (e não feito hoje) não pesa contra o dia
+  const dueHabits = useMemo(
+    () => scheduledHabits.filter((h) => isDueOn(h, selectedDate, logs)),
+    [scheduledHabits, selectedDate, logs]
+  );
+
   const progressPercent = useMemo(
-    () => calculateDailyProgress(scheduledHabits, completedIds),
-    [scheduledHabits, completedIds]
+    () => calculateDailyProgress(dueHabits, completedIds),
+    [dueHabits, completedIds]
   );
 
   const completedCount = useMemo(
-    () => scheduledHabits.filter((h) => completedIds.includes(h.id)).length,
-    [scheduledHabits, completedIds]
+    () => dueHabits.filter((h) => completedIds.includes(h.id)).length,
+    [dueHabits, completedIds]
   );
 
   // Agrupamento por período do dia (lista simples quando ninguém usa períodos)
@@ -94,13 +101,13 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
         {/* Número protagonista: largura reservada (5ch = "10/10") para não haver salto de layout */}
         <div className="flex items-baseline justify-between gap-3" aria-live="polite" aria-atomic="true">
           <span className="sr-only">
-            {completedCount} de {scheduledHabits.length} hábitos concluídos, {progressPercent}% do dia
+            {completedCount} de {dueHabits.length} hábitos concluídos, {progressPercent}% do dia
           </span>
           <span
             aria-hidden="true"
             className="inline-block min-w-[5ch] text-5xl font-bold font-mono tabular-nums tracking-tighter leading-none"
           >
-            {completedCount}/{scheduledHabits.length}
+            {completedCount}/{dueHabits.length}
           </span>
           <span
             aria-hidden="true"

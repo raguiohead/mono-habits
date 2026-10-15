@@ -6,6 +6,8 @@ import { useHabits } from '@/context/HabitsContext';
 import { useSettings } from '@/context/SettingsContext';
 import { getGoalLock, goalLabel, goalProgress } from '@/lib/pomoGoals';
 import { getGraceBlock, graceRemaining, isGraced, monthKeyOf } from '@/lib/graces';
+import { isWeeklyOn, weekStartKey, weekStatus } from '@/lib/weekly';
+import { parseDateKey } from '@/lib/dateUtils';
 import { calculateStreak, calculateBestStreak } from '@/lib/analytics';
 
 interface HabitItemProps {
@@ -57,6 +59,16 @@ export const HabitItem: React.FC<HabitItemProps> = ({
   const isRecord = streak > 0 && streak === bestStreak;
   const isBroken = streak === 0 && bestStreak > 0;
 
+  // Meta semanal: a ofensiva conta semanas e o hábito mostra o avanço da semana do dia exibido
+  const selectedDate = parseDateKey(selectedDateKey);
+  const weeklyHabit = isWeeklyOn(habit, new Date());
+  const unit = weeklyHabit ? (streak === 1 ? 'semana' : 'semanas') : streak === 1 ? 'dia' : 'dias';
+  const bestUnit = weeklyHabit ? (bestStreak === 1 ? 'semana' : 'semanas') : bestStreak === 1 ? 'dia' : 'dias';
+  const week = isWeeklyOn(habit, selectedDate) ? weekStatus(habit, weekStartKey(selectedDate), logs, graces) : null;
+  const isCurrentWeek = weekStartKey(selectedDate) === weekStartKey(new Date());
+  // Meta da semana cumprida e hábito não feito hoje: continua marcável, com estilo mais leve
+  const weekDone = Boolean(week?.met) && !isCompleted;
+
   // Meta diária com o Pomo (dia exibido na tela)
   const progress = habit.pomoGoal ? goalProgress(habit.pomoGoal, habit.id, pomoSessions, selectedDateKey) : null;
 
@@ -65,7 +77,7 @@ export const HabitItem: React.FC<HabitItemProps> = ({
       onClick={handleToggle}
       className={`group relative flex items-center justify-between p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer select-none min-h-[58px] ${
         graced ? '!border-dashed' : ''
-      } ${
+      } ${weekDone ? 'opacity-60' : ''} ${
         isCompleted
           ? 'bg-zinc-100/90 dark:bg-zinc-900/40 border-zinc-300/80 dark:border-zinc-800/60 opacity-90'
           : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs'
@@ -146,7 +158,7 @@ export const HabitItem: React.FC<HabitItemProps> = ({
               <>
                 <span className="text-zinc-300 dark:text-zinc-700 text-[10px] shrink-0">·</span>
                 <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-normal truncate">
-                  Sua melhor continua em {bestStreak} {bestStreak === 1 ? 'dia' : 'dias'}.
+                  Sua melhor continua em {bestStreak} {bestUnit}.
                 </span>
               </>
             )}
@@ -167,6 +179,26 @@ export const HabitItem: React.FC<HabitItemProps> = ({
                 <div
                   className="h-full rounded-full bg-zinc-950 dark:bg-zinc-50 transition-[width] duration-300"
                   style={{ width: `${Math.round(progress.ratio * 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
+          {week && (
+            <div className="mt-1.5 space-y-1">
+              <span className="block text-[10px] font-mono tabular-nums text-zinc-500 dark:text-zinc-400">
+                {week.count}/{week.target} {isCurrentWeek ? 'esta semana' : 'na semana'}
+              </span>
+              <div
+                role="progressbar"
+                aria-label="Meta da semana"
+                aria-valuemin={0}
+                aria-valuemax={week.target}
+                aria-valuenow={Math.min(week.count, week.target)}
+                className="h-1 w-full max-w-[120px] rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden"
+              >
+                <div
+                  className="h-full rounded-full bg-zinc-950 dark:bg-zinc-50 transition-[width] duration-300"
+                  style={{ width: `${Math.round(Math.min(1, week.count / week.target) * 100)}%` }}
                 />
               </div>
             </div>
@@ -246,7 +278,7 @@ export const HabitItem: React.FC<HabitItemProps> = ({
               ? 'border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/40 text-zinc-600 dark:text-zinc-400 font-normal'
               : 'border-transparent text-zinc-400 dark:text-zinc-600 font-normal'
           }`}
-          title={`Atual: ${streak} dia(s) · Melhor: ${bestStreak} dia(s)`}
+          title={`Atual: ${streak} ${unit} · Melhor: ${bestStreak} ${bestUnit}`}
         >
           <Flame
             className={`w-3.5 h-3.5 shrink-0 ${
@@ -255,11 +287,16 @@ export const HabitItem: React.FC<HabitItemProps> = ({
                 : 'text-zinc-400 dark:text-zinc-600'
             }`}
           />
-          <span>{streak}</span>
-          <span className="opacity-40 font-normal">·</span>
-          <span className={`text-[10px] sm:text-xs ${isRecord ? 'font-bold' : 'font-normal opacity-90'}`}>
-            melhor {bestStreak}
-          </span>
+          <span>{streak}{weeklyHabit ? ' sem' : ''}</span>
+          {/* Hábito semanal: selo compacto (a melhor ofensiva fica no tooltip) para sobrar largura ao texto */}
+          {!weeklyHabit && (
+            <>
+              <span className="opacity-40 font-normal">·</span>
+              <span className={`text-[10px] sm:text-xs ${isRecord ? 'font-bold' : 'font-normal opacity-90'}`}>
+                melhor {bestStreak}
+              </span>
+            </>
+          )}
         </div>
       </div>
     </div>
