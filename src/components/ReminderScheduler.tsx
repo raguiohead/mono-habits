@@ -7,7 +7,6 @@ import { showSystemNotification } from '@/lib/notifications';
 import { shouldSendReminder } from '@/lib/settings';
 import { getHabitsForDay } from '@/lib/analytics';
 import { toDateKey } from '@/lib/dateUtils';
-import { registerPushToken } from '@/lib/messaging';
 
 /**
  * Lembrete diário de hábitos pendentes.
@@ -15,14 +14,8 @@ import { registerPushToken } from '@/lib/messaging';
  * plano / PWA instalado). Não inclui nomes de hábitos, respeitando o Modo Discreto.
  */
 export const ReminderScheduler: React.FC = () => {
-  const { activeHabits, logs, initialLoaded, user } = useHabits();
+  const { activeHabits, logs, initialLoaded } = useHabits();
   const { settings } = useSettings();
-
-  // Mantém o token FCM do dispositivo atualizado enquanto os lembretes estiverem ativos
-  useEffect(() => {
-    if (!settings.reminderEnabled || !user) return;
-    void registerPushToken(user.uid);
-  }, [settings.reminderEnabled, user]);
 
   useEffect(() => {
     if (!settings.reminderEnabled || !initialLoaded) return;
