@@ -3,7 +3,7 @@ import { CheckCircle2 } from 'lucide-react';
 import { useHabits } from '@/context/HabitsContext';
 
 export const Toast: React.FC = () => {
-  const { toastMessage } = useHabits();
+  const { toastMessage, toastAction } = useHabits();
 
   if (!toastMessage) return null;
 
@@ -16,6 +16,17 @@ export const Toast: React.FC = () => {
     >
       <CheckCircle2 className="w-4 h-4 shrink-0 text-zinc-400 dark:text-zinc-600" />
       <span>{toastMessage}</span>
+      {toastAction && (
+        <button
+          type="button"
+          onClick={() => {
+            toastAction.onClick();
+          }}
+          className="relative ml-1 shrink-0 font-mono underline underline-offset-2 hover:opacity-80 before:absolute before:-inset-x-2 before:-inset-y-3 before:content-['']"
+        >
+          {toastAction.label}
+        </button>
+      )}
     </aside>
   );
 };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Flame, Eye, EyeOff, Edit3, Lock } from 'lucide-react';
+import { Check, Flame, Eye, EyeOff, Edit3, Lock, ShieldCheck, ShieldOff } from 'lucide-react';
 import { type Habit } from '@/types/habit';
 import { HabitIcon } from './HabitIcon';
 import { useHabits } from '@/context/HabitsContext';
@@ -7,7 +7,8 @@ import { useSettings } from '@/context/SettingsContext';
 import { getGoalLock, goalLabel, goalProgress } from '@/lib/pomoGoals';
 import { getGraceBlock, graceRemaining, isGraced, monthKeyOf } from '@/lib/graces';
 import { isWeeklyOn, weekStartKey, weekStatus } from '@/lib/weekly';
-import { parseDateKey } from '@/lib/dateUtils';
+import { parseDateKey, toDateKey } from '@/lib/dateUtils';
+import { avoidDayStatus, canSlipOn, isSlipped } from '@/lib/avoid';
 import { calculateStreak, calculateBestStreak } from '@/lib/analytics';
 
 interface HabitItemProps {
@@ -19,24 +20,48 @@ interface HabitItemProps {
 
 export const HabitItem: React.FC<HabitItemProps> = ({
   habit,
-  isCompleted,
+  isCompleted: isCompletedProp,
   onToggle,
   onEdit
 }) => {
-  const { logs, graces, toggleHideTitle, pomoSessions, selectedDateKey, applyGrace, undoGrace } = useHabits();
+  const { logs, graces, slips, toggleHideTitle, pomoSessions, selectedDateKey, applyGrace, undoGrace, markSlip, undoSlip } =
+    useHabits();
   const { settings } = useSettings();
+
+  // Hábito a evitar: não tem check-in. O estado vem dos escorregões, e a ação é "Escorreguei"
+  const avoid = habit.kind === 'avoid';
+  const isCompleted = avoid ? false : isCompletedProp;
 
   // Hábito com meta do Pomo não cumprida: marcação bloqueada (o contexto avisa por toast ao tocar)
   const lock = isCompleted ? null : getGoalLock(habit, pomoSessions, selectedDateKey);
 
   const handleToggle = () => {
+    if (avoid) return;
     if (!lock && settings.vibration && typeof navigator !== 'undefined') {
       navigator.vibrate?.(15);
     }
     onToggle();
   };
-  const streak = calculateStreak(habit, logs, new Date(), graces);
-  const bestStreak = calculateBestStreak(habit, logs, new Date(), graces);
+  const streak = calculateStreak(habit, logs, new Date(), graces, slips);
+  const bestStreak = calculateBestStreak(habit, logs, new Date(), graces, slips);
+
+  const now = new Date();
+  const isToday = selectedDateKey === toDateKey(now);
+  const slippedHere = avoid && isSlipped(slips, selectedDateKey, habit.id);
+  const canSlip = avoid && canSlipOn(habit, selectedDateKey, now);
+  const avoidStatus = avoid ? avoidDayStatus(habit, selectedDateKey, now, slips) : null;
+  const avoidText =
+    avoidStatus === 'slipped'
+      ? isToday
+        ? 'Escorregou hoje · amanhã recomeça'
+        : 'Escorregou neste dia'
+      : avoidStatus === 'in-progress'
+      ? `Limpo há ${streak} ${streak === 1 ? 'dia' : 'dias'}`
+      : avoidStatus === 'clean'
+      ? 'Dia limpo'
+      : avoidStatus === 'future'
+      ? 'Ainda não aconteceu'
+      : 'Fora da agenda';
 
   // Dia de graça: perdoa o dia sem quebrar a ofensiva (não conta como concluído)
   const perMonth = settings.graceDaysPerMonth;
@@ -75,8 +100,10 @@ export const HabitItem: React.FC<HabitItemProps> = ({
   return (
     <div
       onClick={handleToggle}
-      className={`group relative flex items-center justify-between p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer select-none min-h-[58px] ${
-        graced ? '!border-dashed' : ''
+      className={`group relative flex items-center justify-between p-3.5 sm:p-4 rounded-2xl border transition-all select-none min-h-[58px] ${
+        avoid ? 'cursor-default' : 'cursor-pointer'
+      } ${
+        graced || slippedHere ? '!border-dashed' : ''
       } ${weekDone ? 'opacity-60' : ''} ${
         isCompleted
           ? 'bg-zinc-100/90 dark:bg-zinc-900/40 border-zinc-300/80 dark:border-zinc-800/60 opacity-90'
@@ -85,7 +112,22 @@ export const HabitItem: React.FC<HabitItemProps> = ({
     >
       {/* Lado Esquerdo: Checkbox + Ícone + Informações */}
       <div className="flex items-center gap-3.5 min-w-0 pr-2 flex-1">
-        {/* Checkbox Circular Monocromático */}
+        {/* Hábito a evitar: indicador de estado no lugar do checkbox */}
+        {avoid ? (
+          <div
+            role="img"
+            aria-label={avoidText}
+            className={`w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 ${
+              slippedHere
+                ? 'border-dashed border-zinc-400 dark:border-zinc-600 text-zinc-400 dark:text-zinc-500'
+                : avoidStatus === 'in-progress' || avoidStatus === 'clean'
+                ? 'border-zinc-950 dark:border-zinc-50 text-zinc-950 dark:text-zinc-50'
+                : 'border-zinc-200 dark:border-zinc-800 text-zinc-300 dark:text-zinc-600'
+            }`}
+          >
+            {slippedHere ? <ShieldOff className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+          </div>
+        ) : (
         <button
           type="button"
           onClick={(e) => {
@@ -121,6 +163,7 @@ export const HabitItem: React.FC<HabitItemProps> = ({
           />
           {lock && <Lock aria-hidden="true" className="absolute w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500" />}
         </button>
+        )}
 
         {/* Ícone de Categoria */}
         <div
@@ -181,6 +224,29 @@ export const HabitItem: React.FC<HabitItemProps> = ({
                   style={{ width: `${Math.round(progress.ratio * 100)}%` }}
                 />
               </div>
+            </div>
+          )}
+          {avoid && (
+            <div className="mt-1.5 space-y-1.5">
+              <p className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 leading-tight">
+                {avoidText}
+                {avoidStatus === 'in-progress' && (
+                  <span className="block text-zinc-400 dark:text-zinc-500">hoje em andamento</span>
+                )}
+              </p>
+              {canSlip && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (slippedHere) void undoSlip(habit.id, selectedDateKey);
+                    else void markSlip(habit.id, selectedDateKey);
+                  }}
+                  className="relative px-2.5 py-1 rounded-lg border border-zinc-300 dark:border-zinc-700 text-[10px] font-mono text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors before:absolute before:-inset-x-1 before:-inset-y-3 before:content-['']"
+                >
+                  {slippedHere ? 'Desfazer' : 'Escorreguei'}
+                </button>
+              )}
             </div>
           )}
           {week && (
@@ -288,8 +354,8 @@ export const HabitItem: React.FC<HabitItemProps> = ({
             }`}
           />
           <span>{streak}{weeklyHabit ? ' sem' : ''}</span>
-          {/* Hábito semanal: selo compacto (a melhor ofensiva fica no tooltip) para sobrar largura ao texto */}
-          {!weeklyHabit && (
+          {/* Hábito semanal ou a evitar: selo compacto (a melhor ofensiva fica no tooltip) para sobrar largura ao texto */}
+          {!weeklyHabit && !avoid && (
             <>
               <span className="opacity-40 font-normal">·</span>
               <span className={`text-[10px] sm:text-xs ${isRecord ? 'font-bold' : 'font-normal opacity-90'}`}>

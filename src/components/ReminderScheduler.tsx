@@ -27,7 +27,10 @@ export const ReminderScheduler: React.FC = () => {
       const now = new Date();
       const todayKey = toDateKey(now);
       // Hábitos semanais só contam como pendentes enquanto a meta da semana não foi cumprida
-      const scheduled = getHabitsForDate(activeHabits, now).filter((h) => isDueOn(h, now, logs));
+      // Hábitos a evitar não ficam pendentes: já valem como feitos até haver um escorregão
+      const scheduled = getHabitsForDate(activeHabits, now).filter(
+        (h) => h.kind !== 'avoid' && isDueOn(h, now, logs)
+      );
       const done = logs[todayKey] || [];
       const pending = scheduled.filter((h) => !done.includes(h.id));
       const pendingCount = pending.length;

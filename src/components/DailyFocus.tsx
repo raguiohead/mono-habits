@@ -12,6 +12,7 @@ import {
 } from '@/lib/periods';
 import { getHabitsForDate, calculateDailyProgress } from '@/lib/analytics';
 import { isDueOn } from '@/lib/weekly';
+import { getEffectiveCompletedIds, isAvoid } from '@/lib/avoid';
 import { type Habit, type HabitPeriod } from '@/types/habit';
 
 interface DailyFocusProps {
@@ -26,6 +27,7 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
   const {
     activeHabits,
     logs,
+    slips,
     selectedDateKey,
     toggleHabitCompletion,
     seedStarterHabits
@@ -39,10 +41,12 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
     [activeHabits, selectedDate]
   );
 
-  const completedIds = useMemo(
-    () => logs[selectedDateKey] || [],
-    [logs, selectedDateKey]
-  );
+  // Check-ins do dia. Hábitos a evitar nunca "concluem" (só registram escorregões), então ficam de fora:
+  // assim suas seções não recolhem sozinhas e o botão "Escorreguei" continua à vista
+  const completedIds = useMemo(() => {
+    const avoidIds = new Set(activeHabits.filter(isAvoid).map((h) => h.id));
+    return (logs[selectedDateKey] || []).filter((id) => !avoidIds.has(id));
+  }, [logs, selectedDateKey, activeHabits]);
 
   // O progresso do dia só conta o que ainda é devido: um hábito semanal com a meta da semana
   // cumprida (e não feito hoje) não pesa contra o dia
@@ -51,14 +55,20 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
     [scheduledHabits, selectedDate, logs]
   );
 
+  // Progresso: hábitos a evitar contam como feitos por padrão e perdem 1 ao escorregar
+  const doneIds = useMemo(
+    () => getEffectiveCompletedIds(scheduledHabits, selectedDateKey, logs, slips, new Date()),
+    [scheduledHabits, selectedDateKey, logs, slips]
+  );
+
   const progressPercent = useMemo(
-    () => calculateDailyProgress(dueHabits, completedIds),
-    [dueHabits, completedIds]
+    () => calculateDailyProgress(dueHabits, doneIds),
+    [dueHabits, doneIds]
   );
 
   const completedCount = useMemo(
-    () => dueHabits.filter((h) => completedIds.includes(h.id)).length,
-    [dueHabits, completedIds]
+    () => dueHabits.filter((h) => doneIds.includes(h.id)).length,
+    [dueHabits, doneIds]
   );
 
   // Agrupamento por período do dia (lista simples quando ninguém usa períodos)

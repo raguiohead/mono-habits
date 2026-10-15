@@ -1,4 +1,5 @@
-import { type Habit, type LogsMap, type GracesMap, type PomoSession, type PomoKind } from '@/types/habit';
+import { type Habit, type LogsMap, type GracesMap, type SlipsMap, type PomoSession, type PomoKind } from '@/types/habit';
+import { sanitizeSlips } from './avoid';
 import { sanitizeGraces } from './graces';
 import { DEFAULT_DURATIONS, clampMinutes, type PomoDurations } from './pomo';
 import { DEFAULT_SETTINGS, sanitizeSettings, type AppSettings } from './settings';
@@ -12,6 +13,7 @@ const WELCOME_KEY = 'mono_habits_welcome_v1';
 const REMINDER_SENT_KEY = 'mono_habits_reminder_sent_v1';
 const GOAL_DISMISSED_KEY = 'mono_habits_goal_dismissed_v1';
 const GRACES_STORAGE_KEY = 'mono_habits_graces_v1';
+const SLIPS_STORAGE_KEY = 'mono_habits_slips_v1';
 
 export const DEFAULT_HABITS: Habit[] = [
   {
@@ -114,6 +116,25 @@ export function saveLocalLogs(logs: LogsMap): void {
     localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(logs));
   } catch (error) {
     console.error('Falha ao salvar logs no localStorage:', error);
+  }
+}
+
+// ---------- Escorregões (hábitos a evitar) ----------
+
+export function loadLocalSlips(): SlipsMap {
+  try {
+    const raw = localStorage.getItem(SLIPS_STORAGE_KEY);
+    return raw ? sanitizeSlips(JSON.parse(raw)) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveLocalSlips(slips: SlipsMap): void {
+  try {
+    localStorage.setItem(SLIPS_STORAGE_KEY, JSON.stringify(slips));
+  } catch (error) {
+    console.error('Falha ao salvar escorregões no localStorage:', error);
   }
 }
 
@@ -297,6 +318,7 @@ export function exportLocalData() {
     habits: loadLocalHabits(),
     logs: loadLocalLogs(),
     graces: loadLocalGraces(),
+    slips: loadLocalSlips(),
     pomoSessions: loadLocalPomoSessions(),
     pomoSettings: loadPomoSettings(),
     settings: loadSettings()
@@ -310,6 +332,7 @@ export function clearLocalUserData(): void {
       HABITS_STORAGE_KEY,
       LOGS_STORAGE_KEY,
       GRACES_STORAGE_KEY,
+      SLIPS_STORAGE_KEY,
       POMO_SESSIONS_KEY,
       POMO_SETTINGS_KEY,
       POMO_TIMER_KEY,

@@ -29,6 +29,7 @@ export function graceRemaining(habitId: string, monthKey: string, graces: Graces
 }
 
 export type GraceBlock =
+  | 'avoid'
   | 'disabled'
   | 'future'
   | 'too-old'
@@ -55,6 +56,7 @@ export function getGraceBlock(opts: {
   perMonth: number;
 }): GraceBlock | null {
   const { habit, dateKey, today, logs, graces, perMonth } = opts;
+  if (habit.kind === 'avoid') return 'avoid';
   if (perMonth <= 0) return 'disabled';
   if (dateKey > toDateKey(today)) return 'future';
   if (dateKey < toDateKey(addDays(today, -(GRACE_WINDOW_DAYS - 1)))) return 'too-old';
@@ -82,6 +84,7 @@ export function canUseGrace(opts: Parameters<typeof getGraceBlock>[0]): boolean 
 }
 
 export const GRACE_BLOCK_MESSAGE: Record<GraceBlock, string> = {
+  avoid: 'Hábitos a evitar não usam dia de graça: um escorregão só vale por um dia.',
   disabled: 'Os dias de graça estão desativados nas Configurações.',
   future: 'Não é possível usar dia de graça em um dia futuro.',
   'too-old': `Só é possível usar dia de graça nos últimos ${GRACE_WINDOW_DAYS} dias.`,

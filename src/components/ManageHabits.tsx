@@ -111,6 +111,7 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
                     </span>
                     <span className="text-[10px] text-zinc-400 dark:text-zinc-600">•</span>
                     <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 truncate">
+                      {habit.kind === 'avoid' ? 'Evitar · ' : ''}
                       {hasWeeklyTarget(habit) ? weeklyLabel(habit) : formatFrequency(habit.frequency)}
                     </span>
                   </div>
