@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { HabitsProvider, useHabits } from '@/context/HabitsContext';
+import { PomoProvider } from '@/context/PomoContext';
 import { Header } from '@/components/Header';
 import { DailyFocus } from '@/components/DailyFocus';
 import { ConsistencyView } from '@/components/ConsistencyView';
+import { PomoView } from '@/components/PomoView';
 import { ManageHabits } from '@/components/ManageHabits';
 import { HabitModal } from '@/components/HabitModal';
 import { AccountModal } from '@/components/AccountModal';
@@ -65,6 +67,7 @@ const MainContent: React.FC = () => {
               />
             )}
             {activeTab === 'stats' && <ConsistencyView />}
+            {activeTab === 'pomo' && <PomoView />}
             {activeTab === 'manage' && (
               <ManageHabits
                 onOpenCreateModal={handleOpenCreateModal}
@@ -107,7 +110,9 @@ const MainContent: React.FC = () => {
 export default function App() {
   return (
     <HabitsProvider>
-      <MainContent />
+      <PomoProvider>
+        <MainContent />
+      </PomoProvider>
     </HabitsProvider>
   );
 }

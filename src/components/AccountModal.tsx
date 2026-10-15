@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Cloud, UserCheck, LogOut, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { useHabits } from '@/context/HabitsContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
+import { Avatar } from './Avatar';
 
 interface AccountModalProps {
   isOpen: boolean;
@@ -39,6 +40,19 @@ export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose }) =
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Perfil */}
+        {user && (user.photoURL || user.displayName || user.email) && (
+          <div className="flex items-center gap-3">
+            <Avatar photoURL={user.photoURL} name={user.displayName || user.email} className="w-12 h-12" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold truncate">{user.displayName || 'Conta Google'}</p>
+              {user.email && (
+                <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 truncate">{user.email}</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Status de Conexão */}
         <div className="space-y-3 text-xs">

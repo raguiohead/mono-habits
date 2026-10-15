@@ -1,4 +1,5 @@
-import { type Habit, type LogsMap } from '@/types/habit';
+import { type Habit, type LogsMap, type PomoSession, type PomoKind } from '@/types/habit';
+import { DEFAULT_DURATIONS, clampMinutes, type PomoDurations } from './pomo';
 
 const HABITS_STORAGE_KEY = 'mono_habits_data_v1';
 const LOGS_STORAGE_KEY = 'mono_habits_logs_v1';
@@ -105,5 +106,97 @@ export function saveLocalLogs(logs: LogsMap): void {
     localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(logs));
   } catch (error) {
     console.error('Falha ao salvar logs no localStorage:', error);
+  }
+}
+
+// ---------- Pomodoro ----------
+
+const POMO_SESSIONS_KEY = 'mono_habits_pomo_sessions_v1';
+const POMO_SETTINGS_KEY = 'mono_habits_pomo_settings_v1';
+const POMO_TIMER_KEY = 'mono_habits_pomo_timer_v1';
+
+export function loadLocalPomoSessions(): PomoSession[] {
+  try {
+    const raw = localStorage.getItem(POMO_SESSIONS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.error('Falha ao carregar sessões Pomo do localStorage:', error);
+    return [];
+  }
+}
+
+export function saveLocalPomoSessions(sessions: PomoSession[]): void {
+  try {
+    localStorage.setItem(POMO_SESSIONS_KEY, JSON.stringify(sessions));
+  } catch (error) {
+    console.error('Falha ao salvar sessões Pomo no localStorage:', error);
+  }
+}
+
+export interface PomoSettings {
+  durations: PomoDurations;
+  cycleCount: number;
+  kind: PomoKind;
+}
+
+export function loadPomoSettings(): PomoSettings {
+  const fallback: PomoSettings = { durations: { ...DEFAULT_DURATIONS }, cycleCount: 0, kind: 'focus' };
+  try {
+    const raw = localStorage.getItem(POMO_SETTINGS_KEY);
+    if (!raw) return fallback;
+    const p = JSON.parse(raw);
+    return {
+      durations: {
+        focus: clampMinutes(p?.durations?.focus ?? DEFAULT_DURATIONS.focus),
+        short: clampMinutes(p?.durations?.short ?? DEFAULT_DURATIONS.short),
+        long: clampMinutes(p?.durations?.long ?? DEFAULT_DURATIONS.long)
+      },
+      cycleCount: Number.isInteger(p?.cycleCount) ? p.cycleCount : 0,
+      kind: ['focus', 'short', 'long'].includes(p?.kind) ? p.kind : 'focus'
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+export function savePomoSettings(settings: PomoSettings): void {
+  try {
+    localStorage.setItem(POMO_SETTINGS_KEY, JSON.stringify(settings));
+  } catch (error) {
+    console.warn('Falha ao salvar configurações do Pomo', error);
+  }
+}
+
+/** Timer em andamento: guardado por timestamps para sobreviver a recarga/segundo plano */
+export interface PomoTimerState {
+  kind: PomoKind;
+  plannedMs: number;
+  startedAt: number;
+  status: 'running' | 'paused';
+  endsAt: number; // válido quando running
+  remainingMs: number; // válido quando paused
+}
+
+export function loadPomoTimer(): PomoTimerState | null {
+  try {
+    const raw = localStorage.getItem(POMO_TIMER_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (!p || !['focus', 'short', 'long'].includes(p.kind)) return null;
+    if (p.status !== 'running' && p.status !== 'paused') return null;
+    return p as PomoTimerState;
+  } catch {
+    return null;
+  }
+}
+
+export function savePomoTimer(timer: PomoTimerState | null): void {
+  try {
+    if (timer) localStorage.setItem(POMO_TIMER_KEY, JSON.stringify(timer));
+    else localStorage.removeItem(POMO_TIMER_KEY);
+  } catch (error) {
+    console.warn('Falha ao salvar estado do timer Pomo', error);
   }
 }

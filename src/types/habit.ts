@@ -28,5 +28,20 @@ export interface HeatmapDay {
   ratio: number;
 }
 
-export type TabType = 'today' | 'stats' | 'manage';
+export type TabType = 'today' | 'stats' | 'pomo' | 'manage';
+
+export type PomoKind = 'focus' | 'short' | 'long';
+
+/** Sessão de Pomodoro registrada (concluída ou interrompida) */
+export interface PomoSession {
+  id: string;
+  kind: PomoKind;
+  startedAt: number; // epoch ms
+  endedAt: number; // epoch ms
+  plannedSeconds: number;
+  actualSeconds: number;
+  completed: boolean;
+}
+
+export type GraphRange = 7 | 15 | 30 | 90 | 365;
 export type SyncStatus = 'offline' | 'connecting' | 'synced' | 'error';

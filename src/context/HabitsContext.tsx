@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
-import { type Habit, type LogsMap, type TabType, type SyncStatus } from '@/types/habit';
+import { type Habit, type LogsMap, type TabType, type SyncStatus, type PomoSession } from '@/types/habit';
+import { sortSessions } from '@/lib/pomo';
 import { toDateKey, addDays } from '@/lib/dateUtils';
 import {
   DEFAULT_HABITS,
@@ -8,7 +9,9 @@ import {
   loadLocalLogs,
   saveLocalLogs,
   getStoredTheme,
-  setStoredTheme
+  setStoredTheme,
+  loadLocalPomoSessions,
+  saveLocalPomoSessions
 } from '@/lib/storage';
 import {
   auth,
@@ -44,6 +47,7 @@ interface HabitsContextType {
   habits: Habit[];
   activeHabits: Habit[];
   logs: LogsMap;
+  pomoSessions: PomoSession[];
   initialLoaded: boolean;
 
   // Navegação
@@ -61,6 +65,7 @@ interface HabitsContextType {
   toggleArchiveHabit: (habit: Habit) => Promise<void>;
   deleteHabit: (habitId: string) => Promise<void>;
   seedStarterHabits: () => Promise<void>;
+  savePomoSession: (session: PomoSession) => Promise<void>;
 
   // Notificações
   toastMessage: string | null;
@@ -78,6 +83,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Estado dos hábitos e logs (inicia com localStorage)
   const [habits, setHabits] = useState<Habit[]>(() => loadLocalHabits());
   const [logs, setLogs] = useState<LogsMap>(() => loadLocalLogs());
+  const [pomoSessions, setPomoSessions] = useState<PomoSession[]>(() => sortSessions(loadLocalPomoSessions()));
   const [initialLoaded, setInitialLoaded] = useState<boolean>(false);
 
   // Navegação e datas
@@ -237,9 +243,39 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     );
 
+    // Listener de Sessões Pomo
+    const pomoRef = collection(activeDb, 'artifacts', appId, 'users', user.uid, 'pomoSessions');
+    const unsubPomo = onSnapshot(
+      pomoRef,
+      (snapshot) => {
+        const remote: PomoSession[] = [];
+        snapshot.forEach((docSnap) => {
+          remote.push({ id: docSnap.id, ...(docSnap.data() as Omit<PomoSession, 'id'>) });
+        });
+
+        const local = loadLocalPomoSessions();
+        const remoteIds = new Set(remote.map((s) => s.id));
+        // Envia para a nuvem sessões feitas offline que ainda não existem lá
+        local
+          .filter((s) => !remoteIds.has(s.id))
+          .forEach((s) => {
+            const sRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'pomoSessions', s.id);
+            setDoc(sRef, s).catch((err) => console.warn('[Firestore] Falha ao enviar sessão Pomo:', err));
+          });
+
+        const merged = sortSessions([...remote, ...local.filter((s) => !remoteIds.has(s.id))]);
+        setPomoSessions(merged);
+        saveLocalPomoSessions(merged);
+      },
+      (error) => {
+        console.warn('[Firestore] Erro ao carregar sessões Pomo:', error);
+      }
+    );
+
     return () => {
       unsubHabits();
       unsubLogs();
+      unsubPomo();
     };
   }, [user]);
 
@@ -413,6 +449,24 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     showToast('Hábito excluído permanentemente.');
   };
 
+  // Registrar sessão do Pomo (concluída ou interrompida)
+  const savePomoSession = async (session: PomoSession) => {
+    setPomoSessions((prev) => {
+      const next = sortSessions([...prev.filter((s) => s.id !== session.id), session]);
+      saveLocalPomoSessions(next);
+      return next;
+    });
+
+    if (user && db && isFirebaseConfigured) {
+      try {
+        const sRef = doc(db, 'artifacts', appId, 'users', user.uid, 'pomoSessions', session.id);
+        await setDoc(sRef, session);
+      } catch (err) {
+        console.error('Falha ao salvar sessão Pomo no Firestore:', err);
+      }
+    }
+  };
+
   // Carregar Hábitos de Exemplo
   const seedStarterHabits = async () => {
     // 1. Gera hábitos locais
@@ -472,6 +526,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         habits,
         activeHabits,
         logs,
+        pomoSessions,
         initialLoaded,
         selectedDateKey,
         setSelectedDateKey,
@@ -485,6 +540,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         toggleArchiveHabit,
         deleteHabit,
         seedStarterHabits,
+        savePomoSession,
         toastMessage,
         showToast
       }}
