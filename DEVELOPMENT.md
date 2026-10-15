@@ -47,3 +47,13 @@ Este documento define os padrões arquiteturais, padrões de código e convenç�
 ## Roadmap (ideias futuras)
 
 - **Hábitos com tempo mínimo via Pomo:** permitir que um hábito exija um tempo determinado pelo usuário para ser concluído, contabilizado a partir das sessões registradas no Pomo (`pomoSessions`). Exigirá vincular sessão ↔ hábito (ex.: campo `habitId` opcional em `PomoSession`). Ainda não implementado.
+
+## Somente planos gratuitos
+
+O projeto deve rodar inteiramente em planos gratuitos (Firebase **Spark** + Vercel **Hobby**). Não adicionar nada que exija plano pago, por exemplo:
+
+- **Cloud Functions** (exige o plano Blaze) e, por consequência, push agendado via servidor;
+- Cloud Storage, Cloud Run ou qualquer serviço Google Cloud faturável;
+- recursos Vercel restritos a planos Pro/Enterprise.
+
+Dentro do plano gratuito: Firebase Auth, Firestore (respeitando as cotas diárias) e Vercel Web Analytics. Lembretes funcionam localmente, com o app aberto.
