@@ -11,6 +11,7 @@ export interface AppSettings {
   // Notificações
   reminderEnabled: boolean;
   reminderTime: string; // 'HH:MM'
+  weeklySummaryInReminder: boolean; // domingo: acrescenta ao lembrete a taxa da semana (sem nomes de hábitos)
   pomoAlerts: boolean; // notificação do sistema ao fim de uma sessão do Pomo
   sound: boolean;
   vibration: boolean;
@@ -23,6 +24,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   graceDaysPerMonth: 1,
   reminderEnabled: false,
   reminderTime: '20:00',
+  weeklySummaryInReminder: false,
   pomoAlerts: true,
   sound: true,
   vibration: true
@@ -49,6 +51,7 @@ export function sanitizeSettings(raw: unknown): AppSettings {
     graceDaysPerMonth: p.graceDaysPerMonth === 0 || p.graceDaysPerMonth === 2 ? p.graceDaysPerMonth : 1,
     reminderEnabled: bool(p.reminderEnabled, d.reminderEnabled),
     reminderTime: isValidTime(p.reminderTime) ? p.reminderTime : d.reminderTime,
+    weeklySummaryInReminder: bool(p.weeklySummaryInReminder, d.weeklySummaryInReminder),
     pomoAlerts: bool(p.pomoAlerts, d.pomoAlerts),
     sound: bool(p.sound, d.sound),
     vibration: bool(p.vibration, d.vibration)
@@ -65,8 +68,10 @@ export function shouldSendReminder(opts: {
   lastSentKey: string | null;
   todayKey: string;
   pendingCount: number;
+  /** Envia mesmo sem hábitos pendentes (ex.: domingo com o resumo semanal) */
+  allowEmpty?: boolean;
 }): boolean {
-  if (opts.pendingCount <= 0 || opts.lastSentKey === opts.todayKey) return false;
+  if ((opts.pendingCount <= 0 && !opts.allowEmpty) || opts.lastSentKey === opts.todayKey) return false;
   if (!isValidTime(opts.time)) return false;
   const [h, m] = opts.time.split(':').map(Number);
   const minutesNow = opts.now.getHours() * 60 + opts.now.getMinutes();

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BarChart2, Flame, Target, Award, Calendar } from 'lucide-react';
+import { BarChart2, Flame, Target, Award, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useHabits } from '@/context/HabitsContext';
 import {
   generateHeatmapDays,
@@ -15,6 +15,8 @@ import {
 } from '@/lib/analytics';
 import { formatFriendlyDate, MONTHS_SHORT, parseDateKey } from '@/lib/dateUtils';
 import { type HeatmapDay, type GraphRange } from '@/types/habit';
+import { buildWeeklySummary, weekRangeLabel } from '@/lib/weeklySummary';
+import { previousWeekKey, weekStart, weekStartKey } from '@/lib/weekly';
 
 const RANGES: { value: GraphRange; label: string; long: string }[] = [
   { value: 7, label: 'Semana', long: 'Última semana' },
@@ -67,6 +69,24 @@ export const ConsistencyView: React.FC = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const today = useMemo(() => new Date(), []);
+
+  // Resumo da semana: 0 = semana atual; valores negativos navegam para semanas anteriores
+  const [summaryOffset, setSummaryOffset] = useState(0);
+  const currentWeekKey = useMemo(() => weekStartKey(today), [today]);
+  const summaryWeekKey = useMemo(() => {
+    let key = currentWeekKey;
+    for (let i = 0; i < -summaryOffset; i++) key = previousWeekKey(key);
+    return key;
+  }, [currentWeekKey, summaryOffset]);
+  // Não há o que mostrar antes da semana do primeiro hábito
+  const firstWeekKey = useMemo(() => {
+    const created = activeHabits.map((h) => (h.createdAt > 0 ? weekStartKey(new Date(h.createdAt)) : currentWeekKey));
+    return created.length > 0 ? created.reduce((a, b) => (a < b ? a : b)) : currentWeekKey;
+  }, [activeHabits, currentWeekKey]);
+  const summary = useMemo(
+    () => buildWeeklySummary(activeHabits, logs, weekStart(parseDateKey(summaryWeekKey)), { slips, today }),
+    [activeHabits, logs, slips, summaryWeekKey, today]
+  );
   const rangeInfo = RANGES.find((r) => r.value === range)!;
 
   const changeRange = (value: GraphRange) => {
@@ -161,6 +181,54 @@ export const ConsistencyView: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Resumo da semana: texto curto com regras determinísticas */}
+      <section
+        aria-label="Resumo da semana"
+        className="p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-xs space-y-3"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold tracking-tight">Resumo da semana</h3>
+            <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mt-0.5">
+              {weekRangeLabel(summaryWeekKey)}
+              {summaryWeekKey === currentWeekKey ? ' · esta semana' : ''}
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setSummaryOffset((o) => o - 1)}
+              disabled={summaryWeekKey <= firstWeekKey}
+              aria-label="Semana anterior"
+              className="w-11 h-11 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSummaryOffset((o) => Math.min(0, o + 1))}
+              disabled={summaryOffset >= 0}
+              aria-label="Próxima semana"
+              className="w-11 h-11 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        <div className="space-y-2" aria-live="polite">
+          {summary.sentences.map((sentence, i) => (
+            <p
+              key={i}
+              className={`text-xs leading-relaxed ${
+                summary.hasData ? 'text-zinc-800 dark:text-zinc-200' : 'text-zinc-500 dark:text-zinc-400'
+              }`}
+            >
+              {sentence}
+            </p>
+          ))}
+        </div>
+      </section>
+
       {/* Seletor de Período */}
       <div
         className="flex items-center gap-1 p-1 rounded-xl bg-zinc-100 dark:bg-zinc-900/70 border border-zinc-200/80 dark:border-zinc-800 text-xs font-medium"
