@@ -1,8 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { Analytics } from '@vercel/analytics/react';
 import App from './App';
 import './index.css';
+
+// No-op Analytics component replacing @vercel/analytics
+const Analytics = () => null;
 
 // Registro automático de Service Worker para PWA (offline-ready)
 if ('serviceWorker' in navigator && import.meta.env.PROD) {

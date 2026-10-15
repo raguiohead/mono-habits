@@ -1,0 +1,8 @@
+{
+  "name": "MONO // HABITS — Rastreador Diário Monocromático",
+  "description": "Rastreador de hábitos focado em consistência diária com design estritamente monocromático, privacidade visual e sincronização em nuvem.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
