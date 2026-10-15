@@ -55,23 +55,32 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
 
       {/* Cabeçalho da Data & Barra de Progresso */}
       <div className="p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-              Progresso Diário
-            </h2>
-            <p className="text-sm font-semibold tracking-tight mt-0.5">
-              {formatFriendlyDate(selectedDateKey)}
-            </p>
-          </div>
-          <div className="text-right">
-            <span className="text-lg font-bold font-mono">
-              {progressPercent}%
-            </span>
-            <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
-              {completedCount} de {scheduledHabits.length} concluídos
-            </p>
-          </div>
+        <div>
+          <h2 className="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            Progresso Diário
+          </h2>
+          <p className="text-sm font-semibold tracking-tight mt-0.5">
+            {formatFriendlyDate(selectedDateKey)}
+          </p>
+        </div>
+
+        {/* Número protagonista: largura reservada (5ch = "10/10") para não haver salto de layout */}
+        <div className="flex items-baseline justify-between gap-3" aria-live="polite" aria-atomic="true">
+          <span className="sr-only">
+            {completedCount} de {scheduledHabits.length} hábitos concluídos, {progressPercent}% do dia
+          </span>
+          <span
+            aria-hidden="true"
+            className="inline-block min-w-[5ch] text-5xl font-bold font-mono tabular-nums tracking-tighter leading-none"
+          >
+            {completedCount}/{scheduledHabits.length}
+          </span>
+          <span
+            aria-hidden="true"
+            className="text-xs font-mono tabular-nums text-zinc-500 dark:text-zinc-400"
+          >
+            <span className="inline-block min-w-[3ch] text-right">{progressPercent}%</span> do dia
+          </span>
         </div>
 
         {/* Barra de Progresso Monocromática */}
