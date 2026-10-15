@@ -52,28 +52,3 @@ export async function registerPushToken(uid: string): Promise<string | null> {
     return null;
   }
 }
-
-/**
- * Publica as preferências de lembrete para a Cloud Function que envia o push diário.
- * O fuso do aparelho é enviado junto, para o horário ser respeitado onde o usuário estiver.
- */
-export async function syncReminderPrefs(
-  uid: string,
-  prefs: { reminderEnabled: boolean; reminderTime: string }
-): Promise<void> {
-  if (!db) return;
-  try {
-    await setDoc(
-      doc(db, 'artifacts', appId, 'users', uid, 'prefs', 'notifications'),
-      {
-        reminderEnabled: prefs.reminderEnabled,
-        reminderTime: prefs.reminderTime,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-        updatedAt: Date.now()
-      },
-      { merge: true }
-    );
-  } catch (error) {
-    console.warn('[FCM] Falha ao sincronizar preferências:', error);
-  }
-}

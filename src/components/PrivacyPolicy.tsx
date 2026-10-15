@@ -72,12 +72,10 @@ export const PrivacyContent: React.FC = () => (
 
     <Section title="5. Notificações">
       <p>
-        Os lembretes só são enviados com a permissão do navegador. Com o app aberto, são gerados
-        no próprio dispositivo; com ele fechado, enviamos um push pelo Firebase Cloud Messaging.
-        Para isso guardamos, na sua conta, o token de push do aparelho, o horário do lembrete e
-        o fuso horário. Os avisos mostram apenas a quantidade de hábitos pendentes, nunca seus
-        nomes. Você pode desativá-los a qualquer momento em Configurações ou nas permissões do
-        navegador, e a exclusão da conta apaga esses dados.
+        Os lembretes são gerados no próprio dispositivo, com a permissão do navegador, e
+        funcionam enquanto o app estiver aberto ou instalado e ativo em segundo plano. Eles
+        mostram apenas a quantidade de hábitos pendentes, nunca seus nomes. Você pode desativá-los
+        a qualquer momento em Configurações ou nas permissões do navegador.
       </p>
     </Section>
 
