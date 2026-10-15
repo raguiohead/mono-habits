@@ -56,10 +56,10 @@ if (isFirebaseConfigured) {
   }
 }
 
-/** Remove todos os documentos do usuário no Firestore (hábitos, check-ins e sessões Pomo) */
+/** Remove todos os documentos do usuário no Firestore (hábitos, check-ins, sessões Pomo, tokens de push e preferências) */
 export async function deleteAllCloudData(uid: string): Promise<void> {
   if (!db) return;
-  for (const name of ['habits', 'logs', 'pomoSessions']) {
+  for (const name of ['habits', 'logs', 'pomoSessions', 'fcmTokens', 'prefs']) {
     const snap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, name));
     await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
   }

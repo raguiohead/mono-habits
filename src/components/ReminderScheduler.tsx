@@ -7,22 +7,27 @@ import { showSystemNotification } from '@/lib/notifications';
 import { shouldSendReminder } from '@/lib/settings';
 import { getHabitsForDay } from '@/lib/analytics';
 import { toDateKey } from '@/lib/dateUtils';
-import { registerPushToken } from '@/lib/messaging';
+import { registerPushToken, syncReminderPrefs } from '@/lib/messaging';
 
 /**
  * Lembrete diário de hábitos pendentes.
- * Sem servidor de push, o aviso é disparado enquanto o app está aberto (inclusive em segundo
- * plano / PWA instalado). Não inclui nomes de hábitos, respeitando o Modo Discreto.
+ * O aviso local dispara enquanto o app está aberto; com o app fechado, a Cloud Function
+ * `sendDailyReminders` envia o push (mesma tag, então um substitui o outro). Não inclui nomes de hábitos, respeitando o Modo Discreto.
  */
 export const ReminderScheduler: React.FC = () => {
   const { activeHabits, logs, initialLoaded, user } = useHabits();
   const { settings } = useSettings();
 
-  // Mantém o token FCM do dispositivo atualizado enquanto os lembretes estiverem ativos
+  // Push em segundo plano: publica a preferência (horário/fuso) para a Cloud Function
+  // e mantém o token FCM deste dispositivo atualizado enquanto o lembrete estiver ativo
   useEffect(() => {
-    if (!settings.reminderEnabled || !user) return;
-    void registerPushToken(user.uid);
-  }, [settings.reminderEnabled, user]);
+    if (!user) return;
+    void syncReminderPrefs(user.uid, {
+      reminderEnabled: settings.reminderEnabled,
+      reminderTime: settings.reminderTime
+    });
+    if (settings.reminderEnabled) void registerPushToken(user.uid);
+  }, [settings.reminderEnabled, settings.reminderTime, user]);
 
   useEffect(() => {
     if (!settings.reminderEnabled || !initialLoaded) return;
