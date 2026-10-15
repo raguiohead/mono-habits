@@ -7,7 +7,10 @@
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.x-zinc?style=flat-square&logo=tailwindcss)](https://tailwindcss.com/)
 [![Firebase](https://img.shields.io/badge/Firebase-11.x-zinc?style=flat-square&logo=firebase)](https://firebase.google.com/)
 [![PWA](https://img.shields.io/badge/PWA-Ready-zinc?style=flat-square)](https://web.dev/progressive-web-apps/)
+[![Production](https://img.shields.io/badge/Vercel-Live-black?style=flat-square&logo=vercel)](https://mono-habits-kappa.vercel.app)
 [![License](https://img.shields.io/badge/License-MIT-zinc?style=flat-square)](LICENSE)
+
+**Aplicação em Produção:** [https://mono-habits-kappa.vercel.app](https://mono-habits-kappa.vercel.app)
 
 ---
 
