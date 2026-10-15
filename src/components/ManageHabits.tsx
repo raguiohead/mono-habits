@@ -4,6 +4,7 @@ import { useHabits } from '@/context/HabitsContext';
 import { HabitIcon } from './HabitIcon';
 import { DAYS_SHORT } from '@/lib/dateUtils';
 import { type Habit } from '@/types/habit';
+import { MILESTONES, getHabitMilestones } from '@/lib/milestones';
 import { hasWeeklyTarget, targetForWeek, weekStartKey } from '@/lib/weekly';
 
 interface ManageHabitsProps {
@@ -11,6 +12,28 @@ interface ManageHabitsProps {
   onOpenEditModal: (habit: Habit) => void;
   onConfirmDelete: (habit: Habit) => void;
 }
+
+/** Marcos de ofensiva: preenchidos = atingidos, contornados = faltantes */
+const MilestoneRow: React.FC<{ habit: Habit }> = ({ habit }) => {
+  const { logs, graces, slips } = useHabits();
+  const { reached } = getHabitMilestones(habit, logs, new Date(), graces, slips);
+  return (
+    <div className="flex items-center gap-1 mt-1.5" aria-label={`Marcos atingidos: ${reached.join(', ') || 'nenhum'}`}>
+      {MILESTONES.map((m) => (
+        <span
+          key={m}
+          className={`text-[10px] font-mono leading-none px-1.5 py-1 rounded border ${
+            reached.includes(m)
+              ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
+              : 'border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-600'
+          }`}
+        >
+          {m}
+        </span>
+      ))}
+    </div>
+  );
+};
 
 export const ManageHabits: React.FC<ManageHabitsProps> = ({
   onOpenCreateModal,
@@ -115,6 +138,7 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
                       {hasWeeklyTarget(habit) ? weeklyLabel(habit) : formatFrequency(habit.frequency)}
                     </span>
                   </div>
+                  <MilestoneRow habit={habit} />
                 </div>
               </div>
 

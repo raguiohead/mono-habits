@@ -13,6 +13,7 @@ import { SettingsModal } from '@/components/SettingsModal';
 import { PrivacyPolicy, PRIVACY_UPDATED_AT } from '@/components/PrivacyPolicy';
 import { WelcomeModal } from '@/components/WelcomeModal';
 import { getAcceptedPolicyVersion, setAcceptedPolicyVersion } from '@/lib/storage';
+import { MilestoneWatcher } from '@/components/MilestoneWatcher';
 import { DayCompleteEffect } from '@/components/DayCompleteEffect';
 import { ReminderScheduler } from '@/components/ReminderScheduler';
 import { CompletionQueueSync } from '@/components/CompletionQueueSync';
@@ -110,6 +111,7 @@ const MainContent: React.FC = () => {
       <ReminderScheduler />
       <CompletionQueueSync />
       <DayCompleteEffect />
+      <MilestoneWatcher />
 
       {showWelcome && (
         <WelcomeModal

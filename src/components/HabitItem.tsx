@@ -10,6 +10,7 @@ import { isWeeklyOn, weekStartKey, weekStatus } from '@/lib/weekly';
 import { parseDateKey, toDateKey } from '@/lib/dateUtils';
 import { avoidDayStatus, canSlipOn, isSlipped } from '@/lib/avoid';
 import { calculateStreak, calculateBestStreak } from '@/lib/analytics';
+import { highestMilestone } from '@/lib/milestones';
 
 interface HabitItemProps {
   habit: Habit;
@@ -194,6 +195,15 @@ export const HabitItem: React.FC<HabitItemProps> = ({
             </p>
           </div>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+            {highestMilestone(bestStreak) !== null && (
+              <span
+                className="text-[10px] font-mono leading-none px-1 py-0.5 rounded border border-zinc-400 dark:border-zinc-600 text-zinc-600 dark:text-zinc-300 shrink-0"
+                title={`Marco: ${highestMilestone(bestStreak)} ${weeklyHabit ? 'semanas' : 'dias'}`}
+                aria-label={`Marco atingido: ${highestMilestone(bestStreak)} ${weeklyHabit ? 'semanas' : 'dias'}`}
+              >
+                {highestMilestone(bestStreak)}
+              </span>
+            )}
             <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 shrink-0">
               {habit.category}
             </span>
