@@ -3,7 +3,8 @@ import { X, Eye, EyeOff } from 'lucide-react';
 import { HABIT_ICONS } from './HabitIcon';
 import { ModalShell } from './ModalShell';
 import { DAYS_SHORT } from '@/lib/dateUtils';
-import { type Habit } from '@/types/habit';
+import { type Habit, type HabitPeriod } from '@/types/habit';
+import { PERIOD_LABEL, normalizePeriod } from '@/lib/periods';
 
 interface HabitModalProps {
   isOpen: boolean;
@@ -11,6 +12,8 @@ interface HabitModalProps {
   onSave: (habitData: Omit<Habit, 'id' | 'createdAt'> & { id?: string; createdAt?: number }) => void;
   initialHabit?: Habit | null;
 }
+
+const PERIOD_OPTIONS: HabitPeriod[] = ['any', 'morning', 'afternoon', 'evening'];
 
 const COMMON_CATEGORIES = ['Saúde', 'Intelecto', 'Trabalho', 'Rotina', 'Mente', 'Finanças', 'Geral'];
 
@@ -24,6 +27,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
   const [category, setCategory] = useState('');
   const [icon, setIcon] = useState('target');
   const [hideTitle, setHideTitle] = useState(false);
+  const [period, setPeriod] = useState<HabitPeriod>('any');
   const [frequency, setFrequency] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
 
   useEffect(() => {
@@ -32,12 +36,14 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       setCategory(initialHabit.category || '');
       setIcon(initialHabit.icon || 'target');
       setHideTitle(Boolean(initialHabit.hideTitle));
+      setPeriod(normalizePeriod(initialHabit.period));
       setFrequency(initialHabit.frequency || [0, 1, 2, 3, 4, 5, 6]);
     } else {
       setTitle('');
       setCategory('Saúde');
       setIcon('target');
       setHideTitle(false);
+      setPeriod('any');
       setFrequency([0, 1, 2, 3, 4, 5, 6]);
     }
   }, [initialHabit, isOpen]);
@@ -55,6 +61,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       category: category.trim() || 'Geral',
       icon: icon || 'target',
       hideTitle,
+      period,
       frequency: [...frequency].sort(),
       archived: initialHabit ? initialHabit.archived : false,
       createdAt: initialHabit ? initialHabit.createdAt : Date.now()
@@ -235,6 +242,34 @@ export const HabitModal: React.FC<HabitModalProps> = ({
                     }`}
                   >
                     {dayLabel}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Período do Dia */}
+          <div>
+            <span id="habit-period-label" className="block mb-1.5 font-medium text-zinc-700 dark:text-zinc-300">
+              Período do Dia
+            </span>
+            <div role="radiogroup" aria-labelledby="habit-period-label" className="grid grid-cols-4 gap-1.5">
+              {PERIOD_OPTIONS.map((opt) => {
+                const selected = period === opt;
+                return (
+                  <button
+                    type="button"
+                    key={opt}
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => setPeriod(opt)}
+                    className={`min-h-[44px] px-1 rounded-xl text-[11px] leading-tight font-mono border transition-all ${
+                      selected
+                        ? 'bg-zinc-950 text-zinc-50 border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50 font-semibold'
+                        : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400'
+                    }`}
+                  >
+                    {PERIOD_LABEL[opt]}
                   </button>
                 );
               })}

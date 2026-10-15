@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { type Habit, type LogsMap, type TabType, type SyncStatus, type PomoSession } from '@/types/habit';
 import { sortSessions } from '@/lib/pomo';
+import { normalizePeriod } from '@/lib/periods';
 import { toDateKey, addDays } from '@/lib/dateUtils';
 import {
   DEFAULT_HABITS,
@@ -367,6 +368,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       category: habitData.category?.trim() || 'Geral',
       icon: habitData.icon || 'target',
       hideTitle: Boolean(habitData.hideTitle),
+      period: normalizePeriod(habitData.period), // o Firestore não aceita undefined
       frequency: [...habitData.frequency].sort(),
       archived: Boolean(habitData.archived),
       createdAt: habitData.createdAt || Date.now()
