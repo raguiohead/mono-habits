@@ -3,6 +3,7 @@ import { Check, Flame, Eye, EyeOff, Edit3 } from 'lucide-react';
 import { type Habit } from '@/types/habit';
 import { HabitIcon } from './HabitIcon';
 import { useHabits } from '@/context/HabitsContext';
+import { useSettings } from '@/context/SettingsContext';
 import { calculateStreak, calculateBestStreak } from '@/lib/analytics';
 
 interface HabitItemProps {
@@ -19,6 +20,14 @@ export const HabitItem: React.FC<HabitItemProps> = ({
   onEdit
 }) => {
   const { logs, toggleHideTitle } = useHabits();
+  const { settings } = useSettings();
+
+  const handleToggle = () => {
+    if (settings.vibration && typeof navigator !== 'undefined') {
+      navigator.vibrate?.(15);
+    }
+    onToggle();
+  };
   const streak = calculateStreak(habit, logs);
   const bestStreak = calculateBestStreak(habit, logs);
 
@@ -27,7 +36,7 @@ export const HabitItem: React.FC<HabitItemProps> = ({
 
   return (
     <div
-      onClick={onToggle}
+      onClick={handleToggle}
       className={`group relative flex items-center justify-between p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer select-none min-h-[58px] ${
         isCompleted
           ? 'bg-zinc-100/90 dark:bg-zinc-900/40 border-zinc-300/80 dark:border-zinc-800/60 opacity-90'
@@ -41,16 +50,27 @@ export const HabitItem: React.FC<HabitItemProps> = ({
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            onToggle();
+            handleToggle();
           }}
-          className={`w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 transition-all ${
+          className={`relative w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 transition-colors duration-200 before:absolute before:-inset-2 before:content-[''] ${
             isCompleted
-              ? 'bg-zinc-950 text-zinc-50 border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50 shadow-xs'
+              ? 'text-zinc-50 dark:text-zinc-950 border-zinc-950 dark:border-zinc-50 shadow-xs'
               : 'border-zinc-300 dark:border-zinc-700 hover:border-zinc-500 bg-zinc-50/50 dark:bg-zinc-800/40'
           }`}
           aria-label={isCompleted ? `Desmarcar ${habit.title}` : `Marcar ${habit.title}`}
         >
-          {isCompleted && <Check className="w-4 h-4 stroke-[2.5]" />}
+          {/* Preenchimento de baixo para cima (some com "reduzir animações" via index.css) */}
+          <span aria-hidden="true" className="absolute inset-0 rounded-[11px] overflow-hidden pointer-events-none">
+            <span
+              className="absolute inset-0 bg-zinc-950 dark:bg-zinc-50 origin-bottom transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]"
+              style={{ transform: isCompleted ? 'scaleY(1)' : 'scaleY(0)' }}
+            />
+          </span>
+          <Check
+            className={`relative w-4 h-4 stroke-[2.5] transition-opacity duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              isCompleted ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
         </button>
 
         {/* Ícone de Categoria */}
