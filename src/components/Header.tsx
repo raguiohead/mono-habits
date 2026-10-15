@@ -85,7 +85,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAccountModal }) => {
       </div>
 
       {/* Navegação por Abas (Desktop & Tablets) */}
-      <nav className="flex items-center gap-1 p-1 rounded-xl bg-zinc-100 dark:bg-zinc-900/70 border border-zinc-200/80 dark:border-zinc-800 text-xs font-medium">
+      <nav className="hidden md:flex items-center gap-1 p-1 rounded-xl bg-zinc-100 dark:bg-zinc-900/70 border border-zinc-200/80 dark:border-zinc-800 text-xs font-medium">
         {TABS.map((tab) => (
           <button
             key={tab.id}
