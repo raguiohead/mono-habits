@@ -6,6 +6,7 @@ const HABITS_STORAGE_KEY = 'mono_habits_data_v1';
 const LOGS_STORAGE_KEY = 'mono_habits_logs_v1';
 const THEME_STORAGE_KEY = 'mono_habits_theme_v1';
 const SETTINGS_STORAGE_KEY = 'mono_habits_settings_v1';
+const WELCOME_KEY = 'mono_habits_welcome_v1';
 const REMINDER_SENT_KEY = 'mono_habits_reminder_sent_v1';
 
 export const DEFAULT_HABITS: Habit[] = [
@@ -268,5 +269,24 @@ export function clearLocalUserData(): void {
     ].forEach((k) => localStorage.removeItem(k));
   } catch (error) {
     console.warn('Falha ao limpar dados locais', error);
+  }
+}
+
+// ---------- Boas-vindas / aceite da política ----------
+
+/** Versão da política (data) aceita pelo usuário, ou null se ainda não aceitou */
+export function getAcceptedPolicyVersion(): string | null {
+  try {
+    return localStorage.getItem(WELCOME_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAcceptedPolicyVersion(version: string): void {
+  try {
+    localStorage.setItem(WELCOME_KEY, version);
+  } catch {
+    /* sem armazenamento: o aviso reaparece na próxima abertura */
   }
 }

@@ -9,7 +9,9 @@ import { PomoView } from '@/components/PomoView';
 import { ManageHabits } from '@/components/ManageHabits';
 import { HabitModal } from '@/components/HabitModal';
 import { SettingsModal } from '@/components/SettingsModal';
-import { PrivacyPolicy } from '@/components/PrivacyPolicy';
+import { PrivacyPolicy, PRIVACY_UPDATED_AT } from '@/components/PrivacyPolicy';
+import { WelcomeModal } from '@/components/WelcomeModal';
+import { getAcceptedPolicyVersion, setAcceptedPolicyVersion } from '@/lib/storage';
 import { ReminderScheduler } from '@/components/ReminderScheduler';
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import { BottomNav } from '@/components/BottomNav';
@@ -29,6 +31,7 @@ const MainContent: React.FC = () => {
   const [isHabitModalOpen, setIsHabitModalOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(() => getAcceptedPolicyVersion() !== PRIVACY_UPDATED_AT);
   const [habitToDelete, setHabitToDelete] = useState<Habit | null>(null);
 
   const handleOpenCreateModal = () => {
@@ -102,6 +105,15 @@ const MainContent: React.FC = () => {
       />
 
       <ReminderScheduler />
+
+      {showWelcome && (
+        <WelcomeModal
+          onAccept={() => {
+            setAcceptedPolicyVersion(PRIVACY_UPDATED_AT);
+            setShowWelcome(false);
+          }}
+        />
+      )}
 
       <DeleteConfirmModal
         habit={habitToDelete}
