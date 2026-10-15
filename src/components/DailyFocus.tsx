@@ -1,11 +1,17 @@
-import React, { useMemo } from 'react';
-import { Plus, Sparkles, Calendar } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Plus, Sparkles, Calendar, ChevronDown } from 'lucide-react';
 import { WeeklyStrip } from './WeeklyStrip';
 import { HabitItem } from './HabitItem';
 import { useHabits } from '@/context/HabitsContext';
-import { parseDateKey, formatFriendlyDate } from '@/lib/dateUtils';
+import { parseDateKey, formatFriendlyDate, toDateKey } from '@/lib/dateUtils';
+import {
+  PERIOD_LABEL,
+  getCurrentPeriod,
+  groupHabitsByPeriod,
+  isSectionComplete
+} from '@/lib/periods';
 import { getHabitsForDay, calculateDailyProgress } from '@/lib/analytics';
-import { type Habit } from '@/types/habit';
+import { type Habit, type HabitPeriod } from '@/types/habit';
 
 interface DailyFocusProps {
   onOpenCreateModal: () => void;
@@ -47,6 +53,27 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
     () => scheduledHabits.filter((h) => completedIds.includes(h.id)).length,
     [scheduledHabits, completedIds]
   );
+
+  // Agrupamento por período do dia (lista simples quando ninguém usa períodos)
+  const { grouped, sections } = useMemo(() => groupHabitsByPeriod(scheduledHabits), [scheduledHabits]);
+
+  // Período atual, atualizado a cada minuto; só destacado ao ver o dia de hoje
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const tick = () => setNow(new Date());
+    const id = window.setInterval(tick, 60_000);
+    document.addEventListener('visibilitychange', tick);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', tick);
+    };
+  }, []);
+  const currentPeriod = selectedDateKey === toDateKey(now) ? getCurrentPeriod(now) : null;
+
+  // Escolhas manuais de abrir/recolher (só em memória). Uma escolha vale enquanto o estado de
+  // conclusão da seção não mudar; ao concluir (ou reabrir) a seção, volta ao comportamento automático.
+  const [overrides, setOverrides] = useState<Partial<Record<HabitPeriod, { open: boolean; complete: boolean }>>>({});
+  useEffect(() => setOverrides({}), [selectedDateKey]);
 
   return (
     <div className="space-y-6">
@@ -145,16 +172,68 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
             </p>
           </div>
         ) : (
-          <div className="space-y-2.5">
-            {scheduledHabits.map((habit) => (
-              <HabitItem
-                key={habit.id}
-                habit={habit}
-                isCompleted={completedIds.includes(habit.id)}
-                onToggle={() => toggleHabitCompletion(habit.id, selectedDateKey)}
-                onEdit={() => onOpenEditModal(habit)}
-              />
-            ))}
+          <div className={grouped ? 'space-y-4' : 'space-y-2.5'}>
+            {grouped
+              ? sections.map((section) => {
+                  const complete = isSectionComplete(section, completedIds);
+                  const override = overrides[section.period];
+                  const open = override && override.complete === complete ? override.open : !complete;
+                  const done = section.habits.filter((h) => completedIds.includes(h.id)).length;
+                  const isCurrent = section.period === currentPeriod;
+                  const panelId = `period-${section.period}`;
+                  return (
+                    <section
+                      key={section.period}
+                      aria-label={PERIOD_LABEL[section.period]}
+                      // A barra fica na margem da página, para os cartões manterem a largura total
+                      className={`relative before:absolute before:-left-2.5 before:inset-y-1 before:w-0.5 before:rounded-full before:transition-colors ${
+                        isCurrent ? 'before:bg-zinc-950 dark:before:bg-zinc-50' : 'before:bg-zinc-200 dark:before:bg-zinc-800'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        aria-expanded={open}
+                        aria-controls={panelId}
+                        onClick={() =>
+                          setOverrides((prev) => ({ ...prev, [section.period]: { open: !open, complete } }))
+                        }
+                        className={`w-full min-h-[44px] px-1 flex items-center justify-between gap-3 text-xs font-mono uppercase tracking-wider transition-opacity ${
+                          isCurrent
+                            ? 'text-zinc-950 dark:text-zinc-50 font-semibold'
+                            : 'text-zinc-500 dark:text-zinc-400 opacity-80'
+                        }`}
+                      >
+                        <span>{PERIOD_LABEL[section.period]}</span>
+                        <span className="flex items-center gap-2 tabular-nums">
+                          {done}/{section.habits.length}
+                          <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+                        </span>
+                      </button>
+                      {open && (
+                        <div id={panelId} className="space-y-2.5 pb-1">
+                          {section.habits.map((habit) => (
+                            <HabitItem
+                              key={habit.id}
+                              habit={habit}
+                              isCompleted={completedIds.includes(habit.id)}
+                              onToggle={() => toggleHabitCompletion(habit.id, selectedDateKey)}
+                              onEdit={() => onOpenEditModal(habit)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </section>
+                  );
+                })
+              : scheduledHabits.map((habit) => (
+                  <HabitItem
+                    key={habit.id}
+                    habit={habit}
+                    isCompleted={completedIds.includes(habit.id)}
+                    onToggle={() => toggleHabitCompletion(habit.id, selectedDateKey)}
+                    onEdit={() => onOpenEditModal(habit)}
+                  />
+                ))}
           </div>
         )}
       </div>

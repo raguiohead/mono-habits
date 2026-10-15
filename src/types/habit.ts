@@ -1,9 +1,13 @@
+/** Período do dia em que o hábito costuma acontecer ('any' = sem horário definido) */
+export type HabitPeriod = 'morning' | 'afternoon' | 'evening' | 'any';
+
 export interface Habit {
   id: string;
   title: string;
   category: string;
   icon: string;
   hideTitle?: boolean;
+  period?: HabitPeriod; // ausente em dados antigos = 'any'
   frequency: number[]; // 0 = Domingo, 1 = Segunda, ..., 6 = Sábado
   archived?: boolean;
   createdAt: number;
