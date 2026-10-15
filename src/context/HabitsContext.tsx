@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import { type Habit, type LogsMap, type TabType, type SyncStatus, type PomoSession } from '@/types/habit';
 import { sortSessions } from '@/lib/pomo';
 import { normalizePeriod } from '@/lib/periods';
-import { addDismissal, normalizePomoGoal, shouldAutoComplete } from '@/lib/pomoGoals';
+import { addDismissal, getGoalLock, normalizePomoGoal, shouldAutoComplete } from '@/lib/pomoGoals';
 import { toDateKey, addDays } from '@/lib/dateUtils';
 import {
   DEFAULT_HABITS,
@@ -420,6 +420,9 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const completeHabit = async (habitId: string, dateKey: string): Promise<boolean> => {
     const current = logsRef.current[dateKey] || [];
     if (current.includes(habitId)) return false;
+    // Hábito com meta do Pomo só conclui depois de cumprida a meta (vale também para a notificação)
+    const target = habitsRef.current.find((h) => h.id === habitId);
+    if (target && getGoalLock(target, pomoSessionsRef.current, dateKey)) return false;
     const updatedCompleted = [...current, habitId];
     logsRef.current = { ...logsRef.current, [dateKey]: updatedCompleted };
 
@@ -451,6 +454,16 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const updatedCompleted = exists
       ? currentCompleted.filter((id) => id !== habitId)
       : [...currentCompleted, habitId];
+
+    // Marcar um hábito com meta do Pomo exige a meta cumprida no dia
+    if (!exists) {
+      const target = habitsRef.current.find((h) => h.id === habitId);
+      const lock = target ? getGoalLock(target, pomoSessionsRef.current, dateKey) : null;
+      if (lock) {
+        showToast(`Cumpra a meta do Pomo para marcar este hábito (${lock.label}).`);
+        return;
+      }
+    }
 
     // Desmarcar um hábito com meta do Pomo: o Pomo não o remarca de novo neste dia
     if (exists && habitsRef.current.find((h) => h.id === habitId)?.pomoGoal) {

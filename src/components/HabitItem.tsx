@@ -1,10 +1,10 @@
 import React from 'react';
-import { Check, Flame, Eye, EyeOff, Edit3 } from 'lucide-react';
+import { Check, Flame, Eye, EyeOff, Edit3, Lock } from 'lucide-react';
 import { type Habit } from '@/types/habit';
 import { HabitIcon } from './HabitIcon';
 import { useHabits } from '@/context/HabitsContext';
 import { useSettings } from '@/context/SettingsContext';
-import { goalLabel, goalProgress } from '@/lib/pomoGoals';
+import { getGoalLock, goalLabel, goalProgress } from '@/lib/pomoGoals';
 import { calculateStreak, calculateBestStreak } from '@/lib/analytics';
 
 interface HabitItemProps {
@@ -23,8 +23,11 @@ export const HabitItem: React.FC<HabitItemProps> = ({
   const { logs, toggleHideTitle, pomoSessions, selectedDateKey } = useHabits();
   const { settings } = useSettings();
 
+  // Hábito com meta do Pomo não cumprida: marcação bloqueada (o contexto avisa por toast ao tocar)
+  const lock = isCompleted ? null : getGoalLock(habit, pomoSessions, selectedDateKey);
+
   const handleToggle = () => {
-    if (settings.vibration && typeof navigator !== 'undefined') {
+    if (!lock && settings.vibration && typeof navigator !== 'undefined') {
       navigator.vibrate?.(15);
     }
     onToggle();
@@ -61,7 +64,15 @@ export const HabitItem: React.FC<HabitItemProps> = ({
               ? 'text-zinc-50 dark:text-zinc-950 border-zinc-950 dark:border-zinc-50 shadow-xs'
               : 'border-zinc-300 dark:border-zinc-700 hover:border-zinc-500 bg-zinc-50/50 dark:bg-zinc-800/40'
           }`}
-          aria-label={isCompleted ? `Desmarcar ${habit.title}` : `Marcar ${habit.title}`}
+          aria-label={
+            isCompleted
+              ? `Desmarcar ${habit.title}`
+              : lock
+              ? `${habit.title}: bloqueado até cumprir a meta do Pomo (${lock.label})`
+              : `Marcar ${habit.title}`
+          }
+          aria-disabled={lock ? true : undefined}
+          title={lock ? `Cumpra a meta do Pomo para marcar (${lock.label})` : undefined}
         >
           {/* Preenchimento de baixo para cima (some com "reduzir animações" via index.css) */}
           <span aria-hidden="true" className="absolute inset-0 rounded-[11px] overflow-hidden pointer-events-none">
@@ -75,6 +86,7 @@ export const HabitItem: React.FC<HabitItemProps> = ({
               isCompleted ? 'opacity-100' : 'opacity-0'
             }`}
           />
+          {lock && <Lock aria-hidden="true" className="absolute w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500" />}
         </button>
 
         {/* Ícone de Categoria */}

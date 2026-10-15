@@ -6,6 +6,7 @@ import { getLastReminderKey, setLastReminderKey } from '@/lib/storage';
 import { showSystemNotification } from '@/lib/notifications';
 import { shouldSendReminder } from '@/lib/settings';
 import { getHabitsForDay } from '@/lib/analytics';
+import { getGoalLock } from '@/lib/pomoGoals';
 import { toDateKey } from '@/lib/dateUtils';
 
 /**
@@ -15,7 +16,7 @@ import { toDateKey } from '@/lib/dateUtils';
  * O botão "Marcar como feito" é tratado pelo Service Worker (src/sw.ts) e aplicado por CompletionQueueSync.
  */
 export const ReminderScheduler: React.FC = () => {
-  const { activeHabits, logs, initialLoaded } = useHabits();
+  const { activeHabits, logs, pomoSessions, initialLoaded } = useHabits();
   const { settings } = useSettings();
 
   useEffect(() => {
@@ -47,7 +48,8 @@ export const ReminderScheduler: React.FC = () => {
         'MONO // HABITS',
         pendingCount === 1 ? 'Falta 1 hábito para hoje.' : `Faltam ${pendingCount} hábitos para hoje.`,
         'daily-reminder',
-        pendingCount === 1
+        // Hábito com meta do Pomo ainda não cumprida não pode ser marcado: sem o botão
+        pendingCount === 1 && !getGoalLock(pending[0], pomoSessions, todayKey)
           ? {
               actions: [{ action: 'complete', title: 'Marcar como feito' }],
               data: { habitId: pending[0].id, dateKey: todayKey }
@@ -63,7 +65,7 @@ export const ReminderScheduler: React.FC = () => {
       window.clearInterval(id);
       document.removeEventListener('visibilitychange', check);
     };
-  }, [settings.reminderEnabled, settings.reminderTime, activeHabits, logs, initialLoaded]);
+  }, [settings.reminderEnabled, settings.reminderTime, activeHabits, logs, pomoSessions, initialLoaded]);
 
   return null;
 };
