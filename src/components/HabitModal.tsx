@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Eye, EyeOff } from 'lucide-react';
 import { HABIT_ICONS } from './HabitIcon';
+import { ModalShell } from './ModalShell';
 import { DAYS_SHORT } from '@/lib/dateUtils';
 import { type Habit } from '@/types/habit';
 
@@ -69,15 +70,12 @@ export const HabitModal: React.FC<HabitModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-      <div
-        className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] text-zinc-950 dark:text-zinc-50 p-6 shadow-2xl max-h-[90vh] overflow-y-auto space-y-5"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <ModalShell labelledBy="habit-modal-title" onClose={onClose} widthClass="sm:max-w-lg">
+      <div className="space-y-5">
         {/* Topo do Modal */}
         <div className="flex items-center justify-between pb-3 border-b border-zinc-200/80 dark:border-zinc-800">
           <div>
-            <h3 className="text-base font-semibold tracking-tight">
+            <h3 id="habit-modal-title" className="text-base font-semibold tracking-tight">
               {initialHabit ? 'Editar Hábito' : 'Novo Hábito'}
             </h3>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -85,8 +83,10 @@ export const HabitModal: React.FC<HabitModalProps> = ({
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl opacity-60 hover:opacity-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            aria-label="Fechar"
+            className="w-11 h-11 -mr-2 flex items-center justify-center rounded-xl opacity-60 hover:opacity-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -259,6 +259,6 @@ export const HabitModal: React.FC<HabitModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </ModalShell>
   );
 };

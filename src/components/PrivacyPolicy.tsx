@@ -3,7 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { getStoredTheme } from '@/lib/storage';
 
 export const PRIVACY_UPDATED_AT = '15 de outubro de 2026';
-export const PRIVACY_CONTACT_URL = 'https://github.com/raguiohead/mono-habits/issues';
+export const PRIVACY_CONTACT_EMAIL = 'devguilherme@hotmail.com';
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <section className="space-y-2">
@@ -123,12 +123,10 @@ export const PrivacyContent: React.FC = () => (
         Esta política pode ser atualizada; a data no topo indica a versão vigente. Dúvidas ou
         pedidos sobre seus dados:{' '}
         <a
-          href={PRIVACY_CONTACT_URL}
-          target="_blank"
-          rel="noopener noreferrer"
+          href={`mailto:${PRIVACY_CONTACT_EMAIL}`}
           className="underline text-zinc-950 dark:text-zinc-50"
         >
-          abra uma solicitação no repositório do projeto
+          {PRIVACY_CONTACT_EMAIL}
         </a>
         .
       </p>

@@ -126,7 +126,7 @@ service cloud.firestore {
 
 ## 🌐 Deploy na Vercel
 
-O projeto possui `vercel.json` configurado com cabeçalhos de segurança (X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy) e reescrita SPA:
+O projeto possui `vercel.json` configurado com cabeçalhos de segurança (CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy) e reescrita SPA:
 
 1. Importe o repositório na [Vercel](https://vercel.com/new).
 2. Configure as variáveis de ambiente (`VITE_FIREBASE_*`) nas configurações do projeto na Vercel.
