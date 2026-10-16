@@ -176,23 +176,14 @@ const HabitItemBase: React.FC<HabitItemProps> = ({
     <>
         {/* Ícone de Categoria */}
         <div
-          className={`relative overflow-hidden w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
+          className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
             isCompleted
               ? 'border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500'
               : 'border-zinc-200/80 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300'
           }`}
         >
-          {habit.cover ? (
-            <>
-              <HabitCover cover={habit.cover} aspectRatio={1} scale={0.4} className="absolute inset-0 w-full h-full" />
-              {/* Scrim zinc: ícone legível (AA) sobre qualquer capa */}
-              <span className="relative flex items-center justify-center w-5 h-5 rounded-md bg-zinc-950/75 text-zinc-50">
-                <HabitIcon iconKey={habit.icon} className="w-3 h-3" />
-              </span>
-            </>
-          ) : (
-            <HabitIcon iconKey={habit.icon} className="w-4 h-4" />
-          )}
+          {/* A capa só aparece no layout Capas; na lista e no bento fica o ícone simples */}
+          <HabitIcon iconKey={habit.icon} className="w-4 h-4" />
         </div>
 
     </>
