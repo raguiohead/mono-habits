@@ -20,6 +20,7 @@ export interface Habit {
   icon: string;
   hideTitle?: boolean;
   description?: string; // descrição curta opcional (até 140 caracteres); ausente = sem descrição
+  cover?: HabitCover; // capa opcional; ausente = sem capa
   featured?: boolean; // destaque no layout bento do Foco (no máximo 2 hábitos)
   period?: HabitPeriod; // ausente em dados antigos = 'any'
   kind?: HabitKind; // ausente em dados antigos = 'build'
@@ -81,3 +82,8 @@ export interface PomoSession {
 
 export type GraphRange = 7 | 15 | 30 | 90 | 365;
 export type SyncStatus = 'offline' | 'connecting' | 'synced' | 'error';
+
+/** Capa opcional do hábito: padrão geométrico do catálogo (src/lib/covers.ts) ou imagem enviada */
+export type HabitCover =
+  | { type: 'pattern'; pattern: string; tone: string }
+  | { type: 'image'; dataUrl: string }; // data URL JPEG/WebP/PNG já reduzida no cliente

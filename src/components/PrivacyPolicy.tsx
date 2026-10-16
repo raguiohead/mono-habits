@@ -30,7 +30,7 @@ export const PrivacyContent: React.FC = () => (
     <Section title="2. Quais dados tratamos">
       <ul className="list-disc pl-4 space-y-1">
         <li>
-          <strong>Conteúdo que você cria:</strong> nomes, descrições opcionais, categorias, ícones e frequência dos
+          <strong>Conteúdo que você cria:</strong> nomes, descrições opcionais, imagens de capa (padrões geométricos ou uma foto que você escolher no aparelho, reduzida e guardada dentro do próprio hábito; ela fica no seu aparelho e, se você entrar com a conta Google, na sua conta, sem serviço de armazenamento de arquivos separado), categorias, ícones e frequência dos
           hábitos, metas diárias com o Pomo, check-ins diários, dias de graça usados, escorregões registrados em hábitos a evitar e sessões do Pomo (com o hábito
           vinculado, quando houver). Nomes de hábitos podem revelar informações
           sensíveis (por exemplo, de saúde); evite incluir dados que você não queira armazenar.

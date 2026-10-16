@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Edit3, Archive, RotateCcw, Trash2, Eye, EyeOff } from 'lucide-react';
 import { useHabits } from '@/context/HabitsContext';
 import { HabitIcon } from './HabitIcon';
+import { HabitCover } from './HabitCover';
 import { DAYS_SHORT } from '@/lib/dateUtils';
 import { type Habit } from '@/types/habit';
 import { MILESTONES, getHabitMilestones } from '@/lib/milestones';
@@ -196,8 +197,12 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
               className="flex items-center justify-between p-3.5 sm:p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors shadow-xs gap-3"
             >
               <div className="flex items-center gap-3.5 min-w-0">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300">
-                  <HabitIcon iconKey={habit.icon} className="w-4 h-4" />
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300">
+                  {habit.cover ? (
+                    <HabitCover cover={habit.cover} aspectRatio={1} scale={0.4} className="w-full h-full" />
+                  ) : (
+                    <HabitIcon iconKey={habit.icon} className="w-4 h-4" />
+                  )}
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-medium tracking-tight truncate text-zinc-900 dark:text-zinc-100">

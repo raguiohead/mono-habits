@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { X, Eye, EyeOff, Minus, Plus } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Eye, EyeOff, Minus, Plus, ImagePlus, Trash2, Loader2 } from 'lucide-react';
+import { HabitCover } from './HabitCover';
+import { COVER_PATTERNS, COVER_TONES, DEFAULT_COVER_TONE, isKnownTone, patternLabel } from '@/lib/covers';
+import { CoverImageError, fileToCover } from '@/lib/imageResize';
 import { HABIT_ICONS } from './HabitIcon';
 import { ModalShell } from './ModalShell';
 import { DAYS_SHORT } from '@/lib/dateUtils';
-import { type Habit, type HabitKind, type HabitPeriod } from '@/types/habit';
+import { type Habit, type HabitCover as HabitCoverData, type HabitKind, type HabitPeriod } from '@/types/habit';
 import { normalizeKind } from '@/lib/avoid';
 import {
   MAX_WEEKLY_TARGET,
@@ -50,6 +53,12 @@ export const HabitModal: React.FC<HabitModalProps> = ({
   const [hideTitle, setHideTitle] = useState(false);
   const [period, setPeriod] = useState<HabitPeriod>('any');
   const [featured, setFeatured] = useState(false);
+  const [cover, setCover] = useState<HabitCoverData | undefined>(undefined);
+  const [coverTone, setCoverTone] = useState(DEFAULT_COVER_TONE);
+  const [coverBusy, setCoverBusy] = useState(false);
+  const [coverError, setCoverError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const coverJob = useRef(0); // invalida processamentos pendentes ao reabrir/fechar
   const { habits } = useHabits();
   // Destaque do layout bento: limite de MAX_FEATURED (editar um já destacado não conta contra si)
   const featuredAllowed = canFeature(habits, initialHabit?.id) || Boolean(initialHabit?.featured);
@@ -66,6 +75,15 @@ export const HabitModal: React.FC<HabitModalProps> = ({
   const [weeklyTarget, setWeeklyTarget] = useState(3);
 
   useEffect(() => {
+    coverJob.current += 1;
+    setCoverBusy(false);
+    setCoverError('');
+    setCover(initialHabit?.cover);
+    setCoverTone(
+      initialHabit?.cover?.type === 'pattern' && isKnownTone(initialHabit.cover.tone)
+        ? initialHabit.cover.tone
+        : DEFAULT_COVER_TONE
+    );
     if (initialHabit) {
       setTitle(initialHabit.title);
       setCategory(initialHabit.category || '');
@@ -125,6 +143,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       title: title.trim(),
       category: category.trim() || 'Geral',
       description: sanitizeHabitDescription(description),
+      cover, // ausente = sem capa (saveHabit apaga o campo)
       icon: icon || 'target',
       hideTitle,
       featured: featured && featuredAllowed,
@@ -148,6 +167,46 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       prev.includes(dayIndex) ? prev.filter((d) => d !== dayIndex) : [...prev, dayIndex]
     );
   };
+
+  const pickPattern = (pattern: string) => {
+    coverJob.current += 1; // descarta um envio de imagem ainda em processamento
+    setCoverBusy(false);
+    setCoverError('');
+    setCover({ type: 'pattern', pattern, tone: coverTone });
+  };
+
+  const pickTone = (tone: string) => {
+    setCoverTone(tone);
+    setCover((c) => (c?.type === 'pattern' ? { ...c, tone } : c));
+  };
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permite escolher o mesmo arquivo de novo
+    if (!file) return;
+    const job = ++coverJob.current;
+    setCoverBusy(true);
+    setCoverError('');
+    try {
+      const result = await fileToCover(file);
+      if (job !== coverJob.current) return;
+      setCover(result);
+    } catch (err) {
+      if (job !== coverJob.current) return;
+      setCoverError(err instanceof CoverImageError ? err.message : 'Não foi possível processar a imagem.');
+    } finally {
+      if (job === coverJob.current) setCoverBusy(false);
+    }
+  };
+
+  const removeCover = () => {
+    coverJob.current += 1;
+    setCoverBusy(false);
+    setCoverError('');
+    setCover(undefined);
+  };
+
+  const selectedPattern = cover?.type === 'pattern' ? cover.pattern : null;
 
   return (
     <ModalShell labelledBy="habit-modal-title" onClose={onClose} widthClass="sm:max-w-lg">
@@ -275,6 +334,119 @@ export const HabitModal: React.FC<HabitModalProps> = ({
               className="mt-1 text-right text-[11px] font-mono tabular-nums text-zinc-500 dark:text-zinc-400"
             >
               {description.length}/{HABIT_DESCRIPTION_MAX}
+            </p>
+          </div>
+
+          {/* Capa */}
+          <div className="space-y-2">
+            <span id="habit-cover-label" className="block font-medium text-zinc-700 dark:text-zinc-300">
+              Capa (opcional)
+            </span>
+            <div className="relative rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-zinc-100 dark:bg-zinc-900">
+              <HabitCover cover={cover} className="w-full">
+                {!cover && (
+                  <span className="absolute inset-0 flex items-center justify-center text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
+                    Sem capa
+                  </span>
+                )}
+              </HabitCover>
+              {coverBusy && (
+                <div className="absolute inset-0 flex items-center justify-center gap-2 bg-zinc-950/60 text-zinc-50 text-[11px] font-mono">
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                  Processando imagem...
+                </div>
+              )}
+            </div>
+
+            <div
+              role="radiogroup"
+              aria-labelledby="habit-cover-label"
+              className="grid grid-cols-5 gap-1.5"
+            >
+              {COVER_PATTERNS.map((p) => {
+                const selected = selectedPattern === p.id;
+                return (
+                  <button
+                    type="button"
+                    key={p.id}
+                    role="radio"
+                    aria-checked={selected}
+                    aria-label={p.label}
+                    title={p.label}
+                    onClick={() => pickPattern(p.id)}
+                    className={`min-h-[44px] rounded-xl border p-0.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 dark:focus-visible:ring-zinc-50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-zinc-950 ${
+                      selected
+                        ? 'border-zinc-950 dark:border-zinc-50 ring-1 ring-zinc-950 dark:ring-zinc-50'
+                        : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-400'
+                    }`}
+                  >
+                    <HabitCover
+                      cover={{ type: 'pattern', pattern: p.id, tone: coverTone }}
+                      aspectRatio={1}
+                      scale={0.5}
+                      className="w-full rounded-[9px]"
+                    />
+                  </button>
+                );
+              })}
+            </div>
+            {selectedPattern && (
+              <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">{patternLabel(selectedPattern)}</p>
+            )}
+
+            <div role="radiogroup" aria-label="Tom da capa" className="grid grid-cols-3 gap-1.5">
+              {COVER_TONES.map((t) => (
+                <button
+                  type="button"
+                  key={t.id}
+                  role="radio"
+                  aria-checked={coverTone === t.id}
+                  onClick={() => pickTone(t.id)}
+                  className={`min-h-[44px] rounded-xl text-xs font-mono border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 dark:focus-visible:ring-zinc-50 ${
+                    coverTone === t.id
+                      ? 'bg-zinc-950 text-zinc-50 border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50 font-semibold'
+                      : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                disabled={coverBusy}
+                onClick={() => fileInputRef.current?.click()}
+                className="min-h-[44px] flex items-center justify-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 dark:focus-visible:ring-zinc-50"
+              >
+                <ImagePlus className="w-4 h-4" aria-hidden="true" />
+                Enviar imagem
+              </button>
+              <button
+                type="button"
+                disabled={!cover || coverBusy}
+                onClick={removeCover}
+                className="min-h-[44px] flex items-center justify-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 dark:focus-visible:ring-zinc-50"
+              >
+                <Trash2 className="w-4 h-4" aria-hidden="true" />
+                Remover capa
+              </button>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              tabIndex={-1}
+              aria-label="Escolher imagem de capa"
+              onChange={handleFile}
+              className="sr-only"
+            />
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              A imagem é reduzida e fica salva no aparelho e na sua conta, junto com o hábito.
+            </p>
+            <p role="alert" aria-live="polite" className="text-[11px] font-medium text-zinc-900 dark:text-zinc-100 empty:hidden">
+              {coverError}
             </p>
           </div>
 
