@@ -162,6 +162,38 @@ export function patternLabel(id: string): string {
   return patternById.get(id)?.label ?? id;
 }
 
+// ---------- Capa de reserva (galeria) ----------
+
+/** Padrões usados como reserva: todos menos o liso, que pareceria um bloco vazio */
+const FALLBACK_PATTERNS = COVER_PATTERNS.filter((p) => p.id !== 'solid').map((p) => p.id);
+/** Tons de reserva: só claro/médio, para o ícone com scrim continuar legível */
+const FALLBACK_TONES = ['light', 'mid'];
+
+/** Hash FNV-1a (32 bits) estável: o mesmo id sempre gera o mesmo número */
+export function hashString(value: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < value.length; i++) {
+    h ^= value.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+/** Capa de padrão determinística derivada do id do hábito (usada quando não há capa própria) */
+export function fallbackCover(habitId: string): HabitCover {
+  const h = hashString(habitId);
+  return {
+    type: 'pattern',
+    pattern: FALLBACK_PATTERNS[h % FALLBACK_PATTERNS.length],
+    tone: FALLBACK_TONES[Math.floor(h / FALLBACK_PATTERNS.length) % FALLBACK_TONES.length]
+  };
+}
+
+/** Capa do hábito ou, se não houver, a de reserva determinística */
+export function coverOrFallback(habit: { id: string; cover?: HabitCover }): HabitCover {
+  return habit.cover ?? fallbackCover(habit.id);
+}
+
 // ---------- Validação ----------
 
 const DATA_URL_RE = /^data:image\/(?:jpeg|webp|png);base64,([A-Za-z0-9+/]+={0,2})$/;

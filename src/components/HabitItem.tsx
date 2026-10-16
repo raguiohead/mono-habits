@@ -3,6 +3,7 @@ import { Check, Flame, Pin, Eye, EyeOff, Edit3, Lock, ShieldCheck, ShieldOff } f
 import { type Habit } from '@/types/habit';
 import { HabitIcon } from './HabitIcon';
 import { HabitCover } from './HabitCover';
+import { coverOrFallback } from '@/lib/covers';
 import { useHabits } from '@/context/HabitsContext';
 import { useSettings } from '@/context/SettingsContext';
 import { getGoalLock, goalLabel, goalProgress } from '@/lib/pomoGoals';
@@ -18,10 +19,10 @@ interface HabitItemProps {
   isCompleted: boolean;
   onToggle: () => void;
   onEdit: () => void;
-  variant?: 'list' | 'bento';
+  variant?: 'list' | 'bento' | 'gallery';
 }
 
-export const HabitItem: React.FC<HabitItemProps> = ({
+const HabitItemBase: React.FC<HabitItemProps> = ({
   habit,
   isCompleted: isCompletedProp,
   onToggle,
@@ -105,8 +106,12 @@ export const HabitItem: React.FC<HabitItemProps> = ({
   const bento = variant === 'bento';
   const featured = Boolean(habit.featured); // fixado no topo, nos dois layouts
   const bentoFeatured = bento && featured;
+  // Variante "galeria": capa em destaque no topo do cartão; conteúdo logo abaixo (contraste AA garantido)
+  const gallery = variant === 'gallery';
+  // Nome acessível dos botões: nunca vaza o título quando está oculto
+  const label = habit.hideTitle ? 'Hábito oculto' : habit.title;
   // Alvos de toque de 44px na célula (36px + área expandida), sem estourar a célula com texto grande
-  const actionBtn = bento
+  const actionBtn = bento || gallery
     ? "relative w-9 h-9 flex items-center justify-center before:absolute before:-inset-1 before:content-['']"
     : 'p-1.5';
 
@@ -141,10 +146,10 @@ export const HabitItem: React.FC<HabitItemProps> = ({
           }`}
           aria-label={
             isCompleted
-              ? `Desmarcar ${habit.title}`
+              ? `Desmarcar ${label}`
               : lock
-              ? `${habit.title}: bloqueado até cumprir a meta do Pomo (${lock.label})`
-              : `Marcar ${habit.title}`
+              ? `${label}: bloqueado até cumprir a meta do Pomo (${lock.label})`
+              : `Marcar ${label}`
           }
           aria-disabled={lock ? true : undefined}
           title={lock ? `Cumpra a meta do Pomo para marcar (${lock.label})` : undefined}
@@ -397,6 +402,52 @@ export const HabitItem: React.FC<HabitItemProps> = ({
     </>
   );
 
+  if (gallery) {
+    // Concluído: scrim zinc + check grande (não depende só de cor); título riscado abaixo
+    const cover = coverOrFallback(habit);
+    return (
+      <div
+        onClick={handleToggle}
+        className={`group relative flex flex-col h-full overflow-hidden rounded-2xl border transition-all select-none ${
+          avoid ? 'cursor-default' : 'cursor-pointer'
+        } ${graced || slippedHere ? '!border-dashed' : ''} ${
+          featured && !isCompleted ? '!border-zinc-900 dark:!border-zinc-300' : ''
+        } ${weekDone ? 'opacity-60' : ''} ${
+          isCompleted
+            ? 'bg-zinc-100/90 dark:bg-zinc-900/40 border-zinc-300/80 dark:border-zinc-800/60'
+            : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs'
+        }`}
+      >
+        <HabitCover
+          cover={cover}
+          aspectRatio={featured ? 21 / 9 : 16 / 9}
+          scale={featured ? 1 : 0.7}
+          className="w-full shrink-0"
+        >
+          <span
+            className={`absolute inset-0 flex items-center justify-center bg-zinc-950/60 transition-opacity duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              isCompleted ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <Check className="w-10 h-10 stroke-[2.5] text-zinc-50" />
+          </span>
+          {/* Ícone sobre scrim zinc: legível (AA) sobre qualquer capa */}
+          <span className="absolute left-2.5 bottom-2.5 w-8 h-8 rounded-xl flex items-center justify-center bg-zinc-950/80 text-zinc-50">
+            <HabitIcon iconKey={habit.icon} className="w-4 h-4" />
+          </span>
+        </HabitCover>
+        <div className="flex flex-col gap-2 p-3 flex-1">
+          <div className="flex items-start gap-2.5">
+            {checkEl}
+            {titleEl}
+            {actionsEl}
+          </div>
+          <div className="min-w-0">{infoEl}</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       onClick={handleToggle}
@@ -438,3 +489,5 @@ export const HabitItem: React.FC<HabitItemProps> = ({
     </div>
   );
 };
+
+export const HabitItem = React.memo(HabitItemBase);

@@ -79,7 +79,8 @@ const TEXT_OPTIONS: { value: TextSize; label: string }[] = [
 
 const LAYOUT_OPTIONS: { value: FocusLayout; label: string }[] = [
   { value: 'list', label: 'Lista' },
-  { value: 'bento', label: 'Bento' }
+  { value: 'bento', label: 'Bento' },
+  { value: 'gallery', label: 'Capas' }
 ];
 
 const MOTION_OPTIONS: { value: MotionPref; label: string }[] = [
@@ -251,7 +252,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             <p className="text-xs font-medium">Layout dos hábitos no Foco</p>
             <Segmented label="Layout dos hábitos no Foco" value={settings.focusLayout} options={LAYOUT_OPTIONS} onChange={(focusLayout) => updateSettings({ focusLayout })} />
             <div aria-hidden="true" className="grid grid-cols-2 gap-1.5 pt-1">
-              {settings.focusLayout === 'bento' ? (
+              {settings.focusLayout === 'gallery' ? (
+                <>
+                  <div className="h-12 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-200/70 dark:bg-zinc-800" />
+                  <div className="h-12 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-200/70 dark:bg-zinc-800" />
+                </>
+              ) : settings.focusLayout === 'bento' ? (
                 <>
                   <div className="col-span-2 h-9 rounded-lg border border-zinc-400 dark:border-zinc-500 bg-zinc-200/70 dark:bg-zinc-800" />
                   <div className="h-7 rounded-lg border border-zinc-300 dark:border-zinc-700" />
@@ -266,7 +272,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               )}
             </div>
             <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-              Hábitos destacados (até 2, ao editar um hábito) ficam fixados no topo; no Bento ocupam a largura toda.
+              Hábitos destacados (até 2, ao editar um hábito) ficam fixados no topo; no Bento e em Capas ocupam a largura toda. Em Capas, cada hábito vira um cartão com a imagem em destaque.
             </p>
           </div>
         </section>

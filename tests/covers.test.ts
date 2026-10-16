@@ -5,6 +5,9 @@ import {
   COVER_PATTERNS,
   COVER_TONES,
   computeCoverCrop,
+  coverOrFallback,
+  fallbackCover,
+  hashString,
   coverStyle,
   dataUrlBytes,
   sanitizeHabitCover,
@@ -154,5 +157,27 @@ describe('computeCoverCrop', () => {
   it('dimensões inválidas retornam null', () => {
     expect(computeCoverCrop(0, 100)).toBeNull();
     expect(computeCoverCrop(100, NaN)).toBeNull();
+  });
+});
+
+describe('capa de reserva', () => {
+  it('é determinística por id e sempre um padrão válido, nunca liso', () => {
+    expect(hashString('abc')).toBe(hashString('abc'));
+    const ids = Array.from({ length: 200 }, (_, i) => `habit-${i}`);
+    const seen = new Set<string>();
+    for (const id of ids) {
+      const a = fallbackCover(id);
+      expect(fallbackCover(id)).toEqual(a);
+      expect(sanitizeHabitCover(a)).toEqual(a);
+      expect(a.type === 'pattern' && a.pattern).not.toBe('solid');
+      if (a.type === 'pattern') seen.add(a.pattern);
+    }
+    expect(seen.size).toBeGreaterThan(3);
+  });
+
+  it('usa a capa do hábito quando existe', () => {
+    const own = { type: 'pattern' as const, pattern: 'dots', tone: 'dark' };
+    expect(coverOrFallback({ id: 'x', cover: own })).toBe(own);
+    expect(coverOrFallback({ id: 'x' })).toEqual(fallbackCover('x'));
   });
 });

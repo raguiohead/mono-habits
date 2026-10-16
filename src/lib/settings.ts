@@ -1,5 +1,6 @@
 export type TextSize = 'normal' | 'large' | 'xlarge';
-export type FocusLayout = 'list' | 'bento';
+export type FocusLayout = 'list' | 'bento' | 'gallery';
+export const FOCUS_LAYOUTS: readonly FocusLayout[] = ['list', 'bento', 'gallery'];
 export type MotionPref = 'system' | 'reduce' | 'full';
 
 export interface AppSettings {
@@ -52,7 +53,7 @@ export function sanitizeSettings(raw: unknown): AppSettings {
     textSize: p.textSize === 'large' || p.textSize === 'xlarge' ? p.textSize : 'normal',
     motion: p.motion === 'reduce' || p.motion === 'full' ? p.motion : 'system',
     highContrast: bool(p.highContrast, d.highContrast),
-    focusLayout: p.focusLayout === 'bento' ? 'bento' : 'list',
+    focusLayout: FOCUS_LAYOUTS.includes(p.focusLayout as FocusLayout) ? (p.focusLayout as FocusLayout) : 'list',
     graceDaysPerMonth: p.graceDaysPerMonth === 0 || p.graceDaysPerMonth === 2 ? p.graceDaysPerMonth : 1,
     reminderEnabled: bool(p.reminderEnabled, d.reminderEnabled),
     reminderTime: isValidTime(p.reminderTime) ? p.reminderTime : d.reminderTime,
