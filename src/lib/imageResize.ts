@@ -1,4 +1,4 @@
-import { COVER_MAX_DIMENSION, COVER_TARGET_BYTES, computeCoverCrop, dataUrlBytes } from './covers';
+import { COVER_TARGET_BYTES, computeCoverResize, dataUrlBytes } from './covers';
 import type { HabitCover } from '@/types/habit';
 
 /** Arquivos de origem acima disso nem são decodificados (protege a memória do aparelho) */
@@ -59,8 +59,8 @@ async function decode(file: File): Promise<Decoded> {
 }
 
 /**
- * Lê uma imagem escolhida pelo usuário, recorta o centro em 16:9, reduz para até
- * COVER_MAX_DIMENSION px de largura e exporta WebP (ou JPEG) com até ~80 KB.
+ * Lê uma imagem escolhida pelo usuário, reduz (sem recortar: o enquadramento é feito depois, no modal)
+ * e exporta WebP (ou JPEG) com até ~80 KB.
  * Lança CoverImageError (mensagem em pt-BR) quando não for possível.
  */
 export async function fileToCover(file: File): Promise<Extract<HabitCover, { type: 'image' }>> {
@@ -75,16 +75,16 @@ export async function fileToCover(file: File): Promise<Extract<HabitCover, { typ
   try {
     let webpOk = true;
     for (const scale of SCALES) {
-      const crop = computeCoverCrop(decoded.width, decoded.height, COVER_MAX_DIMENSION, scale);
-      if (!crop) throw new CoverImageError('Não foi possível ler essa imagem. Tente outro arquivo.');
+      const size = computeCoverResize(decoded.width, decoded.height, scale);
+      if (!size) throw new CoverImageError('Não foi possível ler essa imagem. Tente outro arquivo.');
       const canvas = document.createElement('canvas');
-      canvas.width = crop.dw;
-      canvas.height = crop.dh;
+      canvas.width = size.dw;
+      canvas.height = size.dh;
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new CoverImageError('Seu navegador não conseguiu processar a imagem.');
       ctx.fillStyle = '#ffffff'; // transparência vira branco (JPEG não tem alfa)
-      ctx.fillRect(0, 0, crop.dw, crop.dh);
-      ctx.drawImage(decoded.source, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, crop.dw, crop.dh);
+      ctx.fillRect(0, 0, size.dw, size.dh);
+      ctx.drawImage(decoded.source, 0, 0, decoded.width, decoded.height, 0, 0, size.dw, size.dh);
 
       for (const quality of QUALITIES) {
         let blob = webpOk ? await canvasToBlob(canvas, 'image/webp', quality) : null;

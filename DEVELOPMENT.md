@@ -57,6 +57,6 @@ Dentro do plano gratuito: Firebase Auth, Firestore (respeitando as cotas diária
 
 ### Capas de hábito
 
-- Sem Cloud Storage: a imagem enviada é recortada (16:9), reduzida (até 640 px) e comprimida no cliente (alvo ~80 KB, teto de leitura 90 KB) e guardada como data URL em `habit.cover`, no mesmo documento do hábito (limite de 1 MiB do Firestore; ~125 mil caracteres no máximo por capa).
+- Sem Cloud Storage: a imagem enviada é reduzida (sem recorte; cobre uma janela 16:9 de 640 px, no máximo 1280 px no maior lado) e comprimida no cliente (alvo ~80 KB, teto de leitura 90 KB) e guardada como data URL em `habit.cover`, com o enquadramento escolhido no modal (`x`, `y` de 0 a 1 e `zoom` de 1 a 3, aplicados por CSS em `coverImageStyle`), no mesmo documento do hábito (limite de 1 MiB do Firestore; ~125 mil caracteres no máximo por capa).
 - `saveLocalHabits` retorna `false` em caso de `QuotaExceededError`; `saveHabit` então salva o hábito sem capa e avisa por Toast.
 - Capas vindas do localStorage/nuvem passam por `sanitizeHabitCover`; valores inválidos viram "sem capa".

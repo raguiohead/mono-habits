@@ -225,7 +225,12 @@ export function sanitizeHabitCover(value: unknown): HabitCover | undefined {
   if (v.type === 'image') {
     const bytes = dataUrlBytes(v.dataUrl);
     if (bytes === null || bytes > COVER_MAX_BYTES) return undefined;
-    return { type: 'image', dataUrl: v.dataUrl as string };
+    const out: Extract<HabitCover, { type: 'image' }> = { type: 'image', dataUrl: v.dataUrl as string };
+    // Enquadramento opcional: só guarda o que for número válido (o Firestore não aceita undefined)
+    if (typeof v.x === 'number' && Number.isFinite(v.x)) out.x = clamp(v.x, 0, 1);
+    if (typeof v.y === 'number' && Number.isFinite(v.y)) out.y = clamp(v.y, 0, 1);
+    if (typeof v.zoom === 'number' && Number.isFinite(v.zoom)) out.zoom = clamp(v.zoom, COVER_ZOOM_MIN, COVER_ZOOM_MAX);
+    return out;
   }
   return undefined;
 }
@@ -238,40 +243,90 @@ export function withSanitizedCover<T extends { cover?: unknown }>(habit: T): T {
   return (clean ? { ...rest, cover: clean } : rest) as T;
 }
 
-// ---------- Recorte e escala (puro) ----------
+// ---------- Redução (puro) ----------
 
-export interface CoverCrop {
-  /** Região de origem (center-crop 16:9) */
-  sx: number;
-  sy: number;
-  sw: number;
-  sh: number;
-  /** Tamanho final do canvas */
-  dw: number;
-  dh: number;
+/** Maior lado, em px, da imagem guardada (imagens panorâmicas muito largas são limitadas aqui) */
+export const COVER_MAX_SOURCE_SIDE = 1280;
+
+/**
+ * Tamanho final da imagem guardada: sem recorte, apenas reduzida o bastante para cobrir uma janela
+ * de COVER_MAX_DIMENSION x (COVER_MAX_DIMENSION / 16:9) com sobra para reposicionar. Nunca amplia.
+ * `scale` (0-1] reduz ainda mais, usado nas tentativas de caber no teto de bytes.
+ */
+export function computeCoverResize(
+  srcWidth: number,
+  srcHeight: number,
+  scale = 1
+): { dw: number; dh: number } | null {
+  if (!(srcWidth > 0) || !(srcHeight > 0)) return null;
+  const windowH = COVER_MAX_DIMENSION / COVER_ASPECT;
+  let s = Math.max(COVER_MAX_DIMENSION / srcWidth, windowH / srcHeight);
+  s = Math.min(s, 1, COVER_MAX_SOURCE_SIDE / Math.max(srcWidth, srcHeight));
+  return {
+    dw: Math.max(16, Math.round(srcWidth * s * scale)),
+    dh: Math.max(9, Math.round(srcHeight * s * scale))
+  };
+}
+
+// ---------- Enquadramento (reposicionar e dar zoom) ----------
+
+export const COVER_ZOOM_MIN = 1;
+export const COVER_ZOOM_MAX = 3;
+
+export interface CoverCropView {
+  /** Ponto de enquadramento horizontal/vertical, 0 (início) a 1 (fim) */
+  x: number;
+  y: number;
+  zoom: number;
+}
+
+const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+const num = (v: unknown, fallback: number) => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
+
+/** Enquadramento da capa de imagem, com padrões (centralizada, sem zoom) e valores limitados */
+export function coverView(cover: { x?: unknown; y?: unknown; zoom?: unknown } | undefined): CoverCropView {
+  return {
+    x: clamp(num(cover?.x, 0.5), 0, 1),
+    y: clamp(num(cover?.y, 0.5), 0, 1),
+    zoom: clamp(num(cover?.zoom, 1), COVER_ZOOM_MIN, COVER_ZOOM_MAX)
+  };
 }
 
 /**
- * Center-crop para 16:9 e redução para no máximo `maxWidth` de largura (nunca amplia).
- * `scale` (0-1] reduz ainda mais o resultado, usado nas tentativas de caber no teto de bytes.
+ * Quanto a imagem sobra da janela em cada eixo (em frações do tamanho da janela), já com o zoom.
+ * 0 = nada a mover naquele eixo. `imageAspect` e `windowAspect` são largura / altura.
  */
-export function computeCoverCrop(
-  srcWidth: number,
-  srcHeight: number,
-  maxWidth = COVER_MAX_DIMENSION,
-  scale = 1
-): CoverCrop | null {
-  if (!(srcWidth > 0) || !(srcHeight > 0)) return null;
-  let sw = srcWidth;
-  let sh = Math.round(srcWidth / COVER_ASPECT);
-  if (sh > srcHeight) {
-    sh = srcHeight;
-    sw = Math.round(srcHeight * COVER_ASPECT);
-  }
-  sw = Math.min(sw, srcWidth);
-  const sx = Math.floor((srcWidth - sw) / 2);
-  const sy = Math.floor((srcHeight - sh) / 2);
-  const dw = Math.max(16, Math.round(Math.min(sw, maxWidth) * scale));
-  const dh = Math.max(9, Math.round(dw / COVER_ASPECT));
-  return { sx, sy, sw, sh, dw, dh };
+export function panRange(imageAspect: number, windowAspect: number, zoom: number): { rx: number; ry: number } {
+  if (!(imageAspect > 0) || !(windowAspect > 0)) return { rx: 0, ry: 0 };
+  const rx = zoom * Math.max(1, imageAspect / windowAspect) - 1;
+  const ry = zoom * Math.max(1, windowAspect / imageAspect) - 1;
+  return { rx: Math.max(0, rx), ry: Math.max(0, ry) };
+}
+
+/** Novo enquadramento ao arrastar a imagem em (dx, dy) px numa janela de w x h px */
+export function panCover(
+  start: CoverCropView,
+  dx: number,
+  dy: number,
+  w: number,
+  h: number,
+  range: { rx: number; ry: number }
+): CoverCropView {
+  const x = range.rx > 0.001 && w > 0 ? clamp(start.x - dx / (w * range.rx), 0, 1) : start.x;
+  const y = range.ry > 0.001 && h > 0 ? clamp(start.y - dy / (h * range.ry), 0, 1) : start.y;
+  return { ...start, x, y };
+}
+
+/** Estilo da <img> dentro de uma janela com overflow oculto: zoom e posição, sem recalcular layout */
+export function coverImageStyle(cover: { x?: unknown; y?: unknown; zoom?: unknown } | undefined): CSSProperties {
+  const { x, y, zoom } = coverView(cover);
+  return {
+    position: 'absolute',
+    width: `${zoom * 100}%`,
+    height: `${zoom * 100}%`,
+    left: `${-(zoom - 1) * 100 * x}%`,
+    top: `${-(zoom - 1) * 100 * y}%`,
+    objectFit: 'cover',
+    objectPosition: `${x * 100}% ${y * 100}%`
+  };
 }
