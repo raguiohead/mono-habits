@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Eye, EyeOff, Minus, Plus, ImagePlus, Trash2, Loader2 } from 'lucide-react';
 import { HabitCover } from './HabitCover';
+import { CoverFramer } from './CoverFramer';
 import { COVER_PATTERNS, COVER_TONES, DEFAULT_COVER_TONE, isKnownTone, patternLabel } from '@/lib/covers';
 import { CoverImageError, fileToCover } from '@/lib/imageResize';
 import { HABIT_ICONS } from './HabitIcon';
@@ -342,21 +343,25 @@ export const HabitModal: React.FC<HabitModalProps> = ({
             <span id="habit-cover-label" className="block font-medium text-zinc-700 dark:text-zinc-300">
               Capa (opcional)
             </span>
-            <div className="relative rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-zinc-100 dark:bg-zinc-900">
-              <HabitCover cover={cover} className="w-full">
-                {!cover && (
-                  <span className="absolute inset-0 flex items-center justify-center text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
-                    Sem capa
-                  </span>
+            {cover?.type === 'image' ? (
+              <CoverFramer cover={cover} onChange={setCover} busy={coverBusy} />
+            ) : (
+              <div className="relative rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-zinc-100 dark:bg-zinc-900">
+                <HabitCover cover={cover} className="w-full">
+                  {!cover && (
+                    <span className="absolute inset-0 flex items-center justify-center text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
+                      Sem capa
+                    </span>
+                  )}
+                </HabitCover>
+                {coverBusy && (
+                  <div className="absolute inset-0 flex items-center justify-center gap-2 bg-zinc-950/60 text-zinc-50 text-[11px] font-mono">
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                    Processando imagem...
+                  </div>
                 )}
-              </HabitCover>
-              {coverBusy && (
-                <div className="absolute inset-0 flex items-center justify-center gap-2 bg-zinc-950/60 text-zinc-50 text-[11px] font-mono">
-                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                  Processando imagem...
-                </div>
-              )}
-            </div>
+              </div>
+            )}
 
             <div
               role="radiogroup"

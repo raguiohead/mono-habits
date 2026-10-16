@@ -86,4 +86,6 @@ export type SyncStatus = 'offline' | 'connecting' | 'synced' | 'error';
 /** Capa opcional do hábito: padrão geométrico do catálogo (src/lib/covers.ts) ou imagem enviada */
 export type HabitCover =
   | { type: 'pattern'; pattern: string; tone: string }
-  | { type: 'image'; dataUrl: string }; // data URL JPEG/WebP/PNG já reduzida no cliente
+  // data URL JPEG/WebP/PNG reduzida no cliente (sem recorte). x/y (0-1, ponto de enquadramento) e zoom (1-3)
+  // definem o recorte exibido; ausentes = centralizada e sem zoom.
+  | { type: 'image'; dataUrl: string; x?: number; y?: number; zoom?: number };

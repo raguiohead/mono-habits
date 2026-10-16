@@ -1,6 +1,6 @@
 import React from 'react';
 import type { HabitCover as HabitCoverData } from '@/types/habit';
-import { coverStyle } from '@/lib/covers';
+import { coverImageStyle, coverStyle } from '@/lib/covers';
 
 interface HabitCoverProps {
   cover?: HabitCoverData;
@@ -42,7 +42,7 @@ export const HabitCover = React.memo<HabitCoverProps>(function HabitCover({
           loading="lazy"
           decoding="async"
           draggable={false}
-          className="absolute inset-0 w-full h-full object-cover"
+          style={coverImageStyle(cover)}
         />
       )}
       {children}

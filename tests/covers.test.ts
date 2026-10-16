@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
   COVER_MAX_BYTES,
-  COVER_MAX_DIMENSION,
   COVER_PATTERNS,
   COVER_TONES,
-  computeCoverCrop,
+  COVER_MAX_SOURCE_SIDE,
+  computeCoverResize,
+  coverImageStyle,
+  coverView,
+  panCover,
+  panRange,
   coverOrFallback,
   fallbackCover,
   hashString,
@@ -130,33 +134,80 @@ describe('compatibilidade com hábitos antigos', () => {
   });
 });
 
-describe('computeCoverCrop', () => {
-  it('imagem larga: recorta as laterais e reduz para 640', () => {
-    const c = computeCoverCrop(4000, 1500)!;
-    expect(c.sh).toBe(1500);
-    expect(c.sw).toBe(Math.round(1500 * (16 / 9)));
-    expect(c.sx).toBe(Math.floor((4000 - c.sw) / 2));
-    expect(c.sy).toBe(0);
-    expect(c.dw).toBe(COVER_MAX_DIMENSION);
-    expect(c.dh).toBe(360);
+describe('computeCoverResize', () => {
+  it('reduz sem recortar: cobre a janela 640x360 e mantém a proporção', () => {
+    const r = computeCoverResize(4000, 3000)!; // 4:3 -> largura 640 já cobre a altura 360
+    expect(r.dw).toBe(640);
+    expect(r.dh).toBe(480);
   });
 
-  it('imagem alta (retrato): recorta o topo e a base', () => {
-    const c = computeCoverCrop(3000, 4000)!;
-    expect(c.sw).toBe(3000);
-    expect(c.sh).toBe(Math.round(3000 / (16 / 9)));
-    expect(c.sy).toBe(Math.floor((4000 - c.sh) / 2));
-    expect(c.sx).toBe(0);
+  it('retrato: sobra altura para reposicionar', () => {
+    const r = computeCoverResize(3000, 4000)!;
+    expect(r.dw).toBe(640);
+    expect(r.dh).toBe(853);
+  });
+
+  it('panorama extremo é limitado pelo maior lado', () => {
+    const r = computeCoverResize(8000, 1000)!;
+    expect(Math.max(r.dw, r.dh)).toBeLessThanOrEqual(COVER_MAX_SOURCE_SIDE);
   });
 
   it('não amplia imagens pequenas e respeita a escala', () => {
-    expect(computeCoverCrop(320, 180)!.dw).toBe(320);
-    expect(computeCoverCrop(4000, 2250, 640, 0.5)!.dw).toBe(320);
+    expect(computeCoverResize(320, 180)).toEqual({ dw: 320, dh: 180 });
+    expect(computeCoverResize(4000, 2250, 0.5)!.dw).toBe(320);
   });
 
   it('dimensões inválidas retornam null', () => {
-    expect(computeCoverCrop(0, 100)).toBeNull();
-    expect(computeCoverCrop(100, NaN)).toBeNull();
+    expect(computeCoverResize(0, 100)).toBeNull();
+    expect(computeCoverResize(100, NaN)).toBeNull();
+  });
+});
+
+describe('enquadramento da capa', () => {
+  it('coverView usa padrões e limita os valores', () => {
+    expect(coverView(undefined)).toEqual({ x: 0.5, y: 0.5, zoom: 1 });
+    expect(coverView({ x: -1, y: 9, zoom: 99 })).toEqual({ x: 0, y: 1, zoom: 3 });
+    expect(coverView({ x: 'a', zoom: NaN })).toEqual({ x: 0.5, y: 0.5, zoom: 1 });
+  });
+
+  it('panRange: só há o que mover no eixo em que a imagem sobra, e o zoom aumenta a sobra', () => {
+    const wide = panRange(21 / 9, 16 / 9, 1);
+    expect(wide.rx).toBeCloseTo(21 / 9 / (16 / 9) - 1);
+    expect(wide.ry).toBe(0);
+    const tall = panRange(3 / 4, 16 / 9, 1);
+    expect(tall.rx).toBe(0);
+    expect(tall.ry).toBeGreaterThan(1);
+    expect(panRange(16 / 9, 16 / 9, 2)).toEqual({ rx: 1, ry: 1 });
+    expect(panRange(0, 1, 1)).toEqual({ rx: 0, ry: 0 });
+  });
+
+  it('panCover: arrastar para a direita revela o início e fica limitado a 0-1', () => {
+    const range = { rx: 1, ry: 0 };
+    const start = { x: 0.5, y: 0.5, zoom: 2 };
+    const r = panCover(start, 50, 30, 200, 100, range);
+    expect(r.x).toBeCloseTo(0.25);
+    expect(r.y).toBe(0.5); // sem sobra vertical
+    expect(panCover(start, 9999, 0, 200, 100, range).x).toBe(0);
+    expect(panCover(start, -9999, 0, 200, 100, range).x).toBe(1);
+  });
+
+  it('coverImageStyle: sem enquadramento preenche a janela; com zoom desloca a partir do ponto', () => {
+    const base = coverImageStyle({});
+    expect(base.width).toBe('100%');
+    expect(base.left).toBe('0%');
+    expect(base.objectPosition).toBe('50% 50%');
+    const z = coverImageStyle({ x: 0, y: 1, zoom: 2 });
+    expect(z.width).toBe('200%');
+    expect(z.left).toBe('0%');
+    expect(z.top).toBe('-100%');
+  });
+
+  it('sanitizeHabitCover mantém e limita o enquadramento; ignora lixo', () => {
+    const dataUrl = 'data:image/png;base64,iVBORw0KGgo=';
+    expect(sanitizeHabitCover({ type: 'image', dataUrl, x: 2, y: 0.3, zoom: 0.2 })).toEqual({
+      type: 'image', dataUrl, x: 1, y: 0.3, zoom: 1
+    });
+    expect(sanitizeHabitCover({ type: 'image', dataUrl, x: 'a', zoom: NaN })).toEqual({ type: 'image', dataUrl });
   });
 });
 
