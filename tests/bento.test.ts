@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canFeature, countFeatured, featuredIds, MAX_FEATURED } from '@/lib/bento';
+import { canFeature, countFeatured, featuredIds, orderFeaturedFirst, MAX_FEATURED } from '@/lib/bento';
 import type { Habit } from '@/types/habit';
 
 const h = (id: string, o: Partial<Habit> = {}): Habit => ({ id, title: id, category: 'c', icon: 'book', frequency: [0], createdAt: 1, ...o }) as Habit;
@@ -20,5 +20,9 @@ describe('destaque do bento', () => {
   it('featuredIds ignora o excedente', () => {
     const hs = [h('a', { featured: true }), h('b', { featured: true }), h('c', { featured: true })];
     expect([...featuredIds(hs)]).toEqual(['a', 'b']);
+  });
+  it('orderFeaturedFirst fixa os destaques no topo sem reordenar o resto', () => {
+    const hs = [h('a'), h('b', { featured: true }), h('c'), h('d', { featured: true })];
+    expect(orderFeaturedFirst(hs).map((x) => x.id)).toEqual(['b', 'd', 'a', 'c']);
   });
 });

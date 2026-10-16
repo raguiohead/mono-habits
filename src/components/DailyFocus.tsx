@@ -12,7 +12,7 @@ import {
 } from '@/lib/periods';
 import { getHabitsForDate, calculateDailyProgress } from '@/lib/analytics';
 import { isDueOn } from '@/lib/weekly';
-import { featuredIds } from '@/lib/bento';
+import { featuredIds, orderFeaturedFirst } from '@/lib/bento';
 import { useSettings } from '@/context/SettingsContext';
 import { getEffectiveCompletedIds, isAvoid } from '@/lib/avoid';
 import { type Habit, type HabitPeriod } from '@/types/habit';
@@ -82,7 +82,7 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
     const item = (
       <HabitItem
         key={habit.id}
-        habit={bento ? { ...habit, featured: featured.has(habit.id) } : habit}
+        habit={{ ...habit, featured: featured.has(habit.id) }}
         variant={bento ? 'bento' : 'list'}
         isCompleted={completedIds.includes(habit.id)}
         onToggle={() => toggleHabitCompletion(habit.id, selectedDateKey)}
@@ -99,7 +99,9 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
   };
 
   // Agrupamento por período do dia (lista simples quando ninguém usa períodos)
-  const { grouped, sections } = useMemo(() => groupHabitsByPeriod(scheduledHabits), [scheduledHabits]);
+  // Hábitos em destaque ficam fixados no topo da lista (ou da seção do período)
+  const orderedHabits = useMemo(() => orderFeaturedFirst(scheduledHabits), [scheduledHabits]);
+  const { grouped, sections } = useMemo(() => groupHabitsByPeriod(orderedHabits), [orderedHabits]);
 
   // Período atual, atualizado a cada minuto; só destacado ao ver o dia de hoje
   const [now, setNow] = useState(() => new Date());
@@ -261,7 +263,7 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
                     </section>
                   );
                 })
-              : scheduledHabits.map(renderHabit)}
+              : orderedHabits.map(renderHabit)}
           </div>
         )}
       </div>

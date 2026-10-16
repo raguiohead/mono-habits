@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Flame, Eye, EyeOff, Edit3, Lock, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Check, Flame, Pin, Eye, EyeOff, Edit3, Lock, ShieldCheck, ShieldOff } from 'lucide-react';
 import { type Habit } from '@/types/habit';
 import { HabitIcon } from './HabitIcon';
 import { useHabits } from '@/context/HabitsContext';
@@ -102,7 +102,8 @@ export const HabitItem: React.FC<HabitItemProps> = ({
 
   // Variante "bento": células em grade; o hábito em destaque ocupa as 2 colunas e é maior
   const bento = variant === 'bento';
-  const featured = bento && Boolean(habit.featured);
+  const featured = Boolean(habit.featured); // fixado no topo, nos dois layouts
+  const bentoFeatured = bento && featured;
   // Alvos de toque de 44px na célula (36px + área expandida), sem estourar a célula com texto grande
   const actionBtn = bento
     ? "relative w-9 h-9 flex items-center justify-center before:absolute before:-inset-1 before:content-['']"
@@ -182,9 +183,9 @@ export const HabitItem: React.FC<HabitItemProps> = ({
   );
   const titleEl = (
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-start gap-1.5">
             <p
-              className={`${featured ? 'text-lg font-semibold' : 'text-sm font-medium'} tracking-tight break-words leading-snug ${
+              className={`${bentoFeatured ? 'text-lg font-semibold' : featured ? 'text-base font-semibold' : 'text-sm font-medium'} tracking-tight break-words leading-snug ${
                 isCompleted
                   ? 'line-through text-zinc-400 dark:text-zinc-500'
                   : 'text-zinc-900 dark:text-zinc-100'
@@ -194,6 +195,9 @@ export const HabitItem: React.FC<HabitItemProps> = ({
                 <span className="font-mono tracking-widest text-xs opacity-60">•••••••••••</span>
               ) : (
                 habit.title
+              )}
+              {featured && (
+                <Pin aria-label="Fixado" className="inline-block w-3.5 h-3.5 ml-1.5 -mt-0.5 text-zinc-500 dark:text-zinc-400" />
               )}
             </p>
           </div>
@@ -234,63 +238,48 @@ export const HabitItem: React.FC<HabitItemProps> = ({
   );
   const infoEl = (
     <>
-        <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
-        {/* Badge de Streak: atual e melhor */}
-        <div
-          className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg border font-mono ${featured ? 'text-sm' : 'text-xs'} transition-all ${
-            isRecord
-              ? 'border-zinc-400 dark:border-zinc-600 bg-zinc-200/70 dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 font-bold shadow-xs'
-              : streak > 0
-              ? 'border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 font-semibold'
-              : bestStreak > 0
-              ? 'border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/40 text-zinc-600 dark:text-zinc-400 font-normal'
-              : 'border-transparent text-zinc-400 dark:text-zinc-600 font-normal'
-          }`}
-          title={`Atual: ${streak} ${unit} · Melhor: ${bestStreak} ${bestUnit}`}
-        >
-          <Flame
-            className={`w-3.5 h-3.5 shrink-0 ${
-              streak > 0
-                ? 'text-zinc-950 dark:text-zinc-100 fill-zinc-950 dark:fill-zinc-100'
-                : 'text-zinc-400 dark:text-zinc-600'
+        {/* Linha de metadados: ofensiva · categoria · marco, tudo alinhado à esquerda do nome */}
+        <div className="flex items-center gap-x-3 gap-y-1 flex-wrap min-w-0 font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+          <span
+            title={`Atual: ${streak} ${unit} · Melhor: ${bestStreak} ${bestUnit}`}
+            className={`inline-flex items-center gap-1 tabular-nums ${
+              isRecord
+                ? 'font-bold text-zinc-950 dark:text-zinc-50'
+                : streak > 0
+                ? 'font-semibold text-zinc-800 dark:text-zinc-200'
+                : ''
             }`}
-          />
-          <span>{streak}{weeklyHabit ? ' sem' : ''}</span>
-          {/* Hábito semanal ou a evitar: selo compacto (a melhor ofensiva fica no tooltip) para sobrar largura ao texto */}
-          {!weeklyHabit && !avoid && (
-            <>
-              <span className="opacity-40 font-normal">·</span>
-              <span className={`text-[10px] sm:text-xs ${isRecord ? 'font-bold' : 'font-normal opacity-90'}`}>
-                melhor {bestStreak}
-              </span>
-            </>
+          >
+            <Flame
+              className={`w-3.5 h-3.5 shrink-0 ${
+                streak > 0
+                  ? 'text-zinc-950 dark:text-zinc-100 fill-zinc-950 dark:fill-zinc-100'
+                  : 'text-zinc-400 dark:text-zinc-600'
+              }`}
+            />
+            {streak}
+            {weeklyHabit ? ' sem' : ''}
+            {/* Hábito semanal ou a evitar: só a atual (a melhor fica no tooltip) */}
+            {!weeklyHabit && !avoid && <span className="font-normal opacity-70">· melhor {bestStreak}</span>}
+          </span>
+          <span className="uppercase tracking-wider">{habit.category}</span>
+          {highestMilestone(bestStreak) !== null && (
+            <span
+              className="leading-none px-1 py-0.5 rounded border border-zinc-400 dark:border-zinc-600 text-zinc-600 dark:text-zinc-300 shrink-0"
+              title={`Marco: ${highestMilestone(bestStreak)} ${weeklyHabit ? 'semanas' : 'dias'}`}
+              aria-label={`Marco atingido: ${highestMilestone(bestStreak)} ${weeklyHabit ? 'semanas' : 'dias'}`}
+            >
+              {highestMilestone(bestStreak)}
+            </span>
           )}
         </div>
-          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-            {highestMilestone(bestStreak) !== null && (
-              <span
-                className="text-[10px] font-mono leading-none px-1 py-0.5 rounded border border-zinc-400 dark:border-zinc-600 text-zinc-600 dark:text-zinc-300 shrink-0"
-                title={`Marco: ${highestMilestone(bestStreak)} ${weeklyHabit ? 'semanas' : 'dias'}`}
-                aria-label={`Marco atingido: ${highestMilestone(bestStreak)} ${weeklyHabit ? 'semanas' : 'dias'}`}
-              >
-                {highestMilestone(bestStreak)}
-              </span>
-            )}
-            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 shrink-0">
-              {habit.category}
-            </span>
-            {isBroken && (
-              <>
-                <span className="text-zinc-300 dark:text-zinc-700 text-[10px] shrink-0">·</span>
-                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-normal truncate">
-                  Sua melhor continua em {bestStreak} {bestUnit}.
-                </span>
-              </>
-            )}
-          </div>
-        </div>
+        {isBroken && (
+          <p className="mt-1 text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight">
+            Sua melhor continua em {bestStreak} {bestUnit}.
+          </p>
+        )}
           {progress && (
-            <div className="mt-1.5 space-y-1">
+            <div className="mt-2 space-y-1">
               <span className="block text-[10px] font-mono tabular-nums text-zinc-500 dark:text-zinc-400">
                 {goalLabel(progress)}
               </span>
@@ -300,7 +289,7 @@ export const HabitItem: React.FC<HabitItemProps> = ({
                 aria-valuemin={0}
                 aria-valuemax={progress.target}
                 aria-valuenow={progress.current}
-                className="h-1 w-full max-w-[120px] rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden"
+                className="h-1 w-full max-w-[160px] rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden"
               >
                 <div
                   className="h-full rounded-full bg-zinc-950 dark:bg-zinc-50 transition-[width] duration-300"
@@ -310,7 +299,7 @@ export const HabitItem: React.FC<HabitItemProps> = ({
             </div>
           )}
           {avoid && (
-            <div className="mt-1.5 space-y-1.5">
+            <div className="mt-2 space-y-1.5">
               <p className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 leading-tight">
                 {avoidText}
                 {avoidStatus === 'in-progress' && (
@@ -333,7 +322,7 @@ export const HabitItem: React.FC<HabitItemProps> = ({
             </div>
           )}
           {week && (
-            <div className="mt-1.5 space-y-1">
+            <div className="mt-2 space-y-1">
               <span className="block text-[10px] font-mono tabular-nums text-zinc-500 dark:text-zinc-400">
                 {week.count}/{week.target} {isCurrentWeek ? 'esta semana' : 'na semana'}
               </span>
@@ -343,7 +332,7 @@ export const HabitItem: React.FC<HabitItemProps> = ({
                 aria-valuemin={0}
                 aria-valuemax={week.target}
                 aria-valuenow={Math.min(week.count, week.target)}
-                className="h-1 w-full max-w-[120px] rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden"
+                className="h-1 w-full max-w-[160px] rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden"
               >
                 <div
                   className="h-full rounded-full bg-zinc-950 dark:bg-zinc-50 transition-[width] duration-300"
@@ -353,7 +342,7 @@ export const HabitItem: React.FC<HabitItemProps> = ({
             </div>
           )}
           {graced && (
-            <p className="mt-1.5 text-[10px] font-mono text-zinc-500 dark:text-zinc-400 leading-tight">
+            <p className="mt-2 text-[10px] font-mono text-zinc-500 dark:text-zinc-400 leading-tight">
               Graça usada ·{' '}
               <button
                 type="button"
@@ -374,14 +363,14 @@ export const HabitItem: React.FC<HabitItemProps> = ({
                 e.stopPropagation();
                 void applyGrace(habit.id, selectedDateKey);
               }}
-              className={`${graceButton} block mt-1.5 leading-tight`}
+              className={`${graceButton} block mt-2 leading-tight`}
               aria-label={`Usar dia de graça: ${graceLeft} de ${perMonth} neste mês`}
             >
               Usar dia de graça ({graceLeft} de {perMonth} neste mês)
             </button>
           )}
           {showNoGrace && (
-            <p className="mt-1.5 text-[10px] font-mono text-zinc-400 dark:text-zinc-500 leading-tight">
+            <p className="mt-2 text-[10px] font-mono text-zinc-400 dark:text-zinc-500 leading-tight">
               Sem dia de graça neste mês
             </p>
           )}
@@ -391,11 +380,11 @@ export const HabitItem: React.FC<HabitItemProps> = ({
   return (
     <div
       onClick={handleToggle}
-      className={`group relative flex flex-col gap-2 rounded-2xl border transition-all select-none min-h-[58px] ${bento ? (featured ? 'p-4 h-full' : 'p-3 h-full') : 'p-3.5 sm:p-4'} ${
+      className={`group relative flex flex-col gap-2 rounded-2xl border transition-all select-none min-h-[58px] ${bento ? (bentoFeatured ? 'p-4 h-full' : 'p-3 h-full') : 'p-3.5 sm:p-4'} ${
         avoid ? 'cursor-default' : 'cursor-pointer'
       } ${
         graced || slippedHere ? '!border-dashed' : ''
-      } ${weekDone ? 'opacity-60' : ''} ${
+      } ${featured && !isCompleted ? '!border-zinc-900 dark:!border-zinc-300' : ''} ${weekDone ? 'opacity-60' : ''} ${
         isCompleted
           ? 'bg-zinc-100/90 dark:bg-zinc-900/40 border-zinc-300/80 dark:border-zinc-800/60 opacity-90'
           : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs'
@@ -405,7 +394,7 @@ export const HabitItem: React.FC<HabitItemProps> = ({
         <>
           <div className="flex items-center gap-2">
             {checkEl}
-            {featured && iconEl}
+            {bentoFeatured && iconEl}
             <div className="flex-1" />
             {actionsEl}
           </div>

@@ -325,9 +325,9 @@ export const HabitModal: React.FC<HabitModalProps> = ({
               className="w-full min-h-[44px] flex items-center justify-between gap-3 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 text-left disabled:opacity-50"
             >
               <span>
-                <span className="block font-medium text-xs">Destacar no layout Bento</span>
+                <span className="block font-medium text-xs">Destacar (fixar no topo)</span>
                 <span className="block text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                  Ocupa a largura toda e ganha mais tamanho (até {MAX_FEATURED} hábitos)
+                  Fica no topo do Foco com marca de fixado; no layout Bento ocupa a largura toda (até {MAX_FEATURED} hábitos)
                 </span>
               </span>
               <span
