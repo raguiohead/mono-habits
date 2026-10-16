@@ -1,8 +1,10 @@
+import { sanitizeHabitDescription } from '@/lib/habitDescription';
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { type Habit, type LogsMap, type GracesMap, type SlipsMap, type TabType, type SyncStatus, type PomoSession } from '@/types/habit';
 import { useSettings } from '@/context/SettingsContext';
 import { GRACE_BLOCK_MESSAGE, addGrace, getGraceBlock, graceRemaining, isGraced, monthKeyOf, removeGrace } from '@/lib/graces';
 import { sortSessions } from '@/lib/pomo';
+import { sanitizeHabitCover, withSanitizedCover } from '@/lib/covers';
 import { normalizePeriod } from '@/lib/periods';
 import { applyWeeklyTargetChange } from '@/lib/weekly';
 import { addSlip, canSlipOn, normalizeKind, removeSlip } from '@/lib/avoid';
@@ -251,7 +253,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       (snapshot) => {
         const remoteHabits: Habit[] = [];
         snapshot.forEach((docSnap) => {
-          remoteHabits.push({ id: docSnap.id, ...(docSnap.data() as Omit<Habit, 'id'>) });
+          remoteHabits.push(withSanitizedCover({ id: docSnap.id, ...(docSnap.data() as Omit<Habit, 'id'>) }));
         });
         remoteHabits.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
 
@@ -484,12 +486,21 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Salvar Hábito (Criação ou Edição)
   const saveHabit = async (habitData: Omit<Habit, 'id' | 'createdAt'> & { id?: string; createdAt?: number }) => {
     const id = habitData.id || `habit-${Date.now()}`;
+    let quotaFailed = false;
     const newHabit: Habit = {
       id,
       title: habitData.title.trim(),
       category: habitData.category?.trim() || 'Geral',
       icon: habitData.icon || 'target',
       hideTitle: Boolean(habitData.hideTitle),
+      // Só grava quando há texto (sem undefined/vazio). O setDoc abaixo substitui o documento,
+      // então apagar a descrição a remove de fato do Firestore.
+      ...(sanitizeHabitDescription(habitData.description)
+        ? { description: sanitizeHabitDescription(habitData.description) }
+        : {}),
+      // Capa: só grava quando válida (sem undefined). Como o setDoc substitui o documento,
+      // remover a capa a apaga de fato do Firestore.
+      ...(sanitizeHabitCover(habitData.cover) ? { cover: sanitizeHabitCover(habitData.cover) } : {}),
       period: normalizePeriod(habitData.period), // o Firestore não aceita undefined
       // Só grava quando em destaque (sem undefined para o Firestore)
       ...(habitData.featured ? { featured: true } : {}),
@@ -511,6 +522,19 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         new Date()
       )
     };
+
+    // Cota do localStorage: se não couber com a capa, salva o hábito sem ela (nada mais é perdido)
+    if (newHabit.cover) {
+      const current = habitsRef.current;
+      const probe = current.some((h) => h.id === id)
+        ? current.map((h) => (h.id === id ? newHabit : h))
+        : [...current, newHabit];
+      if (!saveLocalHabits(probe)) {
+        delete newHabit.cover;
+        showToast('Sem espaço no aparelho para a imagem de capa. O hábito foi salvo sem capa.');
+        quotaFailed = true;
+      }
+    }
 
     // 1. Atualiza estado e localStorage (Local-First)
     setHabits((prev) => {
@@ -536,7 +560,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     }
 
-    showToast(habitData.id ? 'Hábito atualizado.' : 'Novo hábito criado.');
+    if (!quotaFailed) showToast(habitData.id ? 'Hábito atualizado.' : 'Novo hábito criado.');
   };
 
   // Grava os dias de graça (local primeiro, depois nuvem) para o dia alterado

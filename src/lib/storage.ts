@@ -5,6 +5,7 @@ import { sanitizeLockConfig, type LockConfig } from './lock';
 import { sanitizeGraces } from './graces';
 import { DEFAULT_DURATIONS, clampMinutes, type PomoDurations } from './pomo';
 import { DEFAULT_SETTINGS, sanitizeSettings, type AppSettings } from './settings';
+import { withSanitizedCover } from './covers';
 import { pruneDismissals, type GoalDismissals } from './pomoGoals';
 
 const HABITS_STORAGE_KEY = 'mono_habits_data_v1';
@@ -89,18 +90,21 @@ export function loadLocalHabits(): Habit[] {
     const raw = localStorage.getItem(HABITS_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.map(withSanitizedCover) : [];
   } catch (error) {
     console.error('Falha ao carregar hábitos do localStorage:', error);
     return [];
   }
 }
 
-export function saveLocalHabits(habits: Habit[]): void {
+/** Retorna false quando não coube (ex.: QuotaExceededError); o valor anterior permanece intacto */
+export function saveLocalHabits(habits: Habit[]): boolean {
   try {
     localStorage.setItem(HABITS_STORAGE_KEY, JSON.stringify(habits));
+    return true;
   } catch (error) {
     console.error('Falha ao salvar hábitos no localStorage:', error);
+    return false;
   }
 }
 

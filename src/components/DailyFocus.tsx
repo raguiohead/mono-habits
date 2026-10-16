@@ -76,21 +76,30 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
   // Layout bento: grade de 2 colunas, com os hábitos em destaque ocupando a largura toda
   const { settings } = useSettings();
   const bento = settings.focusLayout === 'bento';
+  const gallery = settings.focusLayout === 'gallery';
   const featured = useMemo(() => featuredIds(activeHabits), [activeHabits]);
-  const itemsClass = bento ? 'grid grid-cols-2 gap-2.5 items-stretch' : 'space-y-2.5';
+  // Galeria: 1 coluna abaixo de 480px, 2 a partir daí (o contêiner de 672px não comporta 3 cartões legíveis)
+  const itemsClass = bento
+    ? 'grid grid-cols-2 gap-2.5 items-stretch'
+    : gallery
+    ? 'grid grid-cols-1 min-[480px]:grid-cols-2 gap-2.5 items-stretch'
+    : 'space-y-2.5';
   const renderHabit = (habit: Habit) => {
     const item = (
       <HabitItem
         key={habit.id}
         habit={{ ...habit, featured: featured.has(habit.id) }}
-        variant={bento ? 'bento' : 'list'}
+        variant={bento ? 'bento' : gallery ? 'gallery' : 'list'}
         isCompleted={completedIds.includes(habit.id)}
         onToggle={() => toggleHabitCompletion(habit.id, selectedDateKey)}
         onEdit={() => onOpenEditModal(habit)}
       />
     );
-    return bento ? (
-      <div key={habit.id} className={featured.has(habit.id) ? 'col-span-2' : 'col-span-1 min-w-0'}>
+    return bento || gallery ? (
+      <div
+        key={habit.id}
+        className={featured.has(habit.id) ? (gallery ? 'min-[480px]:col-span-2' : 'col-span-2') : 'col-span-1 min-w-0'}
+      >
         {item}
       </div>
     ) : (

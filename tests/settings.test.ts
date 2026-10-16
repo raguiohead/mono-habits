@@ -29,6 +29,16 @@ describe('sanitizeSettings', () => {
   });
 });
 
+describe('focusLayout', () => {
+  it('aceita list, bento e gallery; desconhecido vira list', () => {
+    expect(sanitizeSettings({ focusLayout: 'gallery' }).focusLayout).toBe('gallery');
+    expect(sanitizeSettings({ focusLayout: 'bento' }).focusLayout).toBe('bento');
+    expect(sanitizeSettings({ focusLayout: 'list' }).focusLayout).toBe('list');
+    expect(sanitizeSettings({ focusLayout: 'masonry' }).focusLayout).toBe('list');
+    expect(sanitizeSettings({ focusLayout: 42 }).focusLayout).toBe('list');
+  });
+});
+
 describe('isValidTime', () => {
   it('valida o formato HH:MM', () => {
     expect(isValidTime('00:00')).toBe(true);
