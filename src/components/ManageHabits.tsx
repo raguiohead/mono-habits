@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Edit3, Archive, RotateCcw, Trash2, Eye, EyeOff } from 'lucide-react';
 import { useHabits } from '@/context/HabitsContext';
 import { HabitIcon } from './HabitIcon';
 import { DAYS_SHORT } from '@/lib/dateUtils';
 import { type Habit } from '@/types/habit';
 import { MILESTONES, getHabitMilestones } from '@/lib/milestones';
+import { categoryKey, getCategoryCounts } from '@/lib/categories';
 import { hasWeeklyTarget, targetForWeek, weekStartKey } from '@/lib/weekly';
 
 interface ManageHabitsProps {
@@ -43,9 +44,44 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
   const { habits, toggleArchiveHabit, toggleHideTitle } = useHabits();
   const [filter, setFilter] = useState<'active' | 'archived'>('active');
 
-  const filteredHabits = habits.filter((h) =>
-    filter === 'active' ? !h.archived : h.archived
+  // Filtro de categoria (somente sessão; null = "Todas")
+  const [category, setCategory] = useState<string | null>(null);
+  const chipsRef = useRef<HTMLDivElement>(null);
+
+  const tabHabits = useMemo(
+    () => habits.filter((h) => (filter === 'active' ? !h.archived : h.archived)),
+    [habits, filter]
   );
+  const categories = useMemo(() => getCategoryCounts(tabHabits), [tabHabits]);
+
+  // Categoria selecionada deixou de existir na aba atual: volta para "Todas"
+  useEffect(() => {
+    if (category !== null && !categories.some((c) => c.key === category)) {
+      setCategory(null);
+    }
+  }, [categories, category]);
+
+  const activeCategory = categories.some((c) => c.key === category) ? category : null;
+  const filteredHabits =
+    activeCategory === null ? tabHabits : tabHabits.filter((h) => categoryKey(h.category) === activeCategory);
+
+  const chipOptions: { key: string | null; label: string; count: number }[] = [
+    { key: null, label: 'Todas', count: tabHabits.length },
+    ...categories,
+  ];
+
+  const onChipKeyDown = (e: React.KeyboardEvent, index: number) => {
+    const last = chipOptions.length - 1;
+    let next = -1;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = index === last ? 0 : index + 1;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = index === 0 ? last : index - 1;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = last;
+    if (next < 0) return;
+    e.preventDefault();
+    setCategory(chipOptions[next].key);
+    chipsRef.current?.querySelectorAll<HTMLElement>('[role="radio"]')[next]?.focus();
+  };
 
   // Meta semanal vigente (ou a mais recente, se a vigente ainda não começou)
   const weeklyLabel = (habit: Habit) => {
@@ -97,8 +133,51 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
         </button>
       </div>
 
+      {/* Filtro por categoria */}
+      {categories.length > 0 && (
+        <div
+          ref={chipsRef}
+          role="radiogroup"
+          aria-label="Filtrar por categoria"
+          className="-mx-4 px-4 sm:mx-0 sm:px-0 flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {chipOptions.map((opt, i) => {
+            const selected = opt.key === activeCategory;
+            return (
+              <button
+                key={opt.key ?? '__all'}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                tabIndex={selected ? 0 : -1}
+                onClick={() => setCategory(opt.key)}
+                onKeyDown={(e) => onChipKeyDown(e, i)}
+                className={`shrink-0 min-h-[44px] px-3.5 rounded-full border text-xs font-medium whitespace-nowrap transition-colors ${
+                  selected
+                    ? 'bg-zinc-950 text-zinc-50 border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50 font-semibold'
+                    : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'
+                }`}
+              >
+                {opt.label} <span className="font-mono opacity-70">({opt.count})</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Lista de Hábitos */}
-      {filteredHabits.length === 0 ? (
+      {filteredHabits.length === 0 && activeCategory !== null ? (
+        <div className="p-8 sm:p-12 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-center space-y-3 bg-white dark:bg-zinc-900/40">
+          <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Nenhum hábito nesta categoria.</p>
+          <button
+            type="button"
+            onClick={() => setCategory(null)}
+            className="min-h-[44px] px-4 rounded-xl text-xs font-medium border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+          >
+            Limpar filtro
+          </button>
+        </div>
+      ) : filteredHabits.length === 0 ? (
         <div className="p-8 sm:p-12 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-center space-y-2 bg-white dark:bg-zinc-900/40">
           <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
             {filter === 'active' ? 'Nenhum hábito ativo no momento.' : 'Nenhum hábito arquivado.'}
