@@ -19,6 +19,7 @@ export interface Habit {
   category: string;
   icon: string;
   hideTitle?: boolean;
+  description?: string; // descrição curta opcional (até 140 caracteres); ausente = sem descrição
   featured?: boolean; // destaque no layout bento do Foco (no máximo 2 hábitos)
   period?: HabitPeriod; // ausente em dados antigos = 'any'
   kind?: HabitKind; // ausente em dados antigos = 'build'

@@ -1,3 +1,4 @@
+import { sanitizeHabitDescription } from '@/lib/habitDescription';
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { type Habit, type LogsMap, type GracesMap, type SlipsMap, type TabType, type SyncStatus, type PomoSession } from '@/types/habit';
 import { useSettings } from '@/context/SettingsContext';
@@ -490,6 +491,11 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       category: habitData.category?.trim() || 'Geral',
       icon: habitData.icon || 'target',
       hideTitle: Boolean(habitData.hideTitle),
+      // Só grava quando há texto (sem undefined/vazio). O setDoc abaixo substitui o documento,
+      // então apagar a descrição a remove de fato do Firestore.
+      ...(sanitizeHabitDescription(habitData.description)
+        ? { description: sanitizeHabitDescription(habitData.description) }
+        : {}),
       period: normalizePeriod(habitData.period), // o Firestore não aceita undefined
       // Só grava quando em destaque (sem undefined para o Firestore)
       ...(habitData.featured ? { featured: true } : {}),

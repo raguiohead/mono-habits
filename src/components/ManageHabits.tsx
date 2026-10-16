@@ -207,6 +207,9 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
                       habit.title
                     )}
                   </p>
+                  {habit.description && !habit.hideTitle && (
+                    <p className="text-xs text-zinc-500 line-clamp-1 mt-0.5">{habit.description}</p>
+                  )}
                   <div className="flex flex-wrap items-center gap-2 mt-1">
                     <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                       {habit.category}

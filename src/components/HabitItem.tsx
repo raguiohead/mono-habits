@@ -201,6 +201,15 @@ export const HabitItem: React.FC<HabitItemProps> = ({
               )}
             </p>
           </div>
+          {habit.description && !habit.hideTitle && (
+            <p
+              className={`mt-0.5 text-xs leading-snug break-words text-zinc-500 dark:text-zinc-400 ${
+                bentoFeatured ? 'line-clamp-2' : 'line-clamp-1'
+              } ${isCompleted ? 'opacity-60' : ''}`}
+            >
+              {habit.description}
+            </p>
+          )}
         </div>
   );
   const actionsEl = (

@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { getStoredTheme } from '@/lib/storage';
 
-export const PRIVACY_UPDATED_AT = '15 de outubro de 2026';
+export const PRIVACY_UPDATED_AT = '16 de outubro de 2026';
 export const PRIVACY_CONTACT_EMAIL = 'devguilherme@hotmail.com';
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
@@ -30,7 +30,7 @@ export const PrivacyContent: React.FC = () => (
     <Section title="2. Quais dados tratamos">
       <ul className="list-disc pl-4 space-y-1">
         <li>
-          <strong>Conteúdo que você cria:</strong> nomes, categorias, ícones e frequência dos
+          <strong>Conteúdo que você cria:</strong> nomes, descrições opcionais, categorias, ícones e frequência dos
           hábitos, metas diárias com o Pomo, check-ins diários, dias de graça usados, escorregões registrados em hábitos a evitar e sessões do Pomo (com o hábito
           vinculado, quando houver). Nomes de hábitos podem revelar informações
           sensíveis (por exemplo, de saúde); evite incluir dados que você não queira armazenar.

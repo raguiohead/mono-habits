@@ -23,6 +23,7 @@ import {
 } from '@/lib/pomoGoals';
 import { useHabits } from '@/context/HabitsContext';
 import { MAX_FEATURED, canFeature } from '@/lib/bento';
+import { HABIT_DESCRIPTION_MAX, sanitizeHabitDescription } from '@/lib/habitDescription';
 import { PERIOD_LABEL, normalizePeriod } from '@/lib/periods';
 
 interface HabitModalProps {
@@ -44,6 +45,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
 }) => {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
+  const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('target');
   const [hideTitle, setHideTitle] = useState(false);
   const [period, setPeriod] = useState<HabitPeriod>('any');
@@ -67,6 +69,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
     if (initialHabit) {
       setTitle(initialHabit.title);
       setCategory(initialHabit.category || '');
+      setDescription(initialHabit.description || '');
       setIcon(initialHabit.icon || 'target');
       setHideTitle(Boolean(initialHabit.hideTitle));
       setPeriod(normalizePeriod(initialHabit.period));
@@ -83,6 +86,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
     } else {
       setTitle('');
       setCategory('Saúde');
+      setDescription('');
       setIcon('target');
       setHideTitle(false);
       setFeatured(false);
@@ -120,6 +124,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       id: initialHabit ? initialHabit.id : undefined,
       title: title.trim(),
       category: category.trim() || 'Geral',
+      description: sanitizeHabitDescription(description),
       icon: icon || 'target',
       hideTitle,
       featured: featured && featuredAllowed,
@@ -247,6 +252,30 @@ export const HabitModal: React.FC<HabitModalProps> = ({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Descrição (opcional) */}
+          <div>
+            <label htmlFor="habit-description" className="block font-medium mb-1.5 text-zinc-700 dark:text-zinc-300">
+              Descrição (opcional)
+            </label>
+            <textarea
+              id="habit-description"
+              rows={2}
+              maxLength={HABIT_DESCRIPTION_MAX}
+              placeholder="Ex: 10 páginas antes de dormir"
+              aria-describedby="habit-description-count"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-950 dark:focus:ring-zinc-50 text-xs resize-none"
+            />
+            <p
+              id="habit-description-count"
+              aria-live="polite"
+              className="mt-1 text-right text-[11px] font-mono tabular-nums text-zinc-500 dark:text-zinc-400"
+            >
+              {description.length}/{HABIT_DESCRIPTION_MAX}
+            </p>
           </div>
 
           {/* Seletor de Ícones (16 ícones minimalistas) */}
