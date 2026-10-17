@@ -134,5 +134,16 @@ O projeto possui `vercel.json` configurado com cabeçalhos de segurança (CSP, H
 
 ---
 
+## 🔥 Deploy no Firebase Hosting
+
+O `firebase.json` já inclui a seção `hosting` (pasta `dist`, reescrita SPA, cabeçalhos de segurança e cache equivalentes aos do `vercel.json`):
+
+1. Instale a CLI: `npm i -g firebase-tools` e faça `firebase login`.
+2. Gere o build com as variáveis `VITE_FIREBASE_*` definidas: `npm run build`.
+3. Publique: `firebase deploy --only hosting` (o projeto padrão está em `.firebaserc`).
+4. O domínio `mono-habits.web.app` / `mono-habits.firebaseapp.com` já é autorizado para o login Google; para domínio próprio, adicione-o em **Authentication > Settings > Authorized domains**.
+
+---
+
 ## 📄 Licença
 Distribuído sob a licença MIT.
