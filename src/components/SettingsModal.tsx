@@ -13,7 +13,8 @@ import {
   Trash2,
   ArrowLeft,
   FileText,
-  LayoutGrid
+  LayoutGrid,
+  HelpCircle
 } from 'lucide-react';
 import { useHabits } from '@/context/HabitsContext';
 import { useSettings } from '@/context/SettingsContext';
@@ -26,6 +27,7 @@ import { ModalShell } from './ModalShell';
 import { BTN, BTN_PRIMARY, SectionTitle, Switch } from './settingsControls';
 import { LockSettings } from './LockSettings';
 import { PrivacyContent } from './PrivacyPolicy';
+import { HelpView } from './HelpView';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -94,7 +96,7 @@ type Confirm = 'device' | 'account' | null;
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { user, loginWithGoogle, logout, deleteAccount, clearDeviceData, showToast } = useHabits();
   const { settings, updateSettings } = useSettings();
-  const [view, setView] = useState<'main' | 'privacy'>('main');
+  const [view, setView] = useState<'main' | 'privacy' | 'help'>('main');
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [busy, setBusy] = useState(false);
   const [permission, setPermission] = useState(getPermission());
@@ -160,6 +162,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     setConfirm(null);
   };
 
+  if (view === 'help') {
+    return (
+      <ModalShell labelledBy="help-title" onClose={close} widthClass="sm:max-w-lg">
+        <div className="flex items-center gap-2 pb-3 mb-4 border-b border-zinc-200/80 dark:border-zinc-800">
+          <button type="button" onClick={() => setView('main')} className="w-11 h-11 -ml-2 flex items-center justify-center rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800" aria-label="Voltar às configurações">
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <h3 id="help-title" className="text-sm font-semibold tracking-tight flex-1">Ajuda</h3>
+          <button type="button" onClick={close} className="w-11 h-11 -mr-2 flex items-center justify-center rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800" aria-label="Fechar">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <HelpView />
+      </ModalShell>
+    );
+  }
+
   if (view === 'privacy') {
     return (
       <ModalShell labelledBy="privacy-title" onClose={close} widthClass="sm:max-w-lg">
@@ -217,7 +236,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   CONECTADO COM GOOGLE
                 </>
               ) : isFirebaseConfigured ? (
-                'NUVEM ANÔNIMA'
+                'MODO LOCAL'
               ) : (
                 'MODO LOCAL OFFLINE'
               )}
@@ -243,6 +262,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               Conectar com Google
             </button>
           )}
+        </section>
+
+        {/* Ajuda */}
+        <section className="space-y-3">
+          <SectionTitle icon={<HelpCircle className="w-3.5 h-3.5" />}>Ajuda</SectionTitle>
+          <button type="button" onClick={() => setView('help')} className={`${BTN} w-full justify-between`}>
+            <span className="flex items-center gap-2">
+              Perguntas e glossário
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-zinc-400 dark:border-zinc-600 text-zinc-600 dark:text-zinc-300">NOVO</span>
+            </span>
+            <span aria-hidden="true">›</span>
+          </button>
         </section>
 
         {/* Aparência */}
