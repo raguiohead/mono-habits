@@ -9,7 +9,7 @@ interface WelcomeModalProps {
 }
 
 const FEATURES = [
-  { icon: Calendar, title: 'Foco diário', text: 'Marque seus hábitos do dia e acompanhe ofensivas e consistência em 90 dias.' },
+  { icon: Calendar, title: 'Foco diário', text: 'Marque seus hábitos do dia e acompanhe ofensivas e consistência no Grafo.' },
   { icon: Timer, title: 'Pomo', text: 'Um temporizador de foco com pausas, integrado às suas estatísticas.' },
   { icon: EyeOff, title: 'Modo discreto', text: 'Oculte o nome de hábitos sensíveis e mostre só o ícone.' },
   { icon: Cloud, title: 'Local-first', text: 'Tudo funciona no seu aparelho. Conectar o Google é opcional e sincroniza entre dispositivos.' }

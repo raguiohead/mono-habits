@@ -35,7 +35,6 @@ import {
   isFirebaseConfigured,
   GoogleAuthProvider,
   signInWithPopup,
-  signInAnonymously,
   signOut,
   onAuthStateChanged,
   deleteUser,
@@ -205,19 +204,8 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     let isMounted = true;
 
-    const initAuth = async () => {
-      try {
-        if (!activeAuth.currentUser) {
-          await signInAnonymously(activeAuth);
-        }
-      } catch (err) {
-        console.warn('[Auth] Erro inicial:', err);
-        if (isMounted) setSyncState('offline');
-      }
-    };
-
-    initAuth();
-
+    // Sem login anônimo: o provedor está desligado no Firebase (cada visita gerava um erro 400).
+    // Sem conta Google, tudo fica no aparelho; a nuvem só entra depois do login.
     const unsubscribe = onAuthStateChanged(activeAuth, (currentUser) => {
       if (!isMounted) return;
       setUser(currentUser);
