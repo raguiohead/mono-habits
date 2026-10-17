@@ -50,6 +50,16 @@ export default defineConfig({
     port: 3000,
     allowedHosts: true
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Firebase é a maior dependência: em um chunk próprio, cacheado entre deploys do app
+        manualChunks(id) {
+          if (id.includes('node_modules/firebase') || id.includes('node_modules/@firebase')) return 'firebase';
+        }
+      }
+    }
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src')

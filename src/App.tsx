@@ -1,15 +1,10 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { HabitsProvider, useHabits } from '@/context/HabitsContext';
 import { PomoProvider } from '@/context/PomoContext';
 import { SettingsProvider } from '@/context/SettingsContext';
 import { LockProvider } from '@/context/LockContext';
 import { Header } from '@/components/Header';
 import { DailyFocus } from '@/components/DailyFocus';
-import { ConsistencyView } from '@/components/ConsistencyView';
-import { PomoView } from '@/components/PomoView';
-import { ManageHabits } from '@/components/ManageHabits';
-import { HabitModal } from '@/components/HabitModal';
-import { SettingsModal } from '@/components/SettingsModal';
 import { PrivacyPolicy, PRIVACY_UPDATED_AT } from '@/components/PrivacyPolicy';
 import { WelcomeModal } from '@/components/WelcomeModal';
 import { getAcceptedPolicyVersion, setAcceptedPolicyVersion } from '@/lib/storage';
@@ -22,6 +17,13 @@ import { BottomNav } from '@/components/BottomNav';
 import { Toast } from '@/components/Toast';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { type Habit } from '@/types/habit';
+
+// Telas e modais carregados sob demanda: a primeira abertura baixa só o Foco
+const ConsistencyView = lazy(() => import('@/components/ConsistencyView').then((m) => ({ default: m.ConsistencyView })));
+const PomoView = lazy(() => import('@/components/PomoView').then((m) => ({ default: m.PomoView })));
+const ManageHabits = lazy(() => import('@/components/ManageHabits').then((m) => ({ default: m.ManageHabits })));
+const HabitModal = lazy(() => import('@/components/HabitModal').then((m) => ({ default: m.HabitModal })));
+const SettingsModal = lazy(() => import('@/components/SettingsModal').then((m) => ({ default: m.SettingsModal })));
 
 const MainContent: React.FC = () => {
   const {
@@ -76,15 +78,17 @@ const MainContent: React.FC = () => {
                 onOpenEditModal={handleOpenEditModal}
               />
             )}
-            {activeTab === 'stats' && <ConsistencyView />}
-            {activeTab === 'pomo' && <PomoView />}
-            {activeTab === 'manage' && (
-              <ManageHabits
-                onOpenCreateModal={handleOpenCreateModal}
-                onOpenEditModal={handleOpenEditModal}
-                onConfirmDelete={handleConfirmDelete}
-              />
-            )}
+            <Suspense fallback={<SkeletonLoader />}>
+              {activeTab === 'stats' && <ConsistencyView />}
+              {activeTab === 'pomo' && <PomoView />}
+              {activeTab === 'manage' && (
+                <ManageHabits
+                  onOpenCreateModal={handleOpenCreateModal}
+                  onOpenEditModal={handleOpenEditModal}
+                  onConfirmDelete={handleConfirmDelete}
+                />
+              )}
+            </Suspense>
           </main>
         )}
       </div>
@@ -96,17 +100,17 @@ const MainContent: React.FC = () => {
       <Toast />
 
       {/* Modais */}
-      <HabitModal
-        isOpen={isHabitModalOpen}
-        onClose={() => setIsHabitModalOpen(false)}
-        onSave={saveHabit}
-        initialHabit={editingHabit}
-      />
-
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-      />
+      <Suspense fallback={null}>
+        {isHabitModalOpen && (
+          <HabitModal
+            isOpen={isHabitModalOpen}
+            onClose={() => setIsHabitModalOpen(false)}
+            onSave={saveHabit}
+            initialHabit={editingHabit}
+          />
+        )}
+        {isSettingsOpen && <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />}
+      </Suspense>
 
       <ReminderScheduler />
       <CompletionQueueSync />
