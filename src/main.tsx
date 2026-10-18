@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { Capacitor } from '@capacitor/core';
 import App from './App';
 import './index.css';
 
@@ -7,7 +8,8 @@ import './index.css';
 const Analytics = () => null;
 
 // Registro automático de Service Worker para PWA (offline-ready)
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+// Não roda no app nativo: o SW no esquema https://localhost do Capacitor conflita com o cache dos assets empacotados
+if ('serviceWorker' in navigator && import.meta.env.PROD && !Capacitor.isNativePlatform()) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch((err) => {
       console.warn('[PWA] Falha ao registrar Service Worker:', err);

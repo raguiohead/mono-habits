@@ -1,5 +1,6 @@
 import { sanitizeHabitDescription } from '@/lib/habitDescription';
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { type Habit, type LogsMap, type GracesMap, type SlipsMap, type TabType, type SyncStatus, type PomoSession } from '@/types/habit';
 import { useSettings } from '@/context/SettingsContext';
 import { GRACE_BLOCK_MESSAGE, addGrace, getGraceBlock, graceRemaining, isGraced, monthKeyOf, removeGrace } from '@/lib/graces';
@@ -39,6 +40,11 @@ import {
   onAuthStateChanged,
   deleteUser,
   reauthenticateWithPopup,
+  signInWithCredential,
+  reauthenticateWithCredential,
+  getNativeGoogleCredential,
+  isNativeSignInCanceled,
+  nativeSignOut,
   deleteAllCloudData,
   collection,
   doc,
@@ -405,13 +411,19 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      await signInWithPopup(auth, provider);
+      if (Capacitor.isNativePlatform()) {
+        await signInWithCredential(auth, await getNativeGoogleCredential());
+      } else {
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        await signInWithPopup(auth, provider);
+      }
       showToast('Conta Google conectada e sincronizada!');
     } catch (error: any) {
       console.error('[Google Auth Error]', error);
-      if (error.code === 'auth/popup-blocked') {
+      if (Capacitor.isNativePlatform() && isNativeSignInCanceled(error)) {
+        showToast('Login cancelado.');
+      } else if (error.code === 'auth/popup-blocked') {
         showToast('Pop-up bloqueado pelo navegador. Habilite pop-ups para fazer login.');
       } else if (error.code === 'auth/unauthorized-domain') {
         showToast('Domínio não autorizado no Firebase Console. Adicione este domínio nas configurações de autenticação.');
@@ -431,6 +443,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!auth) return;
     const wasGoogleAccount = Boolean(user && !user.isAnonymous);
     try {
+      if (Capacitor.isNativePlatform()) await nativeSignOut();
       await signOut(auth);
     } catch (err) {
       console.error('Erro ao sair:', err);
@@ -453,13 +466,21 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       // Contas Google exigem login recente para exclusão
       if (!currentUser.isAnonymous) {
-        await reauthenticateWithPopup(currentUser, new GoogleAuthProvider());
+        if (Capacitor.isNativePlatform()) {
+          await reauthenticateWithCredential(currentUser, await getNativeGoogleCredential());
+        } else {
+          await reauthenticateWithPopup(currentUser, new GoogleAuthProvider());
+        }
       }
       await deleteAllCloudData(currentUser.uid);
       await deleteUser(currentUser);
     } catch (error: any) {
       console.error('[Delete Account Error]', error);
-      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+      if (
+        error.code === 'auth/popup-closed-by-user' ||
+        error.code === 'auth/cancelled-popup-request' ||
+        (Capacitor.isNativePlatform() && isNativeSignInCanceled(error))
+      ) {
         showToast('Exclusão cancelada. Confirme sua conta Google para continuar.');
       } else if (error.code === 'auth/popup-blocked') {
         showToast('Pop-up bloqueado pelo navegador. Habilite pop-ups e tente novamente.');

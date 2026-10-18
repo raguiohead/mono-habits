@@ -124,7 +124,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({
       aria-labelledby="lock-title"
       className="fixed inset-0 z-[100] overflow-y-auto bg-[#FAFAFA] dark:bg-[#09090B] text-[#09090B] dark:text-[#FAFAFA]"
     >
-      <div className="min-h-full flex flex-col items-center justify-center gap-6 px-6 py-10">
+      <div className="min-h-full flex flex-col items-center justify-center gap-6 px-6 py-10 pt-[calc(2.5rem+env(safe-area-inset-top,0px))]">
         <LogoMark className="w-12 h-12" />
 
         <div className="text-center space-y-1">

@@ -63,7 +63,7 @@ const MainContent: React.FC = () => {
 
   return (
     <div className="min-h-screen transition-colors duration-200 font-sans selection:bg-zinc-500 selection:text-white bg-[#FAFAFA] dark:bg-[#09090B] text-[#09090B] dark:text-[#FAFAFA]">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-24 md:pb-12 space-y-6">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pt-[calc(1.5rem+env(safe-area-inset-top,0px))] sm:pt-[calc(2.5rem+env(safe-area-inset-top,0px))] pb-24 md:pb-12 space-y-6">
         {/* Cabeçalho */}
         <Header onOpenSettings={() => setIsSettingsOpen(true)} />
 
