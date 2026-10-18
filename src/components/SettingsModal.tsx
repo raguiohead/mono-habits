@@ -14,14 +14,15 @@ import {
   ArrowLeft,
   FileText,
   LayoutGrid,
-  HelpCircle
+  HelpCircle,
+  EyeOff
 } from 'lucide-react';
 import { useHabits } from '@/context/HabitsContext';
 import { useSettings } from '@/context/SettingsContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import { exportLocalData } from '@/lib/storage';
 import { getPermission, requestPermission, showSystemNotification } from '@/lib/notifications';
-import { isValidTime, type FocusLayout, type MotionPref, type TextSize } from '@/lib/settings';
+import { isValidTime, type DiscreetMode, type FocusLayout, type MotionPref, type TextSize } from '@/lib/settings';
 import { Avatar } from './Avatar';
 import { ModalShell } from './ModalShell';
 import { BTN, BTN_PRIMARY, SectionTitle, Switch } from './settingsControls';
@@ -77,6 +78,12 @@ const TEXT_OPTIONS: { value: TextSize; label: string }[] = [
   { value: 'normal', label: 'Normal' },
   { value: 'large', label: 'Grande' },
   { value: 'xlarge', label: 'Muito grande' }
+];
+
+const DISCREET_OPTIONS: { value: DiscreetMode; label: string }[] = [
+  { value: 'off', label: 'Desligado' },
+  { value: 'on', label: 'Ligado' },
+  { value: 'auto', label: 'Automático' }
 ];
 
 const LAYOUT_OPTIONS: { value: FocusLayout; label: string }[] = [
@@ -274,6 +281,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             </span>
             <span aria-hidden="true">›</span>
           </button>
+        </section>
+
+        {/* Modo discreto global */}
+        <section className="space-y-3">
+          <SectionTitle icon={<EyeOff className="w-3.5 h-3.5" />}>Modo discreto</SectionTitle>
+          <div className="space-y-1.5">
+            <Segmented label="Modo discreto" value={settings.discreetMode} options={DISCREET_OPTIONS} onChange={(discreetMode) => updateSettings({ discreetMode })} />
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+              Oculta os nomes (e descrições) de todos os hábitos, nas telas e nos avisos. O botão de olho no topo alterna na hora, até você recarregar o app.
+            </p>
+          </div>
+          {settings.discreetMode === 'auto' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label htmlFor="discreet-from" className="text-xs font-medium">Das</label>
+                <input
+                  id="discreet-from"
+                  type="time"
+                  value={settings.discreetFrom}
+                  onChange={(e) => isValidTime(e.target.value) && updateSettings({ discreetFrom: e.target.value })}
+                  className="w-full min-h-[44px] px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-xs font-mono"
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="discreet-to" className="text-xs font-medium">Até</label>
+                <input
+                  id="discreet-to"
+                  type="time"
+                  value={settings.discreetTo}
+                  onChange={(e) => isValidTime(e.target.value) && updateSettings({ discreetTo: e.target.value })}
+                  className="w-full min-h-[44px] px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-xs font-mono"
+                />
+              </div>
+              <p className="col-span-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+                A janela pode passar da meia-noite (ex.: 22:00 até 07:00). É reavaliada a cada 30 s e quando você volta ao app.
+              </p>
+            </div>
+          )}
         </section>
 
         {/* Aparência */}

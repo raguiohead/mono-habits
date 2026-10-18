@@ -5,7 +5,7 @@ import { HabitIcon } from './HabitIcon';
 import { HabitCover } from './HabitCover';
 import { coverOrFallback } from '@/lib/covers';
 import { useHabits } from '@/context/HabitsContext';
-import { useSettings } from '@/context/SettingsContext';
+import { useDiscreet, useSettings } from '@/context/SettingsContext';
 import { getGoalLock, goalLabel, goalProgress } from '@/lib/pomoGoals';
 import { getGraceBlock, graceRemaining, isGraced, monthKeyOf } from '@/lib/graces';
 import { isWeeklyOn, weekStartKey, weekStatus } from '@/lib/weekly';
@@ -32,6 +32,9 @@ const HabitItemBase: React.FC<HabitItemProps> = ({
   const { logs, graces, slips, toggleHideTitle, pomoSessions, selectedDateKey, applyGrace, undoGrace, markSlip, undoSlip } =
     useHabits();
   const { settings } = useSettings();
+  // Título oculto pela escolha do hábito (olho) ou pelo modo discreto global
+  const { isHidden } = useDiscreet();
+  const hidden = isHidden(habit);
 
   // Hábito a evitar: não tem check-in. O estado vem dos escorregões, e a ação é "Escorreguei"
   const avoid = habit.kind === 'avoid';
@@ -109,7 +112,7 @@ const HabitItemBase: React.FC<HabitItemProps> = ({
   // Variante "galeria": capa em destaque no topo do cartão; conteúdo logo abaixo (contraste AA garantido)
   const gallery = variant === 'gallery';
   // Nome acessível dos botões: nunca vaza o título quando está oculto
-  const label = habit.hideTitle ? 'Hábito oculto' : habit.title;
+  const label = hidden ? 'Hábito oculto' : habit.title;
   // Alvos de toque de 44px na célula (36px + área expandida), sem estourar a célula com texto grande
   const actionBtn = bento || gallery
     ? "relative w-9 h-9 flex items-center justify-center before:absolute before:-inset-1 before:content-['']"
@@ -198,7 +201,7 @@ const HabitItemBase: React.FC<HabitItemProps> = ({
                   : 'text-zinc-900 dark:text-zinc-100'
               }`}
             >
-              {habit.hideTitle ? (
+              {hidden ? (
                 <span className="font-mono tracking-widest text-xs opacity-60">•••••••••••</span>
               ) : (
                 habit.title
@@ -208,7 +211,7 @@ const HabitItemBase: React.FC<HabitItemProps> = ({
               )}
             </p>
           </div>
-          {habit.description && !habit.hideTitle && (
+          {habit.description && !hidden && (
             <p
               className={`mt-0.5 text-xs leading-snug break-words text-zinc-500 dark:text-zinc-400 ${
                 bentoFeatured ? 'line-clamp-2' : 'line-clamp-1'

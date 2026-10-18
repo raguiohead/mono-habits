@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { BarChart2, Flame, Target, Award, Calendar, ChevronLeft, ChevronRight, Share2, Sparkles } from 'lucide-react';
 import { useHabits } from '@/context/HabitsContext';
+import { useDiscreet } from '@/context/SettingsContext';
 import { ShareModal, type ShareCardOption } from './ShareModal';
 import { buildWrappedCards, buildWrappedStats, dataSpanDays, isWrappedAvailable, toGridDays, wrappedPeriod } from '@/lib/shareImage';
 import {
@@ -66,6 +67,7 @@ function bucketLabel(bucket: GraphBucket, index: number, total: number, range: G
 
 export const ConsistencyView: React.FC = () => {
   const { activeHabits, logs, graces, slips, pomoSessions, darkMode, setSelectedDateKey, setActiveTab } = useHabits();
+  const { active: discreet } = useDiscreet();
   const [shareMode, setShareMode] = useState<'grid' | 'wrapped' | null>(null);
   const [range, setRange] = useState<GraphRange>(() => loadRange());
   const [selectedCell, setSelectedCell] = useState<HeatmapDay | null>(null);
@@ -87,8 +89,8 @@ export const ConsistencyView: React.FC = () => {
     return created.length > 0 ? created.reduce((a, b) => (a < b ? a : b)) : currentWeekKey;
   }, [activeHabits, currentWeekKey]);
   const summary = useMemo(
-    () => buildWeeklySummary(activeHabits, logs, weekStart(parseDateKey(summaryWeekKey)), { slips, today }),
-    [activeHabits, logs, slips, summaryWeekKey, today]
+    () => buildWeeklySummary(activeHabits, logs, weekStart(parseDateKey(summaryWeekKey)), { slips, today, discreet }),
+    [activeHabits, logs, slips, summaryWeekKey, today, discreet]
   );
   const rangeInfo = RANGES.find((r) => r.value === range)!;
 

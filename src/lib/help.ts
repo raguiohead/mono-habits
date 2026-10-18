@@ -59,7 +59,7 @@ export const FAQ: FaqItem[] = [
     category: 'habitos',
     question: 'Como esconder o nome de um hábito?',
     answer:
-      'Toque no ícone de olho no cartão do hábito, ou ative "Modo Discreto" ao editá-lo. O nome fica oculto na tela e nas notificações, e só o ícone e a categoria aparecem.'
+      'Toque no ícone de olho no cartão do hábito, ou ative "Modo Discreto" ao editá-lo. O nome fica oculto na tela e nas notificações, e só o ícone e a categoria aparecem. Para ocultar todos de uma vez, use o botão de olho no topo ou ligue o Modo discreto em Configurações (ele também pode ser automático por horário, como das 22:00 às 07:00).'
   },
   {
     id: 'destaque',
@@ -127,7 +127,7 @@ export const GLOSSARY: GlossaryItem[] = [
   { term: 'Hábito a evitar', definition: 'Lógica invertida: o dia é "feito" até você registrar um escorregão.' },
   { term: 'Escorregão', definition: 'O registro de que você fez o que queria evitar naquele dia.' },
   { term: 'Marco', definition: 'Nível da melhor ofensiva: 7, 30, 100 e 365.' },
-  { term: 'Modo Discreto', definition: 'Oculta o nome do hábito na tela e nas notificações.' },
+  { term: 'Modo Discreto', definition: 'Oculta o nome (e a descrição) dos hábitos: de um hábito, ou de todos, de forma manual ou automática por horário.' },
   { term: 'Destaque', definition: 'Hábito fixado no topo do Foco (até 2).' },
   { term: 'Meta do Pomo', definition: 'Tempo ou sessões de foco exigidos antes de poder marcar o hábito.' },
   { term: 'Local-first', definition: 'Seus dados ficam primeiro no aparelho; a nuvem é opcional.' }

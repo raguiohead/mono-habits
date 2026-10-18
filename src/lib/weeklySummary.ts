@@ -37,6 +37,8 @@ export interface WeeklySummaryOptions {
   slips?: SlipsMap;
   /** Hoje (padrão: agora). Hoje não entra nas contas: só dias encerrados */
   today?: Date;
+  /** Modo discreto global: nenhum título de hábito aparece nas frases */
+  discreet?: boolean;
 }
 
 // Dia da semana no plural, com o artigo: "às terças", "aos sábados"
@@ -110,14 +112,14 @@ function tallyRange(
 const pct = (t: Tally): number | null => (t.scheduled > 0 ? Math.round((t.done / t.scheduled) * 100) : null);
 
 /** "um hábito oculto" quando o título está oculto (Modo Discreto) */
-function habitName(h: Habit): string {
-  return h.hideTitle ? 'um hábito oculto' : h.title;
+function habitName(h: Habit, discreet = false): string {
+  return h.hideTitle || discreet ? 'um hábito oculto' : h.title;
 }
 
-function joinNames(habits: Habit[]): string {
-  const hidden = habits.filter((h) => h.hideTitle).length;
+function joinNames(habits: Habit[], discreet = false): string {
+  const hidden = habits.filter((h) => h.hideTitle || discreet).length;
   if (hidden === habits.length) return hidden === 1 ? 'um hábito oculto' : 'dois hábitos ocultos';
-  return habits.map(habitName).join(' e ');
+  return habits.map((h) => habitName(h, discreet)).join(' e ');
 }
 
 /** Frase 1: taxa da semana vs semana anterior */
@@ -245,7 +247,7 @@ export function buildWeeklySummary(
     const lowest = Math.min(...candidates.map((c) => c.rate));
     const weakest = candidates.filter((c) => c.rate === lowest);
     if (lowest < 100 && weakest.length <= 2) {
-      const names = joinNames(weakest.map((c) => c.habit));
+      const names = joinNames(weakest.map((c) => c.habit), options.discreet);
       sentences.push(
         weakest.length === 1
           ? `Seu hábito mais fraco é ${names} (${lowest}%).`
