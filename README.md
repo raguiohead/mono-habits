@@ -143,6 +143,16 @@ O `firebase.json` já inclui a seção `hosting` (pasta `dist`, reescrita SPA, c
 3. Publique: `firebase deploy --only hosting` (o projeto padrão está em `.firebaserc`).
 4. O domínio `mono-habits.web.app` / `mono-habits.firebaseapp.com` já é autorizado para o login Google; para domínio próprio, adicione-o em **Authentication > Settings > Authorized domains**.
 
+### Deploy automático (GitHub Actions)
+
+O workflow `.github/workflows/firebase-hosting.yml` roda os testes, gera o build e publica no Firebase Hosting a cada push na `main` (e manualmente em **Actions > Deploy no Firebase Hosting > Run workflow**). Configuração única:
+
+1. Na máquina onde a CLI está logada, rode `firebase init hosting:github` (aceite o repositório `raguiohead/mono-habits`; **responda "No" para build/deploy em pull requests e para o workflow de merge**, pois já existe um). A CLI cria a conta de serviço e grava o segredo `FIREBASE_SERVICE_ACCOUNT_MONO_HABITS` no GitHub.
+2. Alternativa manual: no Google Cloud Console > IAM > Contas de serviço, crie uma conta com os papéis **Firebase Hosting Admin** e **Service Account User**, gere uma chave JSON e cole o conteúdo em GitHub > Settings > Secrets and variables > Actions, com o nome `FIREBASE_SERVICE_ACCOUNT_MONO_HABITS`.
+3. Opcional: cadastre os segredos `VITE_FIREBASE_*` (mesmos nomes da Vercel). Sem eles, valem os padrões de `src/lib/firebase.ts`.
+
+Nunca commite a chave JSON. Se vazar, exclua-a no Google Cloud Console e gere outra.
+
 ---
 
 ## 📄 Licença
