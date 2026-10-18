@@ -20,15 +20,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
-          # Sem 'cache: npm': ele exige package-lock.json, que este repositório não tem
+          cache: npm
 
-      # Sem package-lock.json no repositório: npm install (e não npm ci)
-      - run: npm install --no-audit --no-fund
+      - run: npm ci
 
       - name: Testes
         run: npm test

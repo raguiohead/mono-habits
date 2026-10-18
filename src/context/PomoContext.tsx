@@ -1,8 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { type Habit, type PomoKind, type PomoSession } from '@/types/habit';
 import { useHabits } from '@/context/HabitsContext';
 import { useSettings } from '@/context/SettingsContext';
-import { showSystemNotification } from '@/lib/notifications';
+import {
+  cancelNativePomoNotification,
+  scheduleNativePomoNotification,
+  showSystemNotification
+} from '@/lib/notifications';
 import {
   loadPomoSettings,
   savePomoSettings,
@@ -119,14 +124,38 @@ export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       const message = `${KIND_LABEL[t.kind]} concluído${wasAway ? ' enquanto você estava fora' : ''}. Próximo: ${KIND_LABEL[next.kind].toLowerCase()}.`;
       showToast(message);
-      // Com o app em segundo plano, o toast não é visto: avisa pelo sistema
-      if (appSettings.pomoAlerts && document.visibilityState === 'hidden') {
+      if (Capacitor.isNativePlatform()) {
+        // No nativo a notificação já foi agendada para endsAt: se o app está visível, cancela e remove a entregue (toast/som bastam);
+        // se está oculto, não cancela nada para não apagar a notificação recém-entregue pelo Android.
+        if (document.visibilityState === 'visible') {
+          void cancelNativePomoNotification(true);
+        }
+      } else if (appSettings.pomoAlerts && document.visibilityState === 'hidden') {
+        // Com o app em segundo plano na web, o toast não é visto: avisa pelo sistema
         void showSystemNotification('MONO // HABITS · Pomo', message, 'pomo-finished');
       }
       finishingRef.current = false;
     },
     [savePomoSession, settings.cycleCount, showToast, updateSettings, updateTimer, appSettings.sound, appSettings.vibration, appSettings.pomoAlerts]
   );
+
+  // No nativo, agenda a notificação de fim do Pomo ao iniciar/retomar; cancela se o usuário desligar pomoAlerts.
+  // O cancelamento em pause/stop/selectKind é feito explicitamente nas ações para que finish() com o app oculto não apague a notificação entregue.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    if (!appSettings.pomoAlerts) {
+      void cancelNativePomoNotification();
+      return;
+    }
+    if (timer?.status === 'running' && timer.endsAt > Date.now()) {
+      const next = getNextKind(
+        timer.kind,
+        timer.kind === 'focus' ? settings.cycleCount + 1 : settings.cycleCount
+      );
+      const message = `${KIND_LABEL[timer.kind]} concluído. Próximo: ${KIND_LABEL[next.kind].toLowerCase()}.`;
+      void scheduleNativePomoNotification(timer.endsAt, message);
+    }
+  }, [timer?.status, timer?.endsAt, timer?.kind, settings.cycleCount, appSettings.pomoAlerts]);
 
   // Tick enquanto estiver rodando
   useEffect(() => {
@@ -235,6 +264,7 @@ export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const pause = useCallback(() => {
     if (timer?.status !== 'running') return;
+    if (Capacitor.isNativePlatform()) void cancelNativePomoNotification();
     updateTimer({ ...timer, status: 'paused', remainingMs: Math.max(0, timer.endsAt - Date.now()) });
   }, [timer, updateTimer]);
 
@@ -248,6 +278,7 @@ export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Interrompe e registra o tempo realmente decorrido
   const stop = useCallback(() => {
     if (!timer) return;
+    if (Capacitor.isNativePlatform()) void cancelNativePomoNotification(true);
     const t = Date.now();
     const remaining = timer.status === 'running' ? Math.max(0, timer.endsAt - t) : timer.remainingMs;
     const elapsed = timer.plannedMs - remaining;
@@ -261,6 +292,7 @@ export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const selectKind = useCallback(
     (next: PomoKind) => {
       if (timer) return;
+      if (Capacitor.isNativePlatform()) void cancelNativePomoNotification();
       updateSettings((prev) => ({ ...prev, kind: next }));
     },
     [timer, updateSettings]
