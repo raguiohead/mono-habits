@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BarChart2, Flame, Target, Award, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BarChart2, Flame, Target, Award, Calendar, ChevronLeft, ChevronRight, Share2, Sparkles } from 'lucide-react';
 import { useHabits } from '@/context/HabitsContext';
+import { ShareModal, type ShareCardOption } from './ShareModal';
+import { buildWrappedCards, buildWrappedStats, dataSpanDays, isWrappedAvailable, toGridDays, wrappedPeriod } from '@/lib/shareImage';
 import {
   generateHeatmapDays,
   calculateRetentionRate,
@@ -63,7 +65,8 @@ function bucketLabel(bucket: GraphBucket, index: number, total: number, range: G
 }
 
 export const ConsistencyView: React.FC = () => {
-  const { activeHabits, logs, graces, slips, darkMode, setSelectedDateKey, setActiveTab } = useHabits();
+  const { activeHabits, logs, graces, slips, pomoSessions, darkMode, setSelectedDateKey, setActiveTab } = useHabits();
+  const [shareMode, setShareMode] = useState<'grid' | 'wrapped' | null>(null);
   const [range, setRange] = useState<GraphRange>(() => loadRange());
   const [selectedCell, setSelectedCell] = useState<HeatmapDay | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -118,6 +121,50 @@ export const ConsistencyView: React.FC = () => {
     () => getBestCurrentStreak(activeHabits, logs, today, graces, slips),
     [activeHabits, logs, today, graces, slips]
   );
+
+  // Compartilhar: cartão da grade do período escolhido (sem nomes de hábitos)
+  const theme = darkMode ? 'dark' : 'light';
+  const gridOptions = useMemo<ShareCardOption[]>(
+    () => [
+      {
+        label: rangeInfo.long,
+        filename: `mono-habits-${range}d.png`,
+        build: (habitCount) => ({
+          kind: 'grid',
+          theme,
+          title: rangeInfo.long,
+          days: toGridDays(days),
+          rate: periodRate,
+          bestStreak,
+          ...(habitCount !== undefined ? { habitCount } : {})
+        })
+      }
+    ],
+    [rangeInfo.long, range, theme, days, periodRate, bestStreak]
+  );
+
+  // Wrapped: em dezembro ou com 60+ dias de dados
+  const wrappedAvailable = useMemo(
+    () => isWrappedAvailable(today, dataSpanDays(activeHabits, logs, today)),
+    [activeHabits, logs, today]
+  );
+  const wrappedOptions = useMemo<ShareCardOption[]>(() => {
+    if (shareMode !== 'wrapped') return [];
+    const period = wrappedPeriod(today);
+    // Só os dias com dados: antes do primeiro hábito não há o que contar
+    const spanDays = Math.min(period.days, dataSpanDays(activeHabits, logs, today) + 1);
+    const yearDays = generateHeatmapDays(activeHabits, logs, today, spanDays, graces, slips);
+    const stats = buildWrappedStats(yearDays, pomoSessions, bestStreak);
+    const rate = calculateRetentionRate(yearDays, spanDays);
+    // Fora de dezembro o rótulo diz quantos dias de dados de fato entraram
+    const periodLabel = today.getMonth() === 11 || spanDays >= 365 ? period.label : `Últimos ${spanDays} dias`;
+    const labels = ['Ano', 'Números', 'Dia forte'];
+    return labels.map((label, i) => ({
+      label,
+      filename: `mono-habits-wrapped-${i + 1}.png`,
+      build: (habitCount: number | undefined) => buildWrappedCards(theme, periodLabel, yearDays, rate, stats, habitCount)[i]
+    }));
+  }, [shareMode, today, activeHabits, logs, graces, slips, pomoSessions, bestStreak, theme]);
 
   const buckets = useMemo(() => aggregateBuckets(days, getBucketSize(range)), [days, range]);
   const weeks = useMemo(() => toWeeks(days), [days]);
@@ -348,6 +395,15 @@ export const ConsistencyView: React.FC = () => {
             </p>
           </div>
 
+          <button
+            type="button"
+            onClick={() => setShareMode('grid')}
+            className="min-h-[44px] px-3 flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-xs font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 dark:focus-visible:ring-zinc-50"
+          >
+            <Share2 className="w-3.5 h-3.5" aria-hidden="true" />
+            Compartilhar
+          </button>
+
           {/* Legenda Monocromática */}
           <div className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-500 dark:text-zinc-400">
             <span>Menos</span>
@@ -416,6 +472,35 @@ export const ConsistencyView: React.FC = () => {
           )}
         </div>
       </div>
+
+      {wrappedAvailable && (
+        <section
+          aria-label="Seu ano"
+          className="p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-xs flex items-center justify-between gap-3"
+        >
+          <div>
+            <h3 className="text-sm font-semibold tracking-tight">Seu ano em hábitos</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+              3 cartões para compartilhar: grade, números e seu dia mais forte.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShareMode('wrapped')}
+            className="min-h-[44px] px-3 shrink-0 flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-xs font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 dark:focus-visible:ring-zinc-50"
+          >
+            <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+            Ver
+          </button>
+        </section>
+      )}
+
+      {shareMode === 'grid' && (
+        <ShareModal title="Compartilhar grade" options={gridOptions} habitCount={activeHabits.length} onClose={() => setShareMode(null)} />
+      )}
+      {shareMode === 'wrapped' && wrappedOptions.length > 0 && (
+        <ShareModal title="Seu ano em hábitos" options={wrappedOptions} habitCount={activeHabits.length} onClose={() => setShareMode(null)} />
+      )}
     </div>
   );
 };
