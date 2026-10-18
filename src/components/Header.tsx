@@ -1,9 +1,10 @@
 import React from 'react';
-import { Sun, Moon, Settings } from 'lucide-react';
+import { Sun, Moon, Settings, Eye, EyeOff } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { LogoMark } from './LogoMark';
 import { type TabType } from '@/types/habit';
 import { useHabits } from '@/context/HabitsContext';
+import { useDiscreet } from '@/context/SettingsContext';
 
 const TABS: { id: TabType; label: string }[] = [
   { id: 'today', label: 'Foco Diário' },
@@ -26,6 +27,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings }) => {
     setActiveTab
   } = useHabits();
 
+  const { active: discreet, toggle: toggleDiscreet } = useDiscreet();
+
   const syncDot =
     syncState === 'synced' && user
       ? 'bg-zinc-950 dark:bg-zinc-50'
@@ -37,22 +40,32 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings }) => {
 
   return (
     <header className="flex flex-col gap-5 pb-6 border-b border-zinc-200 dark:border-zinc-800/80">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-2 sm:gap-4">
         {/* Marca Monocromática */}
-        <div className="flex items-center gap-3">
-          <LogoMark className="w-9 h-9" />
-          <div>
-            <h1 className="text-base font-semibold tracking-tight leading-none">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <LogoMark className="w-8 h-8 sm:w-9 sm:h-9 shrink-0" />
+          <div className="min-w-0">
+            <h1 className="text-[15px] sm:text-base font-semibold tracking-tight leading-none whitespace-nowrap">
               MONO // HABITS
             </h1>
-            <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mt-1">
+            <p className="hidden sm:block text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mt-1">
               Consistência Diária Sem Distrações
             </p>
           </div>
         </div>
 
         {/* Ações Topo: Status Nuvem + Tema */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={toggleDiscreet}
+            aria-pressed={discreet}
+            className="w-11 h-11 flex items-center justify-center rounded-full border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            title={discreet ? 'Modo discreto ligado: mostrar títulos' : 'Modo discreto desligado: ocultar títulos'}
+            aria-label={discreet ? 'Desativar modo discreto' : 'Ativar modo discreto'}
+          >
+            {discreet ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
           <button
             onClick={onOpenSettings}
             className="relative w-11 h-11 flex items-center justify-center rounded-full hover:opacity-80 transition-opacity"

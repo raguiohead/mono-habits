@@ -1,6 +1,7 @@
 export type TextSize = 'normal' | 'large' | 'xlarge';
 export type FocusLayout = 'list' | 'bento' | 'gallery';
 export const FOCUS_LAYOUTS: readonly FocusLayout[] = ['list', 'bento', 'gallery'];
+export type DiscreetMode = 'off' | 'on' | 'auto';
 export type MotionPref = 'system' | 'reduce' | 'full';
 
 export interface AppSettings {
@@ -10,6 +11,10 @@ export interface AppSettings {
   highContrast: boolean;
   // Aparência
   focusLayout: FocusLayout; // lista de hábitos do Foco
+  // Modo discreto global: oculta os títulos de todos os hábitos (e as descrições)
+  discreetMode: DiscreetMode;
+  discreetFrom: string; // 'HH:MM', início da janela do modo automático (pode cruzar a meia-noite)
+  discreetTo: string; // 'HH:MM'
   // Ofensiva
   graceDaysPerMonth: 0 | 1 | 2; // dias de graça por hábito, por mês
   // Notificações
@@ -26,6 +31,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   motion: 'system',
   highContrast: false,
   focusLayout: 'list',
+  discreetMode: 'off',
+  discreetFrom: '22:00',
+  discreetTo: '07:00',
   graceDaysPerMonth: 1,
   reminderEnabled: false,
   reminderTime: '20:00',
@@ -54,6 +62,9 @@ export function sanitizeSettings(raw: unknown): AppSettings {
     motion: p.motion === 'reduce' || p.motion === 'full' ? p.motion : 'system',
     highContrast: bool(p.highContrast, d.highContrast),
     focusLayout: FOCUS_LAYOUTS.includes(p.focusLayout as FocusLayout) ? (p.focusLayout as FocusLayout) : 'list',
+    discreetMode: p.discreetMode === 'on' || p.discreetMode === 'auto' ? p.discreetMode : 'off',
+    discreetFrom: isValidTime(p.discreetFrom) ? p.discreetFrom : d.discreetFrom,
+    discreetTo: isValidTime(p.discreetTo) ? p.discreetTo : d.discreetTo,
     graceDaysPerMonth: p.graceDaysPerMonth === 0 || p.graceDaysPerMonth === 2 ? p.graceDaysPerMonth : 1,
     reminderEnabled: bool(p.reminderEnabled, d.reminderEnabled),
     reminderTime: isValidTime(p.reminderTime) ? p.reminderTime : d.reminderTime,

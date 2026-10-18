@@ -15,6 +15,7 @@ import {
   summarizeDay
 } from '@/lib/pomo';
 import { goalLabel, goalProgress } from '@/lib/pomoGoals';
+import { useDiscreet } from '@/context/SettingsContext';
 import { type Habit, type PomoGoal, type PomoKind } from '@/types/habit';
 
 const KINDS: PomoKind[] = ['focus', 'short', 'long'];
@@ -22,13 +23,14 @@ const RING_RADIUS = 104;
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 
 /** Nome do hábito sem vazar o título quando ele está oculto (Modo Discreto) */
-const habitName = (h: Habit) => (h.hideTitle ? `••••• (${h.category})` : h.title);
+const habitName = (h: Habit, hidden: boolean) => (hidden ? `••••• (${h.category})` : h.title);
 
 const goalTarget = (goal: PomoGoal) =>
   goal.type === 'minutes' ? `${goal.target} min/dia` : `${goal.target} ${goal.target === 1 ? 'foco' : 'focos'}/dia`;
 
 export const PomoView: React.FC = () => {
   const { pomoSessions, activeHabits } = useHabits();
+  const { isHidden } = useDiscreet();
   const {
     kind,
     durations,
@@ -147,7 +149,7 @@ export const PomoView: React.FC = () => {
           const linked = activeHabits.find((h) => h.id === linkedHabitId);
           return linked?.pomoGoal ? (
             <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 text-center">
-              Vinculado a {habitName(linked)} · meta {goalTarget(linked.pomoGoal)}
+              Vinculado a {habitName(linked, isHidden(linked))} · meta {goalTarget(linked.pomoGoal)}
             </p>
           ) : null;
         })()}
@@ -225,7 +227,7 @@ export const PomoView: React.FC = () => {
               <option value="">Sem vínculo</option>
               {linkableHabits.map((h) => (
                 <option key={h.id} value={h.id}>
-                  {habitName(h)} — {goalLabel(goalProgress(h.pomoGoal!, h.id, pomoSessions, todayKey))}
+                  {habitName(h, isHidden(h))} — {goalLabel(goalProgress(h.pomoGoal!, h.id, pomoSessions, todayKey))}
                 </option>
               ))}
             </select>

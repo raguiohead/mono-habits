@@ -1,10 +1,16 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { loadSettings, saveSettings } from '@/lib/storage';
 import { TEXT_SIZE_PX, type AppSettings } from '@/lib/settings';
+import { displayTitle, isDiscreetNow, isHabitHidden } from '@/lib/discreet';
+import type { Habit } from '@/types/habit';
 
 interface SettingsContextType {
   settings: AppSettings;
   updateSettings: (patch: Partial<AppSettings>) => void;
+  /** Modo discreto global ativo agora (configuração, janela automática ou alternância rápida) */
+  discreet: boolean;
+  /** Alterna o modo discreto até recarregar o app ou mudar a configuração */
+  toggleDiscreet: () => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -12,7 +18,51 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
 
+  // Reavalia a janela automática a cada 30 s e ao voltar o foco para o app
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const tick = () => setNow(new Date());
+    const id = window.setInterval(tick, 30_000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') tick();
+    };
+    window.addEventListener('focus', tick);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener('focus', tick);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
+
+  // Alternância rápida (botão de olho / ?discreet=1): vale até recarregar ou mudar a configuração
+  const [override, setOverride] = useState<boolean | null>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('discreet') === '1' ? true : null;
+    } catch {
+      return null;
+    }
+  });
+  useEffect(() => {
+    // Tira ?discreet=1 da URL para o parâmetro não ficar salvo em favoritos/histórico
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('discreet')) {
+        url.searchParams.delete('discreet');
+        window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+      }
+    } catch {
+      /* sem history */
+    }
+  }, []);
+
+  const configured = useMemo(() => isDiscreetNow(settings, now), [settings, now]);
+  const discreet = override ?? configured;
+  const toggleDiscreet = useCallback(() => setOverride(!(override ?? configured)), [override, configured]);
+
   const updateSettings = useCallback((patch: Partial<AppSettings>) => {
+    if ('discreetMode' in patch || 'discreetFrom' in patch || 'discreetTo' in patch) setOverride(null);
     setSettings((prev) => {
       const next = { ...prev, ...patch };
       saveSettings(next);
@@ -30,7 +80,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [settings.textSize, settings.highContrast, settings.motion]);
 
   return (
-    <SettingsContext.Provider value={{ settings, updateSettings }}>{children}</SettingsContext.Provider>
+    <SettingsContext.Provider value={{ settings, updateSettings, discreet, toggleDiscreet }}>{children}</SettingsContext.Provider>
   );
 };
 
@@ -40,4 +90,15 @@ export const useSettings = (): SettingsContextType => {
     throw new Error('useSettings deve ser utilizado dentro de um SettingsProvider');
   }
   return context;
+};
+
+/** Modo discreto global: use `titleOf(habit)` e `isHidden(habit)` em vez de habit.title / habit.hideTitle */
+export const useDiscreet = () => {
+  const { discreet, toggleDiscreet } = useSettings();
+  return {
+    active: discreet,
+    toggle: toggleDiscreet,
+    isHidden: (habit: Pick<Habit, 'hideTitle'>) => isHabitHidden(habit, discreet),
+    titleOf: (habit: Pick<Habit, 'title' | 'hideTitle'>, hidden?: string) => displayTitle(habit, discreet, hidden)
+  };
 };

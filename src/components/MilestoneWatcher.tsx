@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useHabits } from '@/context/HabitsContext';
+import { useDiscreet } from '@/context/SettingsContext';
 import { diffMilestones, getHabitMilestones, milestoneUnit, seedSeen, type MilestonesSeen } from '@/lib/milestones';
 import { loadMilestonesSeen, saveMilestonesSeen } from '@/lib/storage';
 
@@ -9,6 +10,7 @@ import { loadMilestonesSeen, saveMilestonesSeen } from '@/lib/storage';
  */
 export const MilestoneWatcher: React.FC = () => {
   const { habits, logs, graces, slips, initialLoaded, showToast } = useHabits();
+  const { active: discreet } = useDiscreet();
   const seenRef = useRef<MilestonesSeen | null>(null);
 
   useEffect(() => {
@@ -36,8 +38,8 @@ export const MilestoneWatcher: React.FC = () => {
     if (!habit) return;
     const label = `${top.milestone} ${milestoneUnit(habit, top.milestone, now)}`;
     // Pequeno atraso para não ser engolido pelo aviso da própria marcação
-    window.setTimeout(() => showToast(habit.hideTitle ? label : `${label} · ${habit.title}`), 600);
-  }, [habits, logs, graces, slips, initialLoaded, showToast]);
+    window.setTimeout(() => showToast(habit.hideTitle || discreet ? label : `${label} · ${habit.title}`), 600);
+  }, [habits, logs, graces, slips, initialLoaded, showToast, discreet]);
 
   return null;
 };

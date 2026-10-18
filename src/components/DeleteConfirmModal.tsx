@@ -1,4 +1,5 @@
 import React from 'react';
+import { useDiscreet } from '@/context/SettingsContext';
 import { type Habit } from '@/types/habit';
 import { ModalShell } from './ModalShell';
 
@@ -13,6 +14,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   onClose,
   onConfirm
 }) => {
+  const { isHidden } = useDiscreet();
   if (!habit) return null;
 
   return (
@@ -21,7 +23,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
         <h3 id="delete-title" className="text-sm font-semibold tracking-tight">Excluir Hábito</h3>
         <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
           Tem certeza de que deseja excluir permanentemente o hábito{' '}
-          <strong className="text-zinc-950 dark:text-zinc-50">"{habit.title}"</strong>? Esta ação
+          <strong className="text-zinc-950 dark:text-zinc-50">{isHidden(habit) ? 'este hábito' : `"${habit.title}"`}</strong>? Esta ação
           não poderá ser desfeita.
         </p>
 
