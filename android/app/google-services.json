@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "423856759350",
+    "project_id": "mono-habits",
+    "storage_bucket": "mono-habits.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:423856759350:android:69c189e812fba9d3906e97",
+        "android_client_info": {
+          "package_name": "com.raguiohead.monohabits"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "423856759350-77ileu357hro48g1aksj67e03pnkm5kf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.raguiohead.monohabits",
+            "certificate_hash": "ae250b3ec9fb870ebb1a90b5bc97e36fd52d8b25"
+          }
+        },
+        {
+          "client_id": "423856759350-pgh3hnujmc75cg6maojd3p3f9oampnvi.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA7s7Ayej459L7JSwlLPxLVaqMlxBkio-k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "423856759350-pgh3hnujmc75cg6maojd3p3f9oampnvi.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

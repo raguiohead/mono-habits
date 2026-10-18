@@ -1,14 +1,22 @@
+import { Capacitor } from '@capacitor/core';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import {
   getAuth,
+  initializeAuth,
+  indexedDBLocalPersistence,
   GoogleAuthProvider,
   signInWithPopup,
   signInWithRedirect,
+  signInWithCredential,
+  reauthenticateWithCredential,
+  linkWithCredential,
   signOut,
   onAuthStateChanged,
   deleteUser,
   reauthenticateWithPopup,
   type Auth,
+  type AuthCredential,
   type User
 } from 'firebase/auth';
 import {
@@ -48,7 +56,10 @@ let db: Firestore | null = null;
 if (isFirebaseConfigured) {
   try {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-    auth = getAuth(app);
+    // No nativo, getAuth carregaria o resolver de popup/redirect, que trava na WebView
+    auth = Capacitor.isNativePlatform()
+      ? initializeAuth(app, { persistence: indexedDBLocalPersistence })
+      : getAuth(app);
     db = getFirestore(app);
   } catch (error) {
     console.warn('[Firebase] Falha na inicialização:', error);
@@ -64,6 +75,29 @@ export async function deleteAllCloudData(uid: string): Promise<void> {
   }
 }
 
+/** Login Google nativo (plugin Capacitor) → credencial do Firebase JS SDK. Lança se o usuário cancelar. */
+export async function getNativeGoogleCredential(): Promise<AuthCredential> {
+  const result = await FirebaseAuthentication.signInWithGoogle();
+  const idToken = result.credential?.idToken;
+  if (!idToken) throw new Error('Google não retornou idToken.');
+  return GoogleAuthProvider.credential(idToken, result.credential?.accessToken);
+}
+
+/** Detecta cancelamento do seletor de contas nativo (as mensagens variam entre versões do Android) */
+export function isNativeSignInCanceled(error: unknown): boolean {
+  const e = error as { code?: string; message?: string } | null;
+  return /cancel/i.test(`${e?.code ?? ''} ${e?.message ?? ''}`);
+}
+
+/** Encerra a sessão nativa do plugin (ignora erro) */
+export async function nativeSignOut(): Promise<void> {
+  try {
+    await FirebaseAuthentication.signOut();
+  } catch {
+    // sem sessão nativa: nada a fazer
+  }
+}
+
 export {
   app,
   auth,
@@ -71,6 +105,9 @@ export {
   GoogleAuthProvider,
   signInWithPopup,
   signInWithRedirect,
+  signInWithCredential,
+  reauthenticateWithCredential,
+  linkWithCredential,
   signOut,
   onAuthStateChanged,
   deleteUser,

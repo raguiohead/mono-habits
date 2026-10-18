@@ -1,0 +1,61 @@
+# Compila o APK Android de debug a cada push nas branches main e feat/android (e manualmente via workflow_dispatch).
+# O runner ubuntu-latest já contém o Android SDK pré-instalado em ANDROID_HOME.
+name: Build do APK Android
+
+on:
+  push:
+    branches: [main, feat/android]
+  workflow_dispatch:
+
+concurrency:
+  group: build-android-apk
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: npm ci
+
+      - name: Build web e sincronização com Capacitor
+        run: npm run cap:sync
+        env:
+          # Opcionais: se não existirem como segredos, valem os padrões de src/lib/firebase.ts
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+
+      - run: chmod +x android/gradlew
+
+      - name: Compilar APK Debug
+        run: ./gradlew assembleDebug
+        working-directory: android
+
+      - name: Salvar artefato do APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mono-habits-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
