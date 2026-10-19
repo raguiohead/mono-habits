@@ -26,6 +26,7 @@ import {
   normalizePomoGoal
 } from '@/lib/pomoGoals';
 import { useHabits } from '@/context/HabitsContext';
+import { useDiscreet } from '@/context/SettingsContext';
 import { MAX_FEATURED, canFeature } from '@/lib/bento';
 import { HABIT_DESCRIPTION_MAX, sanitizeHabitDescription } from '@/lib/habitDescription';
 import { PERIOD_LABEL, normalizePeriod } from '@/lib/periods';
@@ -61,6 +62,8 @@ export const HabitModal: React.FC<HabitModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverJob = useRef(0); // invalida processamentos pendentes ao reabrir/fechar
   const { habits } = useHabits();
+  // Modo discreto global: o nome e a descrição aparecem mascarados enquanto se edita
+  const { active: discreet } = useDiscreet();
   // Destaque do layout bento: limite de MAX_FEATURED (editar um já destacado não conta contra si)
   const featuredAllowed = canFeature(habits, initialHabit?.id) || Boolean(initialHabit?.featured);
   // Construir (marcar quando fizer) ou evitar (registrar só quando escorregar)
@@ -273,7 +276,8 @@ export const HabitModal: React.FC<HabitModalProps> = ({
               Nome do Hábito *
             </label>
             <input
-              type="text"
+              type={discreet ? 'password' : 'text'}
+              autoComplete="off"
               required
               maxLength={80}
               placeholder="Ex: Meditação matinal (15 min)"
@@ -326,6 +330,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
               placeholder="Ex: 10 páginas antes de dormir"
               aria-describedby="habit-description-count"
               value={description}
+              style={discreet ? ({ WebkitTextSecurity: 'disc' } as React.CSSProperties) : undefined}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-950 dark:focus:ring-zinc-50 text-xs resize-none"
             />

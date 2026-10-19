@@ -5,6 +5,7 @@ import { HabitIcon } from './HabitIcon';
 import { HabitCover } from './HabitCover';
 import { DAYS_SHORT } from '@/lib/dateUtils';
 import { type Habit } from '@/types/habit';
+import { useDiscreet } from '@/context/SettingsContext';
 import { MILESTONES, getHabitMilestones } from '@/lib/milestones';
 import { categoryKey, getCategoryCounts } from '@/lib/categories';
 import { hasWeeklyTarget, targetForWeek, weekStartKey } from '@/lib/weekly';
@@ -43,6 +44,7 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
   onConfirmDelete
 }) => {
   const { habits, toggleArchiveHabit, toggleHideTitle } = useHabits();
+  const { isHidden } = useDiscreet();
   const [filter, setFilter] = useState<'active' | 'archived'>('active');
 
   // Filtro de categoria (somente sessão; null = "Todas")
@@ -206,13 +208,13 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-medium tracking-tight truncate text-zinc-900 dark:text-zinc-100">
-                    {habit.hideTitle ? (
+                    {isHidden(habit) ? (
                       <span className="font-mono tracking-widest text-xs opacity-60">•••••••••••</span>
                     ) : (
                       habit.title
                     )}
                   </p>
-                  {habit.description && !habit.hideTitle && (
+                  {habit.description && !isHidden(habit) && (
                     <p className="text-xs text-zinc-500 line-clamp-1 mt-0.5">{habit.description}</p>
                   )}
                   <div className="flex flex-wrap items-center gap-2 mt-1">

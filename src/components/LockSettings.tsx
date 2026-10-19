@@ -123,7 +123,7 @@ export const LockSettings: React.FC = () => {
   };
 
   return (
-    <section className="space-y-3" aria-labelledby="lock-settings-title">
+    <section className="space-y-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/40 p-4" aria-labelledby="lock-settings-title">
       <span id="lock-settings-title" className="sr-only">
         Privacidade: bloqueio do app
       </span>

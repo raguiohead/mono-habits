@@ -120,7 +120,9 @@ interface HabitsContextType {
 const HabitsContext = createContext<HabitsContextType | undefined>(undefined);
 
 export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { settings } = useSettings();
+  const { settings, discreet } = useSettings();
+  const discreetRef = useRef(discreet);
+  discreetRef.current = discreet;
   const [darkMode, setDarkMode] = useState<boolean>(() => getStoredTheme());
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
@@ -839,7 +841,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!should) return;
     if (await completeHabit(habit.id, dateKey)) {
       showToast(
-        habit.hideTitle
+        habit.hideTitle || discreetRef.current
           ? 'Meta do Pomo atingida: hábito concluído.'
           : `Meta do Pomo atingida: ${habit.title} concluído.`
       );
