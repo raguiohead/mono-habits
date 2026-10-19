@@ -7,6 +7,13 @@ def appVersion = (packageJson.version ?: "1.0.0").toString()
 def versionParts = appVersion.tokenize('.').collect { it.toInteger() }
 def appVersionCode = (versionParts[0] * 10000) + (versionParts[1] * 100) + versionParts[2]
 
+def releaseStoreFile = System.getenv("ANDROID_KEYSTORE_PATH") ?: (project.findProperty("MONO_RELEASE_STORE_FILE") ?: "")
+def releaseStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: (project.findProperty("MONO_RELEASE_STORE_PASSWORD") ?: "")
+def releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: (project.findProperty("MONO_RELEASE_KEY_ALIAS") ?: "")
+def releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD") ?: (project.findProperty("MONO_RELEASE_KEY_PASSWORD") ?: "")
+
+def hasReleaseSigning = releaseStoreFile && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+
 android {
     namespace = "com.raguiohead.monohabits"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -23,22 +30,35 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
-    // Keystore de debug versionado de propósito para APKs locais e do CI terem a mesma assinatura (não usar para release).
     signingConfigs {
-        debug {
-            storeFile file('mono-debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
+        release {
+            if (hasReleaseSigning) {
+                storeFile file(releaseStoreFile)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
         }
     }
     buildTypes {
         debug {
-            signingConfig signingConfigs.debug
+            // Utiliza automaticamente a chave de debug padrão (~/.android/debug.keystore)
         }
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+gradle.taskGraph.whenReady { taskGraph ->
+    if (taskGraph.allTasks.any { it.name in ['packageRelease', 'assembleRelease'] }) {
+        if (!hasReleaseSigning) {
+            throw new GradleException("Credenciais de assinatura de RELEASE ausentes! Configure MONO_RELEASE_* no ~/.gradle/gradle.properties ou variáveis de ambiente ANDROID_KEYSTORE_*.")
+        }
+        if (!file(releaseStoreFile).exists()) {
+            throw new GradleException("Arquivo de keystore de RELEASE não encontrado em: ${releaseStoreFile}")
         }
     }
 }

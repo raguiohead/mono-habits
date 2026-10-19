@@ -1,0 +1,44 @@
+# Executa os testes de regras de segurança do Firestore com o emulador local em Pull Requests e workflow_dispatch.
+name: Testes de Regras do Firestore
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: firestore-rules-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test-rules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Cache do Emulador Firestore
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/firebase/emulators
+          key: ${{ runner.os }}-firestore-emulator-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-firestore-emulator-
+
+      - run: npm ci
+
+      - name: Executar testes de regras do Firestore
+        run: npm run test:rules

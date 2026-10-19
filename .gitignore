@@ -39,4 +39,6 @@ android/.gradle/
 android/local.properties
 local.properties
 *.apk
+*.jks
+*.keystore
 

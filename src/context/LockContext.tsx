@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { loadLockConfig, saveLockConfig, clearLocalUserData } from '@/lib/storage';
+import { loadLockConfig, saveLockConfig } from '@/lib/storage';
+import { wipeDeviceDataAndReload } from '@/lib/firebase';
 import {
   createPinRecord,
   isLockExpired,
@@ -121,10 +122,9 @@ export const LockProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return ok;
   }, [persist]);
 
-  /** "Esqueci o PIN": apaga os dados deste dispositivo (inclui o bloqueio) e recarrega */
+  /** "Esqueci o PIN": encerra a sessão Firebase/nativa, apaga IndexedDB + localStorage (inclui o bloqueio) e recarrega */
   const eraseDeviceData = useCallback(() => {
-    clearLocalUserData();
-    window.location.reload();
+    void wipeDeviceDataAndReload();
   }, []);
 
   const setupPin = useCallback(

@@ -21,7 +21,10 @@ import {
   setStoredTheme,
   loadLocalPomoSessions,
   saveLocalPomoSessions,
-  clearLocalUserData,
+  clearLocalAccountData,
+  getLastSyncedUid,
+  setLastSyncedUid,
+  evaluateInitialCloudSync,
   loadGoalDismissals,
   saveGoalDismissals,
   loadLocalGraces,
@@ -46,6 +49,7 @@ import {
   isNativeSignInCanceled,
   nativeSignOut,
   deleteAllCloudData,
+  wipeDeviceDataAndReload,
   collection,
   doc,
   setDoc,
@@ -231,6 +235,22 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   }, []);
 
+  const syncUnsubsRef = useRef<Array<() => void>>([]);
+  const suppressSyncRef = useRef(false);
+  const [syncEpoch, setSyncEpoch] = useState(0);
+
+  const stopSyncListeners = useCallback(() => {
+    suppressSyncRef.current = true;
+    for (const unsub of syncUnsubsRef.current) {
+      try {
+        unsub();
+      } catch {
+        /* ignora */
+      }
+    }
+    syncUnsubsRef.current = [];
+  }, []);
+
   // Sincronização em tempo real com Firestore quando autenticado
   useEffect(() => {
     const activeDb = db;
@@ -240,37 +260,177 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
-    const habitsRef = collection(activeDb, 'artifacts', appId, 'users', user.uid, 'habits');
-    const logsRef = collection(activeDb, 'artifacts', appId, 'users', user.uid, 'logs');
+    suppressSyncRef.current = false;
+    const lastSyncedUid = getLastSyncedUid();
+    const isDifferentAccount = lastSyncedUid !== null && lastSyncedUid !== user.uid;
+
+    if (isDifferentAccount) {
+      // M1: o aparelho tinha dados de outra conta: descarta antes de sincronizar a nova
+      clearLocalAccountData();
+      setHabits([]);
+      setLogs({});
+      setGraces({});
+      setSlips({});
+      setPomoSessions([]);
+      goalDismissalsRef.current = {};
+    }
+
+    const initialLocal = isDifferentAccount
+      ? {
+          habits: [] as Habit[],
+          logs: {} as LogsMap,
+          graces: {} as GracesMap,
+          slips: {} as SlipsMap,
+          pomoSessions: [] as PomoSession[]
+        }
+      : {
+          habits: loadLocalHabits(),
+          logs: loadLocalLogs(),
+          graces: loadLocalGraces(),
+          slips: loadLocalSlips(),
+          pomoSessions: loadLocalPomoSessions()
+        };
+
+    const pendingInitial: Partial<{
+      habits: Habit[];
+      logs: LogsMap;
+      graces: GracesMap;
+      slips: SlipsMap;
+      pomoSessions: PomoSession[];
+    }> = {};
+    let initialResolved = false;
+
+    const applyRemoteHabits = (remoteHabits: Habit[]) => {
+      setHabits(remoteHabits);
+      saveLocalHabits(remoteHabits);
+    };
+    const applyRemoteLogs = (remoteLogs: LogsMap) => {
+      setLogs(remoteLogs);
+      saveLocalLogs(remoteLogs);
+    };
+    const applyRemoteGraces = (remoteGraces: GracesMap) => {
+      setGraces(remoteGraces);
+      saveLocalGraces(remoteGraces);
+    };
+    const applyRemoteSlips = (remoteSlips: SlipsMap) => {
+      setSlips(remoteSlips);
+      saveLocalSlips(remoteSlips);
+    };
+    const applyRemotePomo = (remotePomo: PomoSession[]) => {
+      const sorted = sortSessions(remotePomo);
+      setPomoSessions(sorted);
+      saveLocalPomoSessions(sorted);
+    };
+
+    const tryResolveInitialSync = () => {
+      if (initialResolved || suppressSyncRef.current) return;
+      if (
+        !pendingInitial.habits ||
+        !pendingInitial.logs ||
+        !pendingInitial.graces ||
+        !pendingInitial.slips ||
+        !pendingInitial.pomoSessions
+      ) {
+        return;
+      }
+      initialResolved = true;
+
+      const decision = evaluateInitialCloudSync({
+        currentUid: user.uid,
+        lastSyncedUid,
+        remoteCounts: {
+          habits: pendingInitial.habits.length,
+          logs: Object.keys(pendingInitial.logs).length,
+          graces: Object.keys(pendingInitial.graces).length,
+          slips: Object.keys(pendingInitial.slips).length,
+          pomoSessions: pendingInitial.pomoSessions.length
+        },
+        localCounts: {
+          habits: initialLocal.habits.length,
+          logs: Object.keys(initialLocal.logs).length,
+          graces: Object.keys(initialLocal.graces).length,
+          slips: Object.keys(initialLocal.slips).length,
+          pomoSessions: initialLocal.pomoSessions.length
+        }
+      });
+
+      setLastSyncedUid(user.uid);
+
+      if (decision.migrateLocalToCloud) {
+        // Conta nova/vazia como um todo e dados locais pertencem a este aparelho/usuário: migra uma única vez
+        initialLocal.habits.forEach((h) => {
+          const docRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'habits', h.id);
+          setDoc(docRef, h).catch((err) => console.warn('[Firestore] Falha ao migrar hábito:', err));
+        });
+        Object.entries(initialLocal.logs).forEach(([dateKey, ids]) => {
+          const logRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'logs', dateKey);
+          setDoc(logRef, { date: dateKey, completedHabitIds: ids, updatedAt: Date.now() }).catch((err) =>
+            console.warn('[Firestore] Falha ao migrar log:', err)
+          );
+        });
+        Object.entries(initialLocal.graces).forEach(([dateKey, ids]) => {
+          if (!ids.length) return;
+          const gRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'graces', dateKey);
+          setDoc(gRef, { date: dateKey, habitIds: ids, updatedAt: Date.now() }).catch((err) =>
+            console.warn('[Firestore] Falha ao migrar dia de graça:', err)
+          );
+        });
+        Object.entries(initialLocal.slips).forEach(([dateKey, ids]) => {
+          if (!ids.length) return;
+          const sRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'slips', dateKey);
+          setDoc(sRef, { date: dateKey, habitIds: ids, updatedAt: Date.now() }).catch((err) =>
+            console.warn('[Firestore] Falha ao migrar escorregão:', err)
+          );
+        });
+        initialLocal.pomoSessions.forEach((s) => {
+          const sRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'pomoSessions', s.id);
+          setDoc(sRef, s).catch((err) => console.warn('[Firestore] Falha ao migrar sessão Pomo:', err));
+        });
+        setHabits(initialLocal.habits);
+        setLogs(initialLocal.logs);
+        setGraces(initialLocal.graces);
+        setSlips(initialLocal.slips);
+        setPomoSessions(sortSessions(initialLocal.pomoSessions));
+      } else {
+        applyRemoteHabits(pendingInitial.habits);
+        applyRemoteLogs(pendingInitial.logs);
+        applyRemoteGraces(pendingInitial.graces);
+        applyRemoteSlips(pendingInitial.slips);
+        applyRemotePomo(pendingInitial.pomoSessions);
+      }
+
+      setInitialLoaded(true);
+      setSyncState('synced');
+    };
+
+    const habitsCol = collection(activeDb, 'artifacts', appId, 'users', user.uid, 'habits');
+    const logsCol = collection(activeDb, 'artifacts', appId, 'users', user.uid, 'logs');
+    const slipsCol = collection(activeDb, 'artifacts', appId, 'users', user.uid, 'slips');
+    const gracesCol = collection(activeDb, 'artifacts', appId, 'users', user.uid, 'graces');
+    const pomoCol = collection(activeDb, 'artifacts', appId, 'users', user.uid, 'pomoSessions');
 
     // Listener de Hábitos
     const unsubHabits = onSnapshot(
-      habitsRef,
+      habitsCol,
       (snapshot) => {
+        if (suppressSyncRef.current) return;
         const remoteHabits: Habit[] = [];
         snapshot.forEach((docSnap) => {
           remoteHabits.push(withSanitizedCover({ id: docSnap.id, ...(docSnap.data() as Omit<Habit, 'id'>) }));
         });
         remoteHabits.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
 
-        // Se a nuvem estiver vazia, mas houver dados locais, migra automaticamente
-        const localHabits = loadLocalHabits();
-        if (remoteHabits.length === 0 && localHabits.length > 0) {
-          localHabits.forEach(async (h) => {
-            const docRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'habits', h.id);
-            await setDoc(docRef, h);
-          });
-          setHabits(localHabits);
-        } else {
-          setHabits(remoteHabits);
-          saveLocalHabits(remoteHabits);
+        if (!initialResolved) {
+          pendingInitial.habits = remoteHabits;
+          tryResolveInitialSync();
+          return;
         }
-
-        setInitialLoaded(true);
+        applyRemoteHabits(remoteHabits);
         setSyncState('synced');
       },
       (error) => {
         console.warn('[Firestore] Erro ao carregar hábitos:', error);
+        initialResolved = true;
         setSyncState('offline');
         setInitialLoaded(true);
       }
@@ -278,8 +438,9 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     // Listener de Logs
     const unsubLogs = onSnapshot(
-      logsRef,
+      logsCol,
       (snapshot) => {
+        if (suppressSyncRef.current) return;
         const remoteLogs: LogsMap = {};
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
@@ -288,123 +449,102 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             : [];
         });
 
-        const localLogs = loadLocalLogs();
-        if (Object.keys(remoteLogs).length === 0 && Object.keys(localLogs).length > 0) {
-          Object.entries(localLogs).forEach(async ([dateKey, ids]) => {
-            const logRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'logs', dateKey);
-            await setDoc(logRef, { date: dateKey, completedHabitIds: ids, updatedAt: Date.now() });
-          });
-          setLogs(localLogs);
-        } else {
-          setLogs(remoteLogs);
-          saveLocalLogs(remoteLogs);
+        if (!initialResolved) {
+          pendingInitial.logs = remoteLogs;
+          tryResolveInitialSync();
+          return;
         }
-
+        applyRemoteLogs(remoteLogs);
         setSyncState('synced');
       },
       (error) => {
         console.warn('[Firestore] Erro ao carregar logs:', error);
+        initialResolved = true;
         setSyncState('offline');
+        setInitialLoaded(true);
       }
     );
 
     // Listener de Escorregões (um documento por dia, como os logs)
-    const slipsCol = collection(activeDb, 'artifacts', appId, 'users', user.uid, 'slips');
     const unsubSlips = onSnapshot(
       slipsCol,
       (snapshot) => {
+        if (suppressSyncRef.current) return;
         const remote: SlipsMap = {};
         snapshot.forEach((docSnap) => {
           const ids = docSnap.data().habitIds;
           if (Array.isArray(ids) && ids.length > 0) remote[docSnap.id] = ids;
         });
 
-        const local = loadLocalSlips();
-        if (Object.keys(remote).length === 0 && Object.keys(local).length > 0) {
-          Object.entries(local).forEach(([dateKey, ids]) => {
-            const sRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'slips', dateKey);
-            setDoc(sRef, { date: dateKey, habitIds: ids, updatedAt: Date.now() }).catch((err) =>
-              console.warn('[Firestore] Falha ao enviar escorregão:', err)
-            );
-          });
-          setSlips(local);
-        } else {
-          setSlips(remote);
-          saveLocalSlips(remote);
+        if (!initialResolved) {
+          pendingInitial.slips = remote;
+          tryResolveInitialSync();
+          return;
         }
+        applyRemoteSlips(remote);
       },
       (error) => {
         console.warn('[Firestore] Erro ao carregar escorregões:', error);
+        initialResolved = true;
+        setInitialLoaded(true);
       }
     );
 
     // Listener de Dias de Graça (um documento por dia, como os logs)
-    const gracesCol = collection(activeDb, 'artifacts', appId, 'users', user.uid, 'graces');
     const unsubGraces = onSnapshot(
       gracesCol,
       (snapshot) => {
+        if (suppressSyncRef.current) return;
         const remote: GracesMap = {};
         snapshot.forEach((docSnap) => {
           const ids = docSnap.data().habitIds;
           if (Array.isArray(ids) && ids.length > 0) remote[docSnap.id] = ids;
         });
 
-        const local = loadLocalGraces();
-        if (Object.keys(remote).length === 0 && Object.keys(local).length > 0) {
-          Object.entries(local).forEach(([dateKey, ids]) => {
-            const gRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'graces', dateKey);
-            setDoc(gRef, { date: dateKey, habitIds: ids, updatedAt: Date.now() }).catch((err) =>
-              console.warn('[Firestore] Falha ao enviar dia de graça:', err)
-            );
-          });
-          setGraces(local);
-        } else {
-          setGraces(remote);
-          saveLocalGraces(remote);
+        if (!initialResolved) {
+          pendingInitial.graces = remote;
+          tryResolveInitialSync();
+          return;
         }
+        applyRemoteGraces(remote);
       },
       (error) => {
         console.warn('[Firestore] Erro ao carregar dias de graça:', error);
+        initialResolved = true;
+        setInitialLoaded(true);
       }
     );
 
-    // Listener de Sessões Pomo
-    const pomoRef = collection(activeDb, 'artifacts', appId, 'users', user.uid, 'pomoSessions');
+    // Listener de Sessões Pomo (M1: não envia sessões locais a cada snapshot; apenas na migração inicial de conta vazia)
     const unsubPomo = onSnapshot(
-      pomoRef,
+      pomoCol,
       (snapshot) => {
+        if (suppressSyncRef.current) return;
         const remote: PomoSession[] = [];
         snapshot.forEach((docSnap) => {
           remote.push({ id: docSnap.id, ...(docSnap.data() as Omit<PomoSession, 'id'>) });
         });
 
-        const local = loadLocalPomoSessions();
-        const remoteIds = new Set(remote.map((s) => s.id));
-        // Envia para a nuvem sessões feitas offline que ainda não existem lá
-        local
-          .filter((s) => !remoteIds.has(s.id))
-          .forEach((s) => {
-            const sRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'pomoSessions', s.id);
-            setDoc(sRef, s).catch((err) => console.warn('[Firestore] Falha ao enviar sessão Pomo:', err));
-          });
-
-        const merged = sortSessions([...remote, ...local.filter((s) => !remoteIds.has(s.id))]);
-        setPomoSessions(merged);
-        saveLocalPomoSessions(merged);
+        if (!initialResolved) {
+          pendingInitial.pomoSessions = remote;
+          tryResolveInitialSync();
+          return;
+        }
+        applyRemotePomo(remote);
       },
       (error) => {
         console.warn('[Firestore] Erro ao carregar sessões Pomo:', error);
+        initialResolved = true;
+        setInitialLoaded(true);
       }
     );
 
+    syncUnsubsRef.current = [unsubHabits, unsubLogs, unsubGraces, unsubSlips, unsubPomo];
+
     return () => {
-      unsubHabits();
-      unsubLogs();
-      unsubGraces();
-      unsubSlips();
-      unsubPomo();
+      stopSyncListeners();
     };
-  }, [user]);
+  }, [user, syncEpoch, stopSyncListeners]);
 
   // Login com Conta Google
   const loginWithGoogle = async () => {
@@ -435,49 +575,48 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  // Apaga dados locais e recarrega para zerar todo o estado em memória (hábitos, Pomo, timers)
-  const clearDeviceData = () => {
-    clearLocalUserData();
-    window.location.reload();
-  };
+  // Apaga sessão (Firebase + IndexedDB), dados locais e recarrega para zerar todo o estado em memória
+  const clearDeviceData = useCallback(() => {
+    stopSyncListeners();
+    void wipeDeviceDataAndReload();
+  }, [stopSyncListeners]);
 
   const logout = async () => {
     if (!auth) return;
-    const wasGoogleAccount = Boolean(user && !user.isAnonymous);
+    stopSyncListeners();
     try {
       if (Capacitor.isNativePlatform()) await nativeSignOut();
       await signOut(auth);
     } catch (err) {
       console.error('Erro ao sair:', err);
+      suppressSyncRef.current = false;
+      setSyncEpoch((n) => n + 1);
       showToast('Não foi possível encerrar a sessão. Tente novamente.');
       return;
     }
-    // Os dados continuam na nuvem. Limpamos o espelho local para que a próxima pessoa
+    // Os dados continuam na nuvem. Limpamos o espelho local e o IndexedDB para que a próxima pessoa
     // que usar este navegador não veja nem migre estes hábitos para outra conta.
-    if (wasGoogleAccount) {
-      clearDeviceData();
-    } else {
-      showToast('Sessão encerrada com sucesso.');
-    }
+    clearDeviceData();
   };
 
-  // Exclui a conta: dados na nuvem, usuário no Firebase Auth e dados locais
+  // Exclui a conta: reautentica, cancela listeners (evita re-migração), apaga em lote na nuvem, remove o usuário e limpa o aparelho
   const deleteAccount = async () => {
     const currentUser = auth?.currentUser;
     if (!auth || !currentUser) return;
     try {
       // Contas Google exigem login recente para exclusão
-      if (!currentUser.isAnonymous) {
-        if (Capacitor.isNativePlatform()) {
-          await reauthenticateWithCredential(currentUser, await getNativeGoogleCredential());
-        } else {
-          await reauthenticateWithPopup(currentUser, new GoogleAuthProvider());
-        }
+      if (Capacitor.isNativePlatform()) {
+        await reauthenticateWithCredential(currentUser, await getNativeGoogleCredential());
+      } else {
+        await reauthenticateWithPopup(currentUser, new GoogleAuthProvider());
       }
+      stopSyncListeners();
       await deleteAllCloudData(currentUser.uid);
       await deleteUser(currentUser);
     } catch (error: any) {
       console.error('[Delete Account Error]', error);
+      suppressSyncRef.current = false;
+      setSyncEpoch((n) => n + 1);
       if (
         error.code === 'auth/popup-closed-by-user' ||
         error.code === 'auth/cancelled-popup-request' ||

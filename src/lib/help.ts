@@ -123,6 +123,13 @@ export const FAQ: FaqItem[] = [
     question: 'Como atualizo o app no Android?',
     answer:
       'Quando sair uma nova versão, o app mostra um aviso ao abrir (ou toque em "Verificar atualizações" nas Configurações). Toque em "Baixar" para baixar o arquivo APK pelo navegador, abra o arquivo concluído e toque em "Instalar" (na primeira vez, permita instalar apps de fontes desconhecidas para o navegador). Seus hábitos e dados ficam preservados no aparelho e na conta.'
+  },
+  {
+    id: 'android-app-nao-instalado',
+    category: 'conta',
+    question: 'Apareceu "App não instalado" ao atualizar para a 1.2.0. E agora?',
+    answer:
+      'A versão 1.2.0 passou a usar uma nova assinatura, mais segura, então quem tinha a 1.1.0 ou anterior precisa desinstalar o app uma única vez antes de instalar a nova. Antes de desinstalar, entre com a Conta Google nas Configurações para que seus hábitos fiquem salvos na nuvem: o que só existe no aparelho é apagado junto com o app. Depois de instalar a 1.2.0, entre com a mesma conta e tudo volta. As próximas atualizações instalam por cima normalmente.'
   }
 ];
 

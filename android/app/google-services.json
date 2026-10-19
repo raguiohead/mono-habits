@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "423856759350-s31tbeva1bje502oqd506989ia5l9mkj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.raguiohead.monohabits",
+            "certificate_hash": "465e8d6054353358b61a54c163430e14e699cb13"
+          }
+        },
+        {
           "client_id": "423856759350-pgh3hnujmc75cg6maojd3p3f9oampnvi.apps.googleusercontent.com",
           "client_type": 3
         }
