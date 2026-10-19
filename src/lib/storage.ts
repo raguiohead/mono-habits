@@ -14,6 +14,7 @@ const THEME_STORAGE_KEY = 'mono_habits_theme_v1';
 const SETTINGS_STORAGE_KEY = 'mono_habits_settings_v1';
 const WELCOME_KEY = 'mono_habits_welcome_v1';
 const REMINDER_SENT_KEY = 'mono_habits_reminder_sent_v1';
+const REMINDER_SCHEDULED_TODAY_KEY = 'mono_habits_reminder_sched_v1';
 const MILESTONES_SEEN_KEY = 'mono_habits_milestones_seen_v1';
 const DAY_COMPLETE_KEY = 'mono_habits_day_complete_v1';
 const GOAL_DISMISSED_KEY = 'mono_habits_goal_dismissed_v1';
@@ -337,6 +338,33 @@ export function setLastReminderKey(key: string): void {
   }
 }
 
+/** Registro do lembrete nativo agendado para hoje (`{ dateKey, time }`), evitando disparo duplicado após o horário */
+export function getScheduledTodayReminder(): { dateKey: string; time: string } | null {
+  try {
+    const raw = localStorage.getItem(REMINDER_SCHEDULED_TODAY_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw) as { dateKey?: unknown; time?: unknown };
+    if (typeof p?.dateKey === 'string' && typeof p?.time === 'string') {
+      return { dateKey: p.dateKey, time: p.time };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function setScheduledTodayReminder(entry: { dateKey: string; time: string } | null): void {
+  try {
+    if (entry) {
+      localStorage.setItem(REMINDER_SCHEDULED_TODAY_KEY, JSON.stringify(entry));
+    } else {
+      localStorage.removeItem(REMINDER_SCHEDULED_TODAY_KEY);
+    }
+  } catch {
+    /* sem armazenamento */
+  }
+}
+
 // ---------- Exportação e limpeza (gestão de conta) ----------
 
 /** Dados do usuário (hábitos, check-ins, Pomo) para exportação em JSON */
@@ -402,6 +430,7 @@ export function clearLocalUserData(): void {
       POMO_SETTINGS_KEY,
       POMO_TIMER_KEY,
       REMINDER_SENT_KEY,
+      REMINDER_SCHEDULED_TODAY_KEY,
       DAY_COMPLETE_KEY,
       MILESTONES_SEEN_KEY,
       GOAL_DISMISSED_KEY

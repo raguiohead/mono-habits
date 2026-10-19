@@ -152,3 +152,182 @@ export async function showSystemNotification(
     return false;
   }
 }
+
+/** Faixa fixa de IDs para lembretes diários nativos (hoje = 1000, até +6 dias = 1006) */
+export const NATIVE_REMINDER_BASE_ID = 1000;
+const NATIVE_REMINDER_IDS = [1000, 1001, 1002, 1003, 1004, 1005, 1006];
+
+/** ID fixo para a notificação agendada de fim do Pomo no nativo */
+export const NATIVE_POMO_ID = 2000;
+
+// Tokens de sequência por canal (lembretes e Pomo) para evitar que um schedule com awaits
+// sobrescreva um cancel ou um novo schedule disparado logo depois.
+let reminderSeq = 0;
+let pomoSeq = 0;
+
+/** Revalida o estado da permissão nativa no Android (ex.: ao voltar das configurações do sistema) */
+export async function refreshNativePermission(): Promise<NotifPermission> {
+  if (!Capacitor.isNativePlatform()) return getPermission();
+  try {
+    const res = await LocalNotifications.checkPermissions();
+    nativePermission = mapNativePermission(res.display);
+  } catch {
+    /* mantém o cache */
+  }
+  return nativePermission;
+}
+
+/** Remove a notificação de lembrete de hoje já entregue da bandeja do sistema (1000 e hashTag('daily-reminder')) */
+export async function removeDeliveredTodayReminder(): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    await LocalNotifications.removeDeliveredNotificationsById({
+      ids: [NATIVE_REMINDER_BASE_ID, hashTag('daily-reminder')]
+    });
+  } catch {
+    /* ignora falha */
+  }
+}
+
+/** Cancela todos os lembretes diários agendados no nativo (IDs 1000–1006) */
+export async function cancelNativeReminders(): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return;
+  reminderSeq += 1;
+  try {
+    await LocalNotifications.cancel({
+      notifications: NATIVE_REMINDER_IDS.map((id) => ({ id }))
+    });
+  } catch {
+    /* ignora falha de cancelamento */
+  }
+}
+
+/**
+ * Cancela os lembretes anteriores (1000–1006) e agenda os novos para os próximos dias no nativo.
+ * Usa alarme inexato com `allowWhileIdle: true` (funciona com o app fechado sem exigir SCHEDULE_EXACT_ALARM).
+ */
+export async function scheduleNativeReminders(
+  items: { offset: number; at: Date; body: string }[]
+): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) return false;
+  const seq = ++reminderSeq;
+  try {
+    await LocalNotifications.cancel({
+      notifications: NATIVE_REMINDER_IDS.map((id) => ({ id }))
+    });
+  } catch {
+    /* ignora falha de cancelamento */
+  }
+  if (seq !== reminderSeq) return false;
+  if (items.length === 0) return true;
+  try {
+    try {
+      const res = await LocalNotifications.checkPermissions();
+      nativePermission = mapNativePermission(res.display);
+    } catch {
+      /* mantém o cache */
+    }
+    if (seq !== reminderSeq || nativePermission !== 'granted') return false;
+    await ensureNativeChannel();
+    if (seq !== reminderSeq) return false;
+    await LocalNotifications.schedule({
+      notifications: items.map((it) => ({
+        id: NATIVE_REMINDER_BASE_ID + it.offset,
+        title: 'MONO // HABITS',
+        body: it.body,
+        channelId: NATIVE_CHANNEL_ID,
+        schedule: { at: it.at, allowWhileIdle: true },
+        isExactNotification: false
+      }))
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Cancela a notificação agendada do Pomo no nativo (ID 2000) e opcionalmente remove a já entregue da bandeja */
+export async function cancelNativePomoNotification(removeDelivered: boolean = false): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return;
+  pomoSeq += 1;
+  try {
+    await LocalNotifications.cancel({ notifications: [{ id: NATIVE_POMO_ID }] });
+  } catch {
+    /* ignora falha de cancelamento */
+  }
+  if (removeDelivered) {
+    try {
+      await LocalNotifications.removeDeliveredNotificationsById({ ids: [NATIVE_POMO_ID] });
+    } catch {
+      /* ignora falha de remoção */
+    }
+  }
+}
+
+/** Verifica se o alarme exato está concedido no Android (sem abrir configurações) */
+export async function checkNativeExactAlarm(): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) return true;
+  try {
+    const res = await LocalNotifications.checkExactNotificationSetting();
+    return res.exact_alarm === 'granted';
+  } catch {
+    return false;
+  }
+}
+
+/** Abre a tela do sistema Android para permitir alarmes exatos e retorna se foi concedido */
+export async function openNativeExactAlarmSetting(): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) return true;
+  try {
+    const res = await LocalNotifications.changeExactNotificationSetting();
+    return res.exact_alarm === 'granted';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Agenda a notificação de fim do Pomo no nativo para `endsAt` (ID 2000).
+ * Se alarmes exatos estiverem concedidos (`checkExactNotificationSetting() === 'granted'`),
+ * agenda com exatidão (`isExactNotification: true`); caso contrário, usa alarme inexato
+ * (`isExactNotification: false`, `allowWhileIdle: true`) sem abrir a tela de configurações.
+ */
+export async function scheduleNativePomoNotification(endsAt: number, body: string): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) return false;
+  const seq = ++pomoSeq;
+  try {
+    await LocalNotifications.cancel({ notifications: [{ id: NATIVE_POMO_ID }] });
+  } catch {
+    /* ignora falha de cancelamento */
+  }
+  if (seq !== pomoSeq || endsAt <= Date.now()) return false;
+  try {
+    try {
+      const res = await LocalNotifications.checkPermissions();
+      nativePermission = mapNativePermission(res.display);
+    } catch {
+      /* mantém o cache */
+    }
+    if (seq !== pomoSeq || nativePermission !== 'granted') return false;
+    await ensureNativeChannel();
+    if (seq !== pomoSeq) return false;
+    const exact = await checkNativeExactAlarm();
+    if (seq !== pomoSeq || endsAt <= Date.now()) return false;
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: NATIVE_POMO_ID,
+          title: 'MONO // HABITS · Pomo',
+          body,
+          channelId: NATIVE_CHANNEL_ID,
+          schedule: { at: new Date(endsAt), allowWhileIdle: true },
+          isExactNotification: exact
+        }
+      ]
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+

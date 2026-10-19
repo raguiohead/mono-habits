@@ -101,7 +101,7 @@ export const FAQ: FaqItem[] = [
     category: 'conta',
     question: 'Como funcionam os lembretes?',
     answer:
-      'O lembrete diário é local: dispara enquanto o app está aberto ou instalado, sem servidor. Ele não mostra nomes de hábitos. Ative em Configurações > Notificações e permita as notificações no navegador.'
+      'O lembrete diário é local, sem servidor, e não mostra nomes de hábitos. No app Android, os lembretes e o fim do Pomo são agendados no sistema e funcionam mesmo com o app fechado; na web, disparam enquanto o app está aberto ou instalado. Ative em Configurações > Notificações.'
   },
   {
     id: 'dados',
@@ -116,6 +116,13 @@ export const FAQ: FaqItem[] = [
     question: 'Posso proteger o app com PIN ou biometria?',
     answer:
       'Sim, em Configurações > Dados e privacidade. O bloqueio é local ao aparelho: se esquecer o PIN, apagar os dados deste aparelho remove o bloqueio.'
+  },
+  {
+    id: 'atualizar-android',
+    category: 'conta',
+    question: 'Como atualizo o app no Android?',
+    answer:
+      'Quando sair uma nova versão, o app mostra um aviso ao abrir (ou toque em "Verificar atualizações" nas Configurações). Toque em "Baixar" para baixar o arquivo APK pelo navegador, abra o arquivo concluído e toque em "Instalar" (na primeira vez, permita instalar apps de fontes desconhecidas para o navegador). Seus hábitos e dados ficam preservados no aparelho e na conta.'
   }
 ];
 

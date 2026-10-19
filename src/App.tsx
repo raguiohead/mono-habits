@@ -15,6 +15,7 @@ import { CompletionQueueSync } from '@/components/CompletionQueueSync';
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import { BottomNav } from '@/components/BottomNav';
 import { Toast } from '@/components/Toast';
+import { UpdateNotice } from '@/components/UpdateNotice';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { type Habit } from '@/types/habit';
 
@@ -116,6 +117,7 @@ const MainContent: React.FC = () => {
       <CompletionQueueSync />
       <DayCompleteEffect />
       <MilestoneWatcher />
+      <UpdateNotice />
 
       {showWelcome && (
         <WelcomeModal

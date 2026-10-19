@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import {
   X,
   UserCheck,
@@ -15,6 +16,7 @@ import {
   FileText,
   LayoutGrid,
   HelpCircle,
+  RefreshCw,
   EyeOff,
   ChevronDown
 } from 'lucide-react';
@@ -22,7 +24,15 @@ import { useHabits } from '@/context/HabitsContext';
 import { useSettings } from '@/context/SettingsContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import { exportLocalData } from '@/lib/storage';
-import { getPermission, requestPermission, showSystemNotification } from '@/lib/notifications';
+import {
+  checkNativeExactAlarm,
+  getPermission,
+  openNativeExactAlarmSetting,
+  refreshNativePermission,
+  requestPermission,
+  showSystemNotification
+} from '@/lib/notifications';
+import { fetchLatestRelease, isNewerVersion, setLastUpdateCheckAt } from '@/lib/appUpdate';
 import { isValidTime, type DiscreetMode, type FocusLayout, type MotionPref, type TextSize } from '@/lib/settings';
 import { Avatar } from './Avatar';
 import { ModalShell } from './ModalShell';
@@ -30,6 +40,7 @@ import { BTN, BTN_PRIMARY, SectionTitle, Switch } from './settingsControls';
 import { LockSettings } from './LockSettings';
 import { PrivacyContent } from './PrivacyPolicy';
 import { HelpView } from './HelpView';
+import { dispatchShowUpdateNotice } from './UpdateNotice';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -107,7 +118,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [view, setView] = useState<'main' | 'privacy' | 'help'>('main');
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [busy, setBusy] = useState(false);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [permission, setPermission] = useState(getPermission());
+  const [exactAlarmGranted, setExactAlarmGranted] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (!isOpen || !Capacitor.isNativePlatform()) return;
+    let alive = true;
+    const refreshNativePermissions = () => {
+      void checkNativeExactAlarm().then((ok) => alive && setExactAlarmGranted(ok));
+      void refreshNativePermission().then((p) => alive && setPermission(p));
+    };
+    refreshNativePermissions();
+    document.addEventListener('visibilitychange', refreshNativePermissions);
+    return () => {
+      alive = false;
+      document.removeEventListener('visibilitychange', refreshNativePermissions);
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -116,6 +144,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     setView('main');
     setConfirm(null);
     onClose();
+  };
+
+  const checkUpdatesNow = async () => {
+    setCheckingUpdate(true);
+    setLastUpdateCheckAt(Date.now());
+    const latest = await fetchLatestRelease();
+    setCheckingUpdate(false);
+    if (!latest) {
+      showToast('Não foi possível verificar atualizações agora.');
+      return;
+    }
+    if (isNewerVersion(__APP_VERSION__, latest.version)) {
+      close();
+      dispatchShowUpdateNotice(latest);
+    } else {
+      showToast('Você está na versão mais recente.');
+    }
   };
 
   // Notificações do navegador exigem permissão explícita
@@ -282,6 +327,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             </span>
             <span aria-hidden="true">›</span>
           </button>
+          {Capacitor.isNativePlatform() && (
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">
+                Versão {__APP_VERSION__}
+              </span>
+              <button
+                type="button"
+                disabled={checkingUpdate}
+                onClick={checkUpdatesNow}
+                className={`${BTN} disabled:opacity-50`}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${checkingUpdate ? 'animate-spin' : ''}`} />
+                {checkingUpdate ? 'Verificando…' : 'Verificar atualizações'}
+              </button>
+            </div>
+          )}
         </section>
 
         {/* Modo discreto global */}
@@ -445,6 +506,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           <Switch label="Vibração ao concluir" checked={settings.vibration} onChange={(vibration) => updateSettings({ vibration })} />
           </div>
 
+          {Capacitor.isNativePlatform() && !exactAlarmGranted && (
+            <div className="flex items-center justify-between gap-3 py-2 border-t border-zinc-200/70 dark:border-zinc-800/80">
+              <div className="min-w-0">
+                <p className="text-xs font-medium">Alarmes exatos (Pomo pontual)</p>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                  Permite disparar o fim do Pomo no segundo exato com o app fechado.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  const ok = await openNativeExactAlarmSetting();
+                  setExactAlarmGranted(ok);
+                }}
+                className="min-h-[36px] px-3 rounded-xl border border-zinc-300 dark:border-zinc-700 text-xs font-medium shrink-0 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                Permitir
+              </button>
+            </div>
+          )}
+
           <details className="group rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3">
             <summary className="min-h-[44px] flex items-center justify-between cursor-pointer text-xs font-medium list-none [&::-webkit-details-marker]:hidden">
               Como funcionam os lembretes
@@ -453,15 +535,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             <div className="space-y-2 pb-3">
           <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
             {permission === 'denied'
-              ? 'As notificações estão bloqueadas no navegador. Libere nas configurações do site para receber avisos.'
+              ? 'As notificações estão bloqueadas. Libere nas configurações do sistema/navegador para receber avisos.'
               : permission === 'unsupported'
               ? 'Este navegador não suporta notificações do sistema.'
-              : 'Os lembretes funcionam com o app aberto ou instalado e ativo em segundo plano. No iPhone, instale o app na tela de início.'}
+              : Capacitor.isNativePlatform()
+              ? 'No app Android, os lembretes dos próximos 7 dias e o fim do Pomo são agendados no sistema e funcionam mesmo com o app fechado.'
+              : 'Na web, os lembretes funcionam com o app aberto ou instalado e ativo em segundo plano (no app Android, funcionam mesmo fechado). No iPhone, instale o app na tela de início.'}
           </p>
-          {permission !== 'unsupported' && (
+          {permission !== 'unsupported' && !Capacitor.isNativePlatform() && (
             <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
-              Não usamos servidor de push: se o navegador encerrar o app, o lembrete não é enviado. Quando
-              falta apenas 1 hábito, a notificação traz o botão "Marcar como feito" (no Android; o iPhone não
+              Não usamos servidor de push: na web, se o navegador encerrar o app, o lembrete não é enviado. Quando
+              falta apenas 1 hábito, a notificação traz o botão "Marcar como feito" (no navegador Android; o iPhone não
               mostra botões). O hábito é marcado assim que o app abrir, se ele não estiver aberto.
             </p>
           )}

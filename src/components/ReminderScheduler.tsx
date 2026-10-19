@@ -1,10 +1,21 @@
 import React from 'react';
 import { useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { useHabits } from '@/context/HabitsContext';
 import { useSettings } from '@/context/SettingsContext';
-import { getLastReminderKey, setLastReminderKey } from '@/lib/storage';
-import { showSystemNotification } from '@/lib/notifications';
-import { shouldSendReminder } from '@/lib/settings';
+import {
+  getLastReminderKey,
+  getScheduledTodayReminder,
+  setLastReminderKey,
+  setScheduledTodayReminder
+} from '@/lib/storage';
+import {
+  cancelNativeReminders,
+  removeDeliveredTodayReminder,
+  scheduleNativeReminders,
+  showSystemNotification
+} from '@/lib/notifications';
+import { buildNativeReminderPlan, shouldSendReminder } from '@/lib/settings';
 import { getHabitsForDate } from '@/lib/analytics';
 import { isDueOn } from '@/lib/weekly';
 import { getGoalLock } from '@/lib/pomoGoals';
@@ -13,16 +24,73 @@ import { buildWeeklySummary } from '@/lib/weeklySummary';
 
 /**
  * Lembrete diário de hábitos pendentes.
- * Sem servidor de push, o aviso é disparado enquanto o app está aberto (inclusive em segundo
- * plano / PWA instalado). Não inclui nomes de hábitos, respeitando o Modo Discreto.
- * O botão "Marcar como feito" é tratado pelo Service Worker (src/sw.ts) e aplicado por CompletionQueueSync.
+ * Na web (sem servidor de push), o aviso é disparado enquanto o app está aberto (inclusive em segundo
+ * plano / PWA instalado). No app Android nativo, os lembretes dos próximos 7 dias são agendados com
+ * antecedência via LocalNotifications (allowWhileIdle), funcionando mesmo com o app fechado.
+ * Não inclui nomes de hábitos, respeitando o Modo Discreto.
+ * O botão "Marcar como feito" (apenas web/SW) é tratado pelo Service Worker (src/sw.ts) e aplicado por CompletionQueueSync.
  */
 export const ReminderScheduler: React.FC = () => {
   const { activeHabits, logs, slips, pomoSessions, initialLoaded } = useHabits();
   const { settings } = useSettings();
 
+  // Caminho nativo (Android): reagenda lembretes dos próximos 7 dias sem depender de pomoSessions
   useEffect(() => {
-    if (!settings.reminderEnabled || !initialLoaded) return;
+    if (!Capacitor.isNativePlatform() || !initialLoaded) return;
+
+    const syncNative = () => {
+      if (!settings.reminderEnabled) {
+        setScheduledTodayReminder(null);
+        void cancelNativeReminders();
+        return;
+      }
+      const plan = buildNativeReminderPlan({
+        now: new Date(),
+        reminderEnabled: settings.reminderEnabled,
+        reminderTime: settings.reminderTime,
+        weeklySummaryInReminder: settings.weeklySummaryInReminder,
+        lastSentKey: getLastReminderKey(),
+        scheduledToday: getScheduledTodayReminder(),
+        habits: activeHabits,
+        logs,
+        slips
+      });
+      if (plan.markSentKey) {
+        setLastReminderKey(plan.markSentKey);
+      }
+      setScheduledTodayReminder(plan.nextScheduledToday);
+      if (plan.clearDeliveredToday) {
+        void removeDeliveredTodayReminder();
+      }
+      if (plan.immediate) {
+        void showSystemNotification('MONO // HABITS', plan.immediate.body, 'daily-reminder');
+      }
+      void scheduleNativeReminders(plan.scheduled);
+    };
+
+    syncNative();
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        syncNative();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [
+    settings.reminderEnabled,
+    settings.reminderTime,
+    settings.weeklySummaryInReminder,
+    activeHabits,
+    logs,
+    slips,
+    initialLoaded
+  ]);
+
+  // Caminho web (PWA / navegador): checa por intervalo e Service Worker
+  useEffect(() => {
+    if (Capacitor.isNativePlatform() || !settings.reminderEnabled || !initialLoaded) return;
 
     const check = () => {
       const now = new Date();
