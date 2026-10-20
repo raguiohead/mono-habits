@@ -30,6 +30,7 @@ import {
   type Firestore
 } from 'firebase/firestore';
 import { clearLocalUserData } from './storage';
+import { firebaseConfig } from './firebaseConfig';
 
 const env = import.meta.env;
 
@@ -43,17 +44,10 @@ export const APP_INDEXED_DB_NAMES = [
   'firebaseLocalStorageDb',
   'firebase-heartbeat-database',
   'firebase-installations-database',
+  'firebase-messaging-database',
   'mono-habits-sw'
 ] as const;
 
-const firebaseConfig = {
-  apiKey: env.VITE_FIREBASE_API_KEY || 'AIzaSyBOi3SkoF6Et81bLEzttdwdZXXP8AlPL-E',
-  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || 'mono-habits.firebaseapp.com',
-  projectId: env.VITE_FIREBASE_PROJECT_ID || 'mono-habits',
-  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || 'mono-habits.firebasestorage.app',
-  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || '423856759350',
-  appId: env.VITE_FIREBASE_APP_ID || '1:423856759350:web:476fde2f03cfbbcb906e97'
-};
 
 export const isFirebaseConfigured = Boolean(
   firebaseConfig.apiKey &&
@@ -77,6 +71,9 @@ if (isFirebaseConfigured) {
     console.warn('[Firebase] Falha na inicialização:', error);
   }
 }
+
+/** App do Firebase já inicializado (ou null), para Analytics e Cloud Messaging */
+export const getFirebaseApp = (): FirebaseApp | null => app;
 
 const BATCH_CHUNK_SIZE = 450;
 

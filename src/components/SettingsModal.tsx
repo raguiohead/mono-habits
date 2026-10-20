@@ -40,6 +40,9 @@ import { BTN, BTN_PRIMARY, SectionTitle, Switch } from './settingsControls';
 import { LockSettings } from './LockSettings';
 import { PrivacyContent } from './PrivacyPolicy';
 import { HelpView } from './HelpView';
+import { isPushConfigured, isPushSupported, enablePush, disablePush } from '@/lib/pushClient';
+import { PUSH_FAILURE_MESSAGE } from '@/lib/push';
+import { isDoNotTrack } from '@/lib/usage';
 import { dispatchShowUpdateNotice } from './UpdateNotice';
 
 interface SettingsModalProps {
@@ -174,6 +177,53 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         : 'Permissão negada. Libere as notificações nas configurações do navegador.'
     );
     return false;
+  };
+
+  // Avisos do app por push (Firebase Cloud Messaging): ligar pede permissão e registra este aparelho
+  const [pushToken, setPushToken] = useState<string | null>(null);
+  const [pushAvailable, setPushAvailable] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  useEffect(() => {
+    if (!isOpen || !isPushConfigured()) {
+      setPushAvailable(false);
+      return;
+    }
+    let alive = true;
+    void isPushSupported().then((ok) => alive && setPushAvailable(ok));
+    return () => {
+      alive = false;
+    };
+  }, [isOpen]);
+  const togglePush = async (next: boolean) => {
+    if (pushBusy) return;
+    if (!next) {
+      setPushBusy(true);
+      await disablePush();
+      setPushToken(null);
+      updateSettings({ pushEnabled: false });
+      setPushBusy(false);
+      return;
+    }
+    setPushBusy(true);
+    const result = await enablePush();
+    setPushBusy(false);
+    if (result.ok) {
+      setPushToken(result.token);
+      updateSettings({ pushEnabled: true });
+      showToast('Avisos do app ativados.');
+    } else {
+      updateSettings({ pushEnabled: false });
+      showToast(PUSH_FAILURE_MESSAGE[result.reason]);
+    }
+  };
+  const copyPushToken = async () => {
+    if (!pushToken) return;
+    try {
+      await navigator.clipboard.writeText(pushToken);
+      showToast('Token copiado.');
+    } catch {
+      showToast('Não foi possível copiar. Selecione o texto e copie manualmente.');
+    }
   };
 
   const toggleReminder = async (next: boolean) => {
@@ -502,6 +552,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             checked={settings.pomoAlerts}
             onChange={togglePomoAlerts}
           />
+          {isPushConfigured() && (
+            <>
+              <Switch
+                label="Novidades do app (push)"
+                description={
+                  pushAvailable
+                    ? 'Receba avisos ocasionais sobre novas versões e funções. Você pode desligar quando quiser.'
+                    : 'Este navegador não suporta avisos por push.'
+                }
+                checked={settings.pushEnabled && pushAvailable}
+                onChange={togglePush}
+              />
+              {settings.pushEnabled && pushToken && (
+                <details className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3">
+                  <summary className="min-h-[44px] flex items-center text-xs font-medium cursor-pointer">Token deste aparelho (para testes)</summary>
+                  <div className="space-y-2 pb-3">
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                      Use no Console do Firebase (Cloud Messaging) em "Enviar mensagem de teste".
+                    </p>
+                    <input readOnly value={pushToken} aria-label="Token FCM" onFocus={(e) => e.currentTarget.select()} className="w-full min-h-[44px] px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-[11px] font-mono" />
+                    <button type="button" onClick={copyPushToken} className={`${BTN} w-full`}>Copiar token</button>
+                  </div>
+                </details>
+              )}
+            </>
+          )}
           <Switch label="Som ao concluir" checked={settings.sound} onChange={(sound) => updateSettings({ sound })} />
           <Switch label="Vibração ao concluir" checked={settings.vibration} onChange={(vibration) => updateSettings({ vibration })} />
           </div>
@@ -565,6 +641,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         {/* Dados e privacidade */}
         <section className="space-y-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/40 p-4">
           <SectionTitle icon={<ShieldCheck className="w-3.5 h-3.5" />}>Dados e privacidade</SectionTitle>
+
+          {!Capacitor.isNativePlatform() && (
+            <Switch
+              label="Estatísticas de uso anônimas"
+              description={
+                isDoNotTrack(typeof navigator !== 'undefined' ? navigator : undefined)
+                  ? 'Desativadas: seu navegador está com "Não rastrear" ligado.'
+                  : 'Ajuda a melhorar o app. Só contagens de uso, nunca nomes de hábitos, notas ou dados da conta. Desligado por padrão.'
+              }
+              checked={settings.analyticsEnabled}
+              onChange={(analyticsEnabled) => updateSettings({ analyticsEnabled })}
+            />
+          )}
 
           <button type="button" onClick={() => setView('privacy')} className={`${BTN} w-full`}>
             <FileText className="w-3.5 h-3.5" />

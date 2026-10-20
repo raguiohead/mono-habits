@@ -21,6 +21,9 @@ export interface AppSettings {
   discreetMode: DiscreetMode;
   discreetFrom: string; // 'HH:MM', início da janela do modo automático (pode cruzar a meia-noite)
   discreetTo: string; // 'HH:MM'
+  // Opcionais (desligados por padrão): estatísticas anônimas de uso e avisos do app por push
+  analyticsEnabled: boolean;
+  pushEnabled: boolean;
   // Ofensiva
   graceDaysPerMonth: 0 | 1 | 2; // dias de graça por hábito, por mês
   // Notificações
@@ -40,6 +43,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   discreetMode: 'off',
   discreetFrom: '22:00',
   discreetTo: '07:00',
+  analyticsEnabled: false,
+  pushEnabled: false,
   graceDaysPerMonth: 1,
   reminderEnabled: false,
   reminderTime: '20:00',
@@ -71,6 +76,8 @@ export function sanitizeSettings(raw: unknown): AppSettings {
     discreetMode: p.discreetMode === 'on' || p.discreetMode === 'auto' ? p.discreetMode : 'off',
     discreetFrom: isValidTime(p.discreetFrom) ? p.discreetFrom : d.discreetFrom,
     discreetTo: isValidTime(p.discreetTo) ? p.discreetTo : d.discreetTo,
+    analyticsEnabled: bool(p.analyticsEnabled, d.analyticsEnabled),
+    pushEnabled: bool(p.pushEnabled, d.pushEnabled),
     graceDaysPerMonth: p.graceDaysPerMonth === 0 || p.graceDaysPerMonth === 2 ? p.graceDaysPerMonth : 1,
     reminderEnabled: bool(p.reminderEnabled, d.reminderEnabled),
     reminderTime: isValidTime(p.reminderTime) ? p.reminderTime : d.reminderTime,
