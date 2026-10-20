@@ -1,7 +1,7 @@
 {
   "name": "mono-habits",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3000",
@@ -12,7 +12,9 @@
     "test:watch": "vitest",
     "cap:sync": "npm run build && npx cap sync android",
     "cap:open": "npx cap open android",
-    "apk:debug": "npm run cap:sync && cd android && ./gradlew assembleDebug"
+    "apk:debug": "npm run cap:sync && cd android && ./gradlew assembleDebug",
+    "apk:release": "npm run cap:sync && cd android && ./gradlew assembleRelease",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-mono-habits 'vitest run --dir tests/rules'"
   },
   "dependencies": {
     "@capacitor-firebase/authentication": "^7.5.0",
@@ -44,6 +46,11 @@
     "vitest": "^3.0.5",
     "workbox-core": "^7.4.1",
     "workbox-precaching": "^7.4.1",
-    "workbox-routing": "^7.4.1"
+    "workbox-routing": "^7.4.1",
+    "@firebase/rules-unit-testing": "4.0.1",
+    "firebase-tools": "15.34.0"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.0"
   }
 }

@@ -1,14 +1,247 @@
 rules_version = '2';
 
+// ===============================================================
+// Modelo de Dados Assumido — MONO // HABITS
+// ===============================================================
+//
+// Caminho base: /artifacts/mono-habit-tracker/users/{userId}
+//
+// 1. Subcoleção: habits/{habitId}
+//    - id: string (obrigatório, == habitId, 1..100)
+//    - title: string (obrigatório, 1..120)
+//    - category: string (obrigatório, 1..60)
+//    - icon: string (obrigatório, 1..40)
+//    - frequency: list<number> (obrigatório, <= 7 itens)
+//    - createdAt: number (obrigatório, >= 0)
+//    - hideTitle: bool (opcional)
+//    - archived: bool (opcional)
+//    - description: string (opcional, 1..140)
+//    - cover: map (opcional, pattern ou image com dataUrl <= 130000 chars)
+//    - featured: bool (opcional)
+//    - period: 'morning' | 'afternoon' | 'evening' | 'any' (opcional)
+//    - kind: 'build' | 'avoid' (opcional)
+//    - pomoGoal: map { type: 'sessions'|'minutes', target: number } (opcional)
+//    - weeklyTarget: number 1..7 (opcional)
+//    - weeklyTargetFrom: string YYYY-MM-DD (opcional)
+//    - weeklyTargets: list (opcional, <= 20 itens)
+//
+// 2. Subcoleção: logs/{dateKey} (dateKey = YYYY-MM-DD)
+//    - date: string (obrigatório, == dateKey)
+//    - completedHabitIds: list<string> (obrigatório, <= 200 itens)
+//    - updatedAt: number (opcional, >= 0)
+//
+// 3. Subcoleções: graces/{dateKey} e slips/{dateKey} (dateKey = YYYY-MM-DD)
+//    - date: string (obrigatório, == dateKey)
+//    - habitIds: list<string> (obrigatório, 1..200 itens)
+//    - updatedAt: number (opcional, >= 0)
+//
+// 4. Subcoleção: pomoSessions/{sessionId}
+//    - id: string (obrigatório, == sessionId, 1..100)
+//    - kind: 'focus' | 'short' | 'long' (obrigatório)
+//    - startedAt: number (obrigatório, >= 0)
+//    - endedAt: number (obrigatório, >= startedAt)
+//    - plannedSeconds: number (obrigatório, 0..86400)
+//    - actualSeconds: number (obrigatório, 0..86400)
+//    - completed: bool (obrigatório)
+//    - habitId: string (opcional, 1..100)
+// ===============================================================
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Regra estrita de segurança do MONO // HABITS:
-    // Cada usuário só pode ler, criar, atualizar ou excluir seus próprios hábitos e registros de check-in.
-    match /artifacts/{appId}/users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    // Bloqueia qualquer outro acesso não autorizado por padrão
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDateKey(value) {
+      return value is string &&
+        value.size() == 10 &&
+        value.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
+    function isValidHabitCover(cover) {
+      return cover is map && (
+        (
+          cover.keys().hasOnly(['type', 'pattern', 'tone']) &&
+          cover.keys().hasAll(['type', 'pattern', 'tone']) &&
+          cover.type == 'pattern' &&
+          cover.pattern is string &&
+          cover.pattern.size() >= 1 &&
+          cover.pattern.size() <= 32 &&
+          cover.tone in ['light', 'mid', 'dark']
+        ) ||
+        (
+          cover.keys().hasOnly(['type', 'dataUrl', 'x', 'y', 'zoom']) &&
+          cover.keys().hasAll(['type', 'dataUrl']) &&
+          cover.type == 'image' &&
+          cover.dataUrl is string &&
+          cover.dataUrl.size() >= 30 &&
+          cover.dataUrl.size() <= 130000 &&
+          cover.dataUrl.matches('^data:image/(jpeg|webp|png);base64,[A-Za-z0-9+/=]+$') &&
+          (!('x' in cover) || (cover.x is number && cover.x >= 0 && cover.x <= 1)) &&
+          (!('y' in cover) || (cover.y is number && cover.y >= 0 && cover.y <= 1)) &&
+          (!('zoom' in cover) || (cover.zoom is number && cover.zoom >= 1 && cover.zoom <= 3))
+        )
+      );
+    }
+
+    function isValidPomoGoal(goal) {
+      return goal is map &&
+        goal.keys().hasOnly(['type', 'target']) &&
+        goal.keys().hasAll(['type', 'target']) &&
+        (
+          (goal.type == 'sessions' && goal.target is number && goal.target >= 1 && goal.target <= 12) ||
+          (goal.type == 'minutes' && goal.target is number && goal.target >= 5 && goal.target <= 240)
+        );
+    }
+
+    function isValidHabit(habitId, data) {
+      return habitId.size() >= 1 &&
+        habitId.size() <= 100 &&
+        data.keys().hasOnly([
+          'id',
+          'title',
+          'category',
+          'icon',
+          'hideTitle',
+          'description',
+          'cover',
+          'featured',
+          'period',
+          'kind',
+          'pomoGoal',
+          'weeklyTarget',
+          'weeklyTargetFrom',
+          'weeklyTargets',
+          'frequency',
+          'archived',
+          'createdAt'
+        ]) &&
+        data.keys().hasAll(['id', 'title', 'category', 'icon', 'frequency', 'createdAt']) &&
+        data.id is string &&
+        data.id == habitId &&
+        data.title is string &&
+        data.title.size() >= 1 &&
+        data.title.size() <= 120 &&
+        data.category is string &&
+        data.category.size() >= 1 &&
+        data.category.size() <= 60 &&
+        data.icon is string &&
+        data.icon.size() >= 1 &&
+        data.icon.size() <= 40 &&
+        data.frequency is list &&
+        data.frequency.size() <= 7 &&
+        data.createdAt is number &&
+        data.createdAt >= 0 &&
+        (!('hideTitle' in data) || data.hideTitle is bool) &&
+        (!('archived' in data) || data.archived is bool) &&
+        (!('description' in data) || (data.description is string && data.description.size() <= 140)) &&
+        (!('cover' in data) || isValidHabitCover(data.cover)) &&
+        (!('featured' in data) || data.featured is bool) &&
+        (!('period' in data) || data.period in ['morning', 'afternoon', 'evening', 'any']) &&
+        (!('kind' in data) || data.kind in ['build', 'avoid']) &&
+        (!('pomoGoal' in data) || isValidPomoGoal(data.pomoGoal)) &&
+        (!('weeklyTarget' in data) || (data.weeklyTarget is number && data.weeklyTarget >= 1 && data.weeklyTarget <= 7)) &&
+        (!('weeklyTargetFrom' in data) || isDateKey(data.weeklyTargetFrom)) &&
+        (!('weeklyTargets' in data) || (data.weeklyTargets is list && data.weeklyTargets.size() <= 20));
+    }
+
+    function isValidLog(dateKey, data) {
+      return isDateKey(dateKey) &&
+        data.keys().hasOnly(['date', 'completedHabitIds', 'updatedAt']) &&
+        data.keys().hasAll(['date', 'completedHabitIds']) &&
+        data.date is string &&
+        data.date == dateKey &&
+        data.completedHabitIds is list &&
+        data.completedHabitIds.size() <= 200 &&
+        (!('updatedAt' in data) || (data.updatedAt is number && data.updatedAt >= 0));
+    }
+
+    function isValidDayHabitList(dateKey, data) {
+      return isDateKey(dateKey) &&
+        data.keys().hasOnly(['date', 'habitIds', 'updatedAt']) &&
+        data.keys().hasAll(['date', 'habitIds']) &&
+        data.date is string &&
+        data.date == dateKey &&
+        data.habitIds is list &&
+        data.habitIds.size() <= 200 &&
+        (!('updatedAt' in data) || (data.updatedAt is number && data.updatedAt >= 0));
+    }
+
+    function isValidPomoSession(sessionId, data) {
+      return sessionId.size() >= 1 &&
+        sessionId.size() <= 100 &&
+        data.keys().hasOnly([
+          'id',
+          'kind',
+          'startedAt',
+          'endedAt',
+          'plannedSeconds',
+          'actualSeconds',
+          'completed',
+          'habitId'
+        ]) &&
+        data.keys().hasAll([
+          'id',
+          'kind',
+          'startedAt',
+          'endedAt',
+          'plannedSeconds',
+          'actualSeconds',
+          'completed'
+        ]) &&
+        data.id is string &&
+        data.id == sessionId &&
+        data.kind in ['focus', 'short', 'long'] &&
+        data.startedAt is number &&
+        data.startedAt >= 0 &&
+        data.endedAt is number &&
+        data.endedAt >= data.startedAt &&
+        data.plannedSeconds is number &&
+        data.plannedSeconds >= 0 &&
+        data.plannedSeconds <= 86400 &&
+        data.actualSeconds is number &&
+        data.actualSeconds >= 0 &&
+        data.actualSeconds <= 86400 &&
+        data.completed is bool &&
+        (!('habitId' in data) || (data.habitId is string && data.habitId.size() >= 1 && data.habitId.size() <= 100));
+    }
+
+    match /artifacts/mono-habit-tracker/users/{userId} {
+      allow read, delete: if isOwner(userId);
+      allow create, update: if false;
+
+      match /habits/{habitId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidHabit(habitId, request.resource.data);
+      }
+
+      match /logs/{dateKey} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidLog(dateKey, request.resource.data);
+      }
+
+      match /graces/{dateKey} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidDayHabitList(dateKey, request.resource.data);
+      }
+
+      match /slips/{dateKey} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidDayHabitList(dateKey, request.resource.data);
+      }
+
+      match /pomoSessions/{sessionId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidPomoSession(sessionId, request.resource.data);
+      }
+    }
+
+    // Bloqueia qualquer outro caminho ou coleção não declarada explicitamente
     match /{document=**} {
       allow read, write: if false;
     }

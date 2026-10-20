@@ -1,9 +1,21 @@
 import React, { useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { getStoredTheme } from '@/lib/storage';
+import {
+  PRIVACY_CONTACT_EMAIL,
+  PRIVACY_CONTROLLER_LOCATION,
+  PRIVACY_CONTROLLER_NAME,
+  PRIVACY_POLICY_VERSION,
+  PRIVACY_UPDATED_AT
+} from '@/lib/privacy';
 
-export const PRIVACY_UPDATED_AT = '16 de outubro de 2026';
-export const PRIVACY_CONTACT_EMAIL = 'devguilherme@hotmail.com';
+export {
+  PRIVACY_CONTACT_EMAIL,
+  PRIVACY_CONTROLLER_LOCATION,
+  PRIVACY_CONTROLLER_NAME,
+  PRIVACY_POLICY_VERSION,
+  PRIVACY_UPDATED_AT
+};
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <section className="space-y-2">
@@ -19,11 +31,21 @@ export const PrivacyContent: React.FC = () => (
       Última atualização: {PRIVACY_UPDATED_AT}
     </p>
 
-    <Section title="1. Resumo">
+    <Section title="1. Resumo e Controlador">
       <p>
         O MONO // HABITS é um rastreador de hábitos que funciona primeiro no seu dispositivo. Não
-        há anúncios, não vendemos nem compartilhamos seus dados e não usamos ferramentas de
+        há anúncios, não vendemos nem compartilhamos seus dados comerciais e não usamos ferramentas de
         análise ou rastreamento de comportamento.
+      </p>
+      <p>
+        <strong>Controlador dos dados (LGPD, art. 9º, III):</strong> {PRIVACY_CONTROLLER_NAME} ({PRIVACY_CONTROLLER_LOCATION}) — contato:{' '}
+        <a
+          href={`mailto:${PRIVACY_CONTACT_EMAIL}`}
+          className="underline text-zinc-950 dark:text-zinc-50"
+        >
+          {PRIVACY_CONTACT_EMAIL}
+        </a>
+        .
       </p>
     </Section>
 
@@ -45,51 +67,61 @@ export const PrivacyContent: React.FC = () => (
           nuvem nem para a exportação.
         </li>
         <li>
-          <strong>Conta (somente se a nuvem estiver ativa):</strong> um identificador anônimo
-          criado automaticamente e, se você entrar com o Google, seu nome, e-mail e foto de
-          perfil, que usamos apenas para identificar sua conta na tela de configurações.
+          <strong>Conta Google (opcional, somente se você conectar):</strong> o app não cria conta nem identificador anônimo automaticamente. Se você optar por entrar com o Google, tratamos o identificador único da sua conta (UID), seu nome, e-mail e foto de
+          perfil para identificar sua conta nas configurações e sincronizar seus hábitos na nuvem.
+        </li>
+        <li>
+          <strong>Verificação de atualização no Android:</strong> somente no aplicativo instalado no Android (APK), o app consulta a API pública de lançamentos do GitHub ao abrir e ao voltar ao primeiro plano (no máximo uma vez a cada 6 horas, ou quando você toca em &ldquo;Verificar atualizações&rdquo;). Essa consulta envia apenas seu endereço IP e o cabeçalho técnico do aplicativo (User-Agent) ao GitHub, sem qualquer dado de hábitos ou de conta.
         </li>
       </ul>
     </Section>
 
     <Section title="3. Onde os dados ficam">
       <p>
-        <strong>No seu dispositivo:</strong> tudo é salvo no armazenamento local do navegador
-        (localStorage). Sem a nuvem ativa, nada sai do seu aparelho.
+        <strong>No seu dispositivo:</strong> tudo é salvo no armazenamento local do navegador ou WebView
+        (localStorage e IndexedDB). Sem uma Conta Google conectada, seus hábitos e registros não saem do seu aparelho.
       </p>
       <p>
-        <strong>Na nuvem:</strong> quando o recurso está disponível, seus hábitos, check-ins e
-        sessões do Pomo são sincronizados com o Google Firebase (Authentication e Cloud
-        Firestore), operado pelo Google. As regras de segurança permitem que apenas a sua conta
-        leia e altere esses dados.
+        <strong>Na nuvem (opcional):</strong> quando você entra com sua Conta Google, seus hábitos, check-ins,
+        dias de graça, escorregões e sessões do Pomo são sincronizados com o Google Firebase (Authentication e Cloud
+        Firestore), operado pela Google LLC. As regras de segurança restringem a leitura e a escrita exclusivamente à sua conta e validam o formato e o tamanho dos documentos.
       </p>
       <p>
-        <strong>Fontes:</strong> as fontes Inter e JetBrains Mono são carregadas do Google Fonts,
-        o que expõe seu endereço IP ao Google ao abrir o app.
+        <strong>Fontes (na web):</strong> as fontes Inter e JetBrains Mono são carregadas do Google Fonts,
+        o que expõe seu endereço IP e User-Agent ao Google ao abrir o app.
       </p>
     </Section>
 
     <Section title="4. Para que usamos">
       <p>
         Exclusivamente para operar o app: exibir seus hábitos e estatísticas, sincronizar entre
-        dispositivos e enviar os lembretes que você ativar. Base legal: execução do serviço que
+        dispositivos quando você conecta sua Conta Google, avisar sobre novas versões no Android e disparar os lembretes que você ativar. Base legal: execução do serviço que
         você solicitou e seu consentimento (LGPD, art. 7º, I e V).
       </p>
     </Section>
 
-    <Section title="5. Notificações">
+    <Section title="5. Notificações agendadas localmente">
       <p>
-        Os lembretes são gerados no próprio dispositivo, com a permissão do navegador, e
-        funcionam enquanto o app estiver aberto ou instalado e ativo em segundo plano. Eles
-        mostram apenas a quantidade de hábitos pendentes, nunca seus nomes. Você pode desativá-los
-        a qualquer momento em Configurações ou nas permissões do navegador.
+        Os lembretes diários e o aviso de fim do Pomo são gerados e agendados localmente no próprio dispositivo, sem servidor de push: na web, pelo navegador e Service Worker enquanto o app estiver aberto ou instalado; no Android, pelo agendador de notificações locais do sistema para os próximos 7 dias (funcionando mesmo com o app fechado). Eles
+        mostram apenas a quantidade de hábitos pendentes (e a taxa da semana no domingo, se ativada), nunca os nomes dos hábitos. Você pode desativá-los
+        a qualquer momento em Configurações ou nas permissões do sistema/navegador.
       </p>
     </Section>
 
-    <Section title="6. Compartilhamento">
+    <Section title="6. Compartilhamento e transferência internacional">
       <p>
-        Não vendemos, alugamos nem compartilhamos seus dados com terceiros, exceto com o Google
-        (Firebase e Google Fonts), que atua como operador para fornecer a infraestrutura.
+        Não vendemos, alugamos nem compartilhamos seus dados com terceiros para fins publicitários. Contamos apenas com operadores de infraestrutura estritamente necessários:
+      </p>
+      <ul className="list-disc pl-4 space-y-1">
+        <li>
+          <strong>Google LLC (Firebase e Google Fonts):</strong> autenticação Google, banco de dados em nuvem (quando você conecta sua conta) e entrega de fontes.
+        </li>
+        <li>
+          <strong>GitHub, Inc.:</strong> hospedagem e consulta de novas versões do APK no Android (recebe apenas IP e User-Agent a cada verificação).
+        </li>
+      </ul>
+      <p>
+        <strong>Transferência internacional (LGPD, art. 33):</strong> os servidores da Google LLC e da GitHub, Inc. podem estar localizados fora do Brasil, principalmente nos Estados Unidos, operando sob padrões internacionais de segurança e proteção de dados.
       </p>
     </Section>
 
@@ -100,16 +132,15 @@ export const PrivacyContent: React.FC = () => (
         o que remove definitivamente os dados da nuvem e o seu acesso.
       </p>
       <p>
-        Ao sair de uma conta Google, os dados locais dessa conta são removidos do aparelho; eles
-        continuam na nuvem até você excluir a conta.
+        Ao sair de uma Conta Google ou ao apagar os dados deste dispositivo, a sessão local (IndexedDB) e os dados salvos no aparelho (localStorage) são encerrados e removidos; os dados já sincronizados continuam na nuvem até você excluir a conta.
       </p>
     </Section>
 
     <Section title="8. Seus direitos (LGPD)">
       <p>
         Você pode confirmar a existência de tratamento, acessar, corrigir, exportar, anonimizar ou
-        eliminar seus dados e revogar o consentimento. A maior parte disso é feita diretamente no
-        app; para qualquer outro pedido, entre em contato pelo canal abaixo.
+        eliminar seus dados, obter informações sobre o compartilhamento e revogar o consentimento (LGPD, art. 18). A maior parte disso é feita diretamente no
+        app; para qualquer outro pedido, entre em contato com o controlador pelo e-mail abaixo.
       </p>
     </Section>
 
@@ -126,17 +157,16 @@ export const PrivacyContent: React.FC = () => (
       <p>
         <strong>Sobre o bloqueio por PIN ou biometria:</strong> é uma trava de interface, não uma
         criptografia. Ele impede que outra pessoa use o app aberto neste aparelho, mas os dados que ficam
-        no armazenamento do navegador (localStorage) <strong>não são criptografados</strong>: quem tiver
-        acesso ao navegador ou ao aparelho desbloqueado pode lê-los. O PIN não pode ser recuperado; se você
-        esquecer, é preciso apagar os dados deste dispositivo, e os dados da nuvem podem ser restaurados ao
-        entrar de novo com a Conta Google.
+        no armazenamento local (localStorage) <strong>não são criptografados</strong>: quem tiver
+        acesso técnico ao navegador ou ao aparelho desbloqueado pode lê-los. O PIN não pode ser recuperado; se você
+        esquecer e usar a opção &ldquo;Esqueci o PIN&rdquo; para apagar os dados deste dispositivo, o app encerra sua sessão conectada, limpa o armazenamento local (incluindo o PIN e o banco IndexedDB) e recarrega. Se seus hábitos estavam sincronizados na nuvem, será necessário fazer login novamente com a sua Conta Google para restaurá-los.
       </p>
     </Section>
 
     <Section title="11. Alterações e contato">
       <p>
         Esta política pode ser atualizada; a data no topo indica a versão vigente. Dúvidas ou
-        pedidos sobre seus dados:{' '}
+        pedidos sobre seus dados podem ser enviados ao controlador ({PRIVACY_CONTROLLER_NAME}) em:{' '}
         <a
           href={`mailto:${PRIVACY_CONTACT_EMAIL}`}
           className="underline text-zinc-950 dark:text-zinc-50"

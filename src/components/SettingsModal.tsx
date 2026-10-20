@@ -139,7 +139,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
   if (!isOpen) return null;
 
-  const isGoogle = Boolean(user && !user.isAnonymous);
+  const isGoogle = Boolean(user);
   const close = () => {
     setView('main');
     setConfirm(null);

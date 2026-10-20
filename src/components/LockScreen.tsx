@@ -213,9 +213,9 @@ export const LockScreen: React.FC<LockScreenProps> = ({
           <div className="w-full max-w-sm rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-3 text-xs leading-relaxed">
             <p className="font-medium">Esqueci o PIN</p>
             <p className="text-zinc-600 dark:text-zinc-400">
-              O PIN não pode ser recuperado. Se você usa a Conta Google, seus hábitos continuam na nuvem: ao apagar os
-              dados deste dispositivo e entrar de novo com a mesma conta, eles são restaurados. Dados que existem só
-              neste aparelho (sem conta conectada) serão perdidos.
+              O PIN não pode ser recuperado. Se você usa a Conta Google, seus hábitos continuam na nuvem: apagar os
+              dados deste dispositivo encerra a sessão conectada neste aparelho e exige entrar de novo com a sua Conta
+              Google para restaurá-los. Dados que existem só neste aparelho (sem conta conectada) serão perdidos.
             </p>
             <p className="text-zinc-600 dark:text-zinc-400">
               Lembrete: este bloqueio é uma trava de interface. Os dados no navegador não são criptografados.

@@ -21,6 +21,7 @@ const GOAL_DISMISSED_KEY = 'mono_habits_goal_dismissed_v1';
 const GRACES_STORAGE_KEY = 'mono_habits_graces_v1';
 const SLIPS_STORAGE_KEY = 'mono_habits_slips_v1';
 const LOCK_STORAGE_KEY = 'mono_habits_lock_v1';
+const LAST_SYNCED_UID_KEY = 'mono_habits_last_uid_v1';
 
 export const DEFAULT_HABITS: Habit[] = [
   {
@@ -418,6 +419,92 @@ export function saveMilestonesSeen(seen: MilestonesSeen): void {
   }
 }
 
+/** Último uid sincronizado com a nuvem neste aparelho (evita misturar dados locais de outra conta) */
+export function getLastSyncedUid(): string | null {
+  try {
+    const val = localStorage.getItem(LAST_SYNCED_UID_KEY);
+    return val && val.trim() ? val : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setLastSyncedUid(uid: string | null): void {
+  try {
+    if (uid) localStorage.setItem(LAST_SYNCED_UID_KEY, uid);
+    else localStorage.removeItem(LAST_SYNCED_UID_KEY);
+  } catch {
+    /* sem armazenamento */
+  }
+}
+
+/**
+ * Limpa apenas os dados sincronizáveis de uma conta anterior ao trocar de conta no mesmo aparelho
+ * (mantém tema, configurações e bloqueio por PIN).
+ */
+export function clearLocalAccountData(): void {
+  try {
+    [
+      HABITS_STORAGE_KEY,
+      LOGS_STORAGE_KEY,
+      GRACES_STORAGE_KEY,
+      SLIPS_STORAGE_KEY,
+      POMO_SESSIONS_KEY,
+      REMINDER_SENT_KEY,
+      REMINDER_SCHEDULED_TODAY_KEY,
+      DAY_COMPLETE_KEY,
+      MILESTONES_SEEN_KEY,
+      GOAL_DISMISSED_KEY
+    ].forEach((k) => localStorage.removeItem(k));
+  } catch (error) {
+    console.warn('Falha ao limpar dados da conta anterior', error);
+  }
+}
+
+export interface SyncCollectionsCounts {
+  habits: number;
+  logs: number;
+  graces: number;
+  slips: number;
+  pomoSessions: number;
+}
+
+/**
+ * Regra M1 de migração local → nuvem:
+ * - Se o aparelho guarda dados de OUTRO uid (`lastSyncedUid !== null && lastSyncedUid !== currentUid`),
+ *   nunca migra e descarta o espelho local da conta anterior (`discardLocal = true`).
+ * - Só migra (`migrate = true`) quando a conta na nuvem está totalmente vazia nas 5 coleções,
+ *   há dados locais a enviar e os dados locais eram offline (`lastSyncedUid === null`) ou do próprio `currentUid`.
+ */
+export function evaluateInitialCloudSync(opts: {
+  currentUid: string;
+  lastSyncedUid: string | null;
+  remoteCounts: SyncCollectionsCounts;
+  localCounts: SyncCollectionsCounts;
+}): { discardLocal: boolean; migrateLocalToCloud: boolean } {
+  const { currentUid, lastSyncedUid, remoteCounts, localCounts } = opts;
+  const isDifferentOwner = lastSyncedUid !== null && lastSyncedUid !== currentUid;
+  if (isDifferentOwner) {
+    return { discardLocal: true, migrateLocalToCloud: false };
+  }
+  const cloudEmpty =
+    remoteCounts.habits === 0 &&
+    remoteCounts.logs === 0 &&
+    remoteCounts.graces === 0 &&
+    remoteCounts.slips === 0 &&
+    remoteCounts.pomoSessions === 0;
+  const localHasData =
+    localCounts.habits > 0 ||
+    localCounts.logs > 0 ||
+    localCounts.graces > 0 ||
+    localCounts.slips > 0 ||
+    localCounts.pomoSessions > 0;
+  return {
+    discardLocal: false,
+    migrateLocalToCloud: cloudEmpty && localHasData
+  };
+}
+
 export function clearLocalUserData(): void {
   try {
     [
@@ -433,7 +520,8 @@ export function clearLocalUserData(): void {
       REMINDER_SCHEDULED_TODAY_KEY,
       DAY_COMPLETE_KEY,
       MILESTONES_SEEN_KEY,
-      GOAL_DISMISSED_KEY
+      GOAL_DISMISSED_KEY,
+      LAST_SYNCED_UID_KEY
     ].forEach((k) => localStorage.removeItem(k));
   } catch (error) {
     console.warn('Falha ao limpar dados locais', error);
