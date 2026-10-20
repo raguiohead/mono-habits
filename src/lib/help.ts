@@ -104,6 +104,13 @@ export const FAQ: FaqItem[] = [
       'O lembrete diário é local, sem servidor, e não mostra nomes de hábitos. No app Android, os lembretes e o fim do Pomo são agendados no sistema e funcionam mesmo com o app fechado; na web, disparam enquanto o app está aberto ou instalado. Ative em Configurações > Notificações.'
   },
   {
+    id: 'estatisticas',
+    category: 'conta',
+    question: 'O app coleta estatísticas ou envia avisos por push?',
+    answer:
+      'Só se você ligar, em Configurações: "Estatísticas de uso anônimas" (contagens como a aba aberta, sem nomes de hábitos, notas ou dados da conta) e "Novidades do app (push)". Os dois começam desligados e podem ser desligados quando quiser.'
+  },
+  {
     id: 'dados',
     category: 'conta',
     question: 'Como exporto ou apago meus dados?',
