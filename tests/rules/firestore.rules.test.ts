@@ -466,6 +466,8 @@ describe('A2 — Regras de Segurança do Firestore (firestore.rules)', () => {
     await assertSucceeds(setDoc(updateRef, { archived: true, featured: true }, { merge: true }));
     await assertFails(updateDoc(updateRef, { campoInvalido: 123 }));
     await assertFails(setDoc(updateRef, { period: 'invalid-period' }, { merge: true }));
+    await assertFails(updateDoc(updateRef, { createdAt: 999 }));
+    await assertFails(setDoc(updateRef, { createdAt: 999 }, { merge: true }));
 
     // (d) weeklyTargets: transição de meta semanal -> mudança de meta -> volta para dias fixos (sem weeklyTargets) e lista vazia
     const w1 = applyWeeklyTargetChange(undefined, 3, new Date('2026-10-01T12:00:00Z'));
@@ -504,6 +506,29 @@ describe('A2 — Regras de Segurança do Firestore (firestore.rules)', () => {
     // Próxima atualização pelo app (ex.: toggleHideTitle / toggleArchiveHabit) sucede sem rejeição
     await assertSucceeds(updateDoc(legacyV1Ref, { hideTitle: true }));
     await assertSucceeds(updateDoc(legacyV1Ref, { archived: true }));
+  });
+
+  it('impede alteração do campo createdAt na atualização de hábitos (FSR-02)', async () => {
+    const db = testEnv.authenticatedContext(OWNER_UID).firestore();
+    const habitRef = doc(db, subDocPath(OWNER_UID, 'habits', 'habit-created-at-check'));
+    const initialHabit: Habit = {
+      ...DEFAULT_HABITS[0],
+      id: 'habit-created-at-check',
+      createdAt: 1760000000000
+    };
+
+    // Criação com createdAt válido sucede
+    await assertSucceeds(setDoc(habitRef, initialHabit));
+
+    // Atualização mantendo o createdAt original sucede (via updateDoc e setDoc com merge ou objeto completo)
+    await assertSucceeds(updateDoc(habitRef, { title: 'Título atualizado' }));
+    await assertSucceeds(setDoc(habitRef, { ...initialHabit, title: 'Outro título' }));
+    await assertSucceeds(setDoc(habitRef, { title: 'Merge com mesmo createdAt', createdAt: initialHabit.createdAt }, { merge: true }));
+
+    // Tentativa de alterar createdAt é estritamente rejeitada
+    await assertFails(updateDoc(habitRef, { createdAt: 1760000999999 }));
+    await assertFails(setDoc(habitRef, { ...initialHabit, createdAt: 1760000999999 }));
+    await assertFails(setDoc(habitRef, { createdAt: 1760000999999 }, { merge: true }));
   });
 
   it('nega coleções desconhecidas, escrita direta no doc do usuário e appId diferente de mono-habit-tracker', async () => {
