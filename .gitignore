@@ -29,9 +29,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# Vercel
-.vercel
-
 # Android (Capacitor)
 android/app/build/
 android/build/

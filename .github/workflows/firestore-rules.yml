@@ -1,9 +1,11 @@
-# Executa os testes de regras de segurança do Firestore com o emulador local em Pull Requests e workflow_dispatch.
+# Executa os testes de regras de segurança do Firestore com o emulador local em PRs (main e development), push na development e workflow_dispatch.
 name: Testes de Regras do Firestore
 
 on:
+  push:
+    branches: [development]
   pull_request:
-    branches: [main]
+    branches: [main, development]
   workflow_dispatch:
 
 concurrency:
