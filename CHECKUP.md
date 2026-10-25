@@ -521,3 +521,57 @@ Com isso as escritas pendentes sobrevivem a reinícios e são enviadas ao recone
 4. [PERF-03] / [PWA-02] Remover `favicon.svg` de `includeAssets` e definir `lang: 'pt-BR'` no manifesto.
 5. [FSR-02] Impedir alteração de `createdAt` em `update` nas regras (com teste em `tests/rules`).
 6. [SEC-01] **Não aplicar.**
+
+---
+
+## 6. Ciclo 2 — Execução e Resultados
+
+Abaixo está o registro consolidado dos itens executados e validados no Ciclo 2:
+
+### 6.1 [SEC-02] Mitigação de Vulnerabilidades na Cadeia de Suprimentos
+* **Status:** **CONCLUÍDO** (Commit `6a432ba`)
+* **Resultado:** Redução do `npm audit` de **20 vulnerabilidades (3 críticas, 4 altas, 12 moderadas, 1 baixa)** para **14 vulnerabilidades (13 moderadas, 1 baixa)**.
+* **Ações Executadas:**
+  - Neutralização de 100% das vulnerabilidades críticas e de severidade alta (RCE em `tinypool` e Path Traversal em `tar`).
+  - Atualização do `vitest` para `^4.1.12`.
+  - Configuração de `overrides` no `package.json` para `tar: ^7.5.21` e `@grpc/grpc-js: ^1.14.0`.
+
+### 6.2 [A11Y-03] Ajuste de Contraste Monocromático (WCAG 2.2 AA)
+* **Status:** **CONCLUÍDO** (Commits `9b0ec1e` e `c569d85`)
+* **Resultado:** Conformidade plena com o limiar mínimo de 4.5:1 para textos secundários e informativos no tema claro.
+* **Ações Executadas:**
+  - Substituição de `text-zinc-500` (4.48:1) e `text-zinc-400` (2.49:1) por `text-zinc-600` (5.8:1) no tema claro, preservando `dark:text-zinc-400` no tema escuro.
+  - Correção aplicada em abas inativas da navegação inferior (`BottomNav.tsx`), seletores de período (`ConsistencyView.tsx`), modais de criação e configuração (`HabitModal.tsx`, `SettingsModal.tsx`, `LockSettings.tsx`, `WelcomeModal.tsx`, `UpdateNotice.tsx`), labels informativas (`CoverFramer.tsx`, `settingsControls.tsx`) e telas auxiliares.
+
+### 6.3 [UX-02] Alvos de Toque Mínimos e Thumb Zone Mobile
+* **Status:** **CONCLUÍDO** (Commit `afc8af2`)
+* **Resultado:** Todas as áreas interativas móveis atendem à recomendação ergonômica mínima de **44 × 44 px** (WCAG 2.5.8 e Web Design Guidelines).
+* **Ações Executadas:**
+  - Expansão de botões de navegação semanal (`WeeklyStrip.tsx`), botões de incremento/decremento e controles de ação.
+  - Aumento de espaçamento e áreas de clique para evitar toques acidentais em ações destrutivas (excluir/arquivar em `ManageHabits.tsx`).
+
+### 6.4 [A11Y-05] Estados Dinâmicos ARIA e Temporizador Acessível
+* **Status:** **CONCLUÍDO** (Commit `00f5e85`)
+* **Resultado:** Feedback programmaticamente acessível para tecnologias assistivas (TalkBack, NVDA, VoiceOver).
+* **Ações Executadas:**
+  - Adição de `aria-pressed={isSelected}` e `aria-current="date"` nos seletores de dia da semana.
+  - Adição de `aria-current="page"` na aba ativa da navegação inferior (`BottomNav.tsx`).
+  - Semântica de temporizador `role="timer"` e anúncios de acessibilidade em contagens regressivas (`PomoView.tsx`).
+
+### 6.5 [PERF-02] Auto-Hospedagem de Fontes e Otimização de Precache
+* **Status:** **CONCLUÍDO** (Commits `02e9292` e `01bf4c9`)
+* **Resultado:** Fontes `Inter` e `JetBrains Mono` 100% locais e offline, com precache do Service Worker otimizado.
+* **Ações Executadas:**
+  - Remoção de dependências externas a servidores do Google Fonts no `index.html`.
+  - Integração dos pacotes locais `@fontsource-variable/inter` e `@fontsource-variable/jetbrains-mono`.
+  - Configuração de `globIgnores` no `injectManifest` do `vite.config.ts` para excluir subsets não utilizados (`cyrillic`, `cyrillic-ext`, `greek`, `greek-ext`, `vietnamese`), mantendo apenas `latin` e `latin-ext`.
+  - Redução do manifesto de precache do Service Worker de **38 entradas (1394.69 KiB)** para **30 entradas (1283.41 KiB)**, garantindo renderização idêntica e sem layout shift (CLS) em modo avião.
+
+### 6.6 [PERF-01] Carregamento Dinâmico do Firebase SDK
+* **Status:** **ADIADO (Decisão Arquitetural)**
+* **Motivo:** O contexto principal de dados e sincronização (`HabitsContext.tsx`, 1.112 linhas) consome diretamente 19 símbolos e funções síncronas do Firebase JS SDK (`auth`, `db`, `doc`, `setDoc`, `deleteDoc`, `onSnapshot`, `collection`), além de contratos de inicialização e ciclo de vida (`createFirestoreDb`, `wipeDeviceDataAndReload`) validados pela suíte de testes em `tests/securitySync.test.ts`. A conversão para import dinâmico assíncrono exigiria reescrever o `HabitsContext` por completo ou causaria quebra na restauração imediata de sessão autenticada persistida (Web e Capacitor nativo), violando a restrição de estabilidade estabelecida para este ciclo.
+* **Abordagem Proposta para Ciclo Futuro:**
+  1. Extrair uma interface desacoplada de persistência em nuvem (`CloudSyncProvider` / `CloudSyncService`).
+  2. Implementar injeção de dependência assíncrona no contexto de hábitos, acionando o carregamento dinâmico via `import()` apenas quando houver sinal explícito de sessão persistida ou intenção de login do usuário.
+  3. Manter a integridade dos testes de regras e contratos de wipe com mocks da camada de serviço.
+
