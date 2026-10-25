@@ -53,7 +53,8 @@ export default defineConfig({
         ]
       },
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,woff,woff2}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,woff,woff2}'],
+        globIgnores: ['**/*-{cyrillic,cyrillic-ext,greek,greek-ext,vietnamese}-*.woff2']
       }
     })
   ],
