@@ -79,7 +79,7 @@ export const WeeklyStrip: React.FC = () => {
                 setWeekOffset(0);
                 setSelectedDateKey(todayKey);
               }}
-              className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
+              className="min-h-[44px] px-2.5 py-1 flex items-center rounded-md text-[10px] font-mono bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
             >
               Hoje
             </button>
@@ -89,7 +89,7 @@ export const WeeklyStrip: React.FC = () => {
         <div className="flex items-center gap-1">
           <button
             onClick={() => setWeekOffset((prev) => prev - 1)}
-            className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
             title="Semana anterior (Swipe direita)"
             aria-label="Semana anterior"
           >
@@ -97,7 +97,7 @@ export const WeeklyStrip: React.FC = () => {
           </button>
           <button
             onClick={() => setWeekOffset((prev) => prev + 1)}
-            className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
             title="Próxima semana (Swipe esquerda)"
             aria-label="Próxima semana"
           >

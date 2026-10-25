@@ -236,7 +236,7 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
                 <button
                   type="button"
                   onClick={() => toggleHideTitle(habit)}
-                  className="p-2 rounded-xl text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                   aria-label={habit.hideTitle ? 'Mostrar nome do hábito' : 'Ocultar nome do hábito'}
                   title={habit.hideTitle ? 'Mostrar nome do hábito' : 'Ocultar nome do hábito'}
                 >
@@ -246,7 +246,7 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
                 <button
                   type="button"
                   onClick={() => onOpenEditModal(habit)}
-                  className="p-2 rounded-xl text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                   aria-label="Editar dados do hábito"
                   title="Editar dados do hábito"
                 >
@@ -256,7 +256,7 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
                 <button
                   type="button"
                   onClick={() => toggleArchiveHabit(habit)}
-                  className="p-2 rounded-xl text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                   aria-label={habit.archived ? 'Restaurar hábito' : 'Arquivar hábito'}
                   title={habit.archived ? 'Restaurar hábito' : 'Arquivar hábito'}
                 >
@@ -266,7 +266,7 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
                 <button
                   type="button"
                   onClick={() => onConfirmDelete(habit)}
-                  className="p-2 rounded-xl text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  className="min-w-[44px] min-h-[44px] ml-1.5 flex items-center justify-center rounded-xl text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                   aria-label="Excluir permanentemente"
                   title="Excluir permanentemente"
                 >

@@ -113,10 +113,10 @@ const HabitItemBase: React.FC<HabitItemProps> = ({
   const gallery = variant === 'gallery';
   // Nome acessível dos botões: nunca vaza o título quando está oculto
   const label = hidden ? 'Hábito oculto' : habit.title;
-  // Alvos de toque de 44px na célula (36px + área expandida), sem estourar a célula com texto grande
+  // Alvos de toque mínimos de 44px (área expandida invisível no bento/galeria, min-w/min-h no layout padrão)
   const actionBtn = bento || gallery
     ? "relative w-9 h-9 flex items-center justify-center before:absolute before:-inset-1 before:content-['']"
-    : 'p-1.5';
+    : "relative min-w-[44px] min-h-[44px] flex items-center justify-center";
 
   const checkEl = (
     <>
