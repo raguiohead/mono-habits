@@ -115,7 +115,10 @@ export const WeeklyStrip: React.FC = () => {
           return (
             <button
               key={item.key}
+              type="button"
               onClick={() => setSelectedDateKey(item.key)}
+              aria-pressed={isSelected}
+              aria-current={item.isToday ? 'date' : undefined}
               className={`flex flex-col items-center justify-center py-2.5 sm:py-3 rounded-xl border transition-all text-center relative ${
                 isSelected
                   ? 'bg-zinc-950 text-zinc-50 border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50 shadow-sm'

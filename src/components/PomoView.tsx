@@ -112,7 +112,12 @@ export const PomoView: React.FC = () => {
               className="stroke-zinc-950 dark:stroke-zinc-50 transition-[stroke-dashoffset] duration-300 ease-linear"
             />
           </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+          <div
+            role="timer"
+            aria-live="off"
+            aria-label={`Temporizador: ${formatClock(remainingSeconds)}`}
+            className="absolute inset-0 flex flex-col items-center justify-center gap-1"
+          >
             <TomatoIcon
               className={`w-6 h-6 text-zinc-400 dark:text-zinc-500 ${status === 'running' ? 'animate-pulse' : ''}`}
             />
@@ -122,6 +127,10 @@ export const PomoView: React.FC = () => {
             <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
               {status === 'paused' ? 'Pausado' : KIND_LABEL[kind]}
             </span>
+          </div>
+          {/* Anúncio acessível de alteração de estado (não verboso, apenas em transições) */}
+          <div className="sr-only" aria-live="polite" aria-atomic="true">
+            {status === 'paused' ? 'Temporizador pausado' : status === 'running' ? `Temporizador em andamento: ${KIND_LABEL[kind]}` : 'Temporizador pronto'}
           </div>
         </div>
 
