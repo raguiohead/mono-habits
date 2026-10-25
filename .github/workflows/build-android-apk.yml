@@ -1,12 +1,23 @@
-# Compila o APK Android (Release assinado na main/workflow_dispatch; Debug em PR e feat/*).
-# Publica GitHub Release automaticamente na main caso a tag v<versão> ainda não exista.
+# Compila o APK Android:
+# - main: Release assinado com a keystore oficial; publica GitHub Release oficial caso a tag v<versão> não exista.
+# - development: Release assinado (mesma keystore oficial, permitindo login Google nativo e sobreposição) E APK Debug.
+#   Publica GitHub Pre-release de teste (tag dev-v<versão>-<run_number>, --prerelease, NUNCA latest) e mantém os 5 mais recentes.
+# - PRs (para main ou development) e branches feat/*: compila APK Debug apenas como artefato para inspeção.
+#
+# NOTA SOBRE ATUALIZAÇÕES AUTOMÁTICAS (src/lib/appUpdate.ts):
+# O verificador de atualizações in-app do MONO // HABITS consulta estritamente o endpoint
+# 'https://api.github.com/repos/raguiohead/mono-habits/releases/latest', que pela especificação da
+# GitHub REST API ignora completamente pre-releases e drafts. Além disso, appUpdate.ts descarta qualquer
+# payload com 'prerelease: true' e busca exclusivamente o asset nomeado 'mono-habits.apk'.
+# Como os pre-releases de teste usam a flag --prerelease (--latest=false) e anexam 'mono-habits-dev.apk'
+# e 'mono-habits-debug.apk', os usuários finais NUNCA receberão notificações de atualização para builds de teste.
 name: Build do APK Android
 
 on:
   push:
-    branches: [main, 'feat/*']
+    branches: [main, development, 'feat/*']
   pull_request:
-    branches: [main]
+    branches: [main, development]
   workflow_dispatch:
 
 concurrency:
@@ -50,8 +61,8 @@ jobs:
 
       - run: chmod +x android/gradlew
 
-      - name: Validar segredos e compilar APK Release (main e workflow_dispatch)
-        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      - name: Validar segredos e compilar APK Release (main, development e workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development'))
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -73,7 +84,7 @@ jobs:
           rm -f "$KEYSTORE_PATH"
         working-directory: android
 
-      - name: Salvar artefato do APK Release
+      - name: Salvar artefato do APK Release (Main e workflow_dispatch)
         if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -82,7 +93,16 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Compilar APK Debug (PR e branches feat/*)
+      - name: Salvar artefato do APK Release (Development)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/development'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mono-habits-dev
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Compilar APK Debug (PR, feat/* e development)
         if: "${{ !(github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}"
         run: ./gradlew assembleDebug
         working-directory: android
@@ -124,4 +144,87 @@ jobs:
             APK_FILE=$(find . -name "app-release.apk" -o -name "*.apk" | head -n 1)
             cp "$APK_FILE" mono-habits.apk
             gh release create "$TAG" mono-habits.apk --target "${{ github.sha }}" --title "Release $TAG" --generate-notes
+          fi
+
+  prerelease:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/development'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Baixar artefato do APK Release (Dev)
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: mono-habits-dev
+          path: ./apk-dev
+
+      - name: Baixar artefato do APK Debug
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: mono-habits-debug
+          path: ./apk-debug
+
+      - name: Publicar GitHub Pre-release de teste
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="dev-v${VERSION}-${{ github.run_number }}"
+          TITLE="Teste v${VERSION} (dev #${{ github.run_number }})"
+
+          APK_DEV=$(find ./apk-dev -name "app-release.apk" -o -name "*.apk" | head -n 1)
+          APK_DEBUG=$(find ./apk-debug -name "app-debug.apk" -o -name "*.apk" | head -n 1)
+
+          cp "$APK_DEV" mono-habits-dev.apk
+          cp "$APK_DEBUG" mono-habits-debug.apk
+
+          COMMIT_SHORT_SHA=$(git rev-parse --short HEAD)
+          COMMIT_MSG=$(git log -1 --pretty=%B | head -n 1)
+
+          NOTES=$(cat <<EOF
+          ### ⚠️ Build de teste (integração)
+
+          Este pré-release foi gerado automaticamente a partir da branch \`development\`.
+          **Não é uma versão final estável e não é oferecido como atualização automática aos usuários.**
+
+          - **Versão base:** \`v$VERSION\`
+          - **Build / Run:** #${{ github.run_number }}
+          - **Commit:** \`$COMMIT_SHORT_SHA\` — $COMMIT_MSG
+
+          #### Arquivos disponíveis:
+          - **\`mono-habits-dev.apk\`**: APK compilado em modo Release e assinado com a keystore oficial (permite login Google nativo e substitui o app instalado).
+          - **\`mono-habits-debug.apk\`**: APK de depuração (debuggable via ADB).
+          EOF
+          )
+
+          # Publicar o pre-release com tag dev-v<versão>-<run_number>.
+          # As flags --prerelease e --latest=false garantem que a GitHub API NUNCA aponte /releases/latest para este build.
+          gh release create "$TAG" mono-habits-dev.apk mono-habits-debug.apk \
+            --target "${{ github.sha }}" \
+            --title "$TITLE" \
+            --notes "$NOTES" \
+            --prerelease \
+            --latest=false
+
+      - name: Limpar pre-releases antigos (manter os 5 mais recentes)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Lista os pre-releases dev-* ordenados decrescentemente (mais novos primeiro),
+          # ignora os 5 primeiros e apaga o restante (release + tag)
+          TAGS_TO_DELETE=$(gh release list --limit 100 --json tagName,isPrerelease \
+            --jq '[.[] | select(.isPrerelease and (.tagName | startswith("dev-"))) | .tagName][5:] // [] | .[]' 2>/dev/null || true)
+
+          if [ -n "$TAGS_TO_DELETE" ]; then
+            echo "Removendo pre-releases antigos:"
+            echo "$TAGS_TO_DELETE"
+            for tag in $TAGS_TO_DELETE; do
+              echo "Removendo $tag..."
+              gh release delete "$tag" --cleanup-tag --yes || true
+            done
+          else
+            echo "Nenhum pre-release antigo para remover (mantendo até 5 builds de teste recentes)."
           fi
