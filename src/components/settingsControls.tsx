@@ -6,7 +6,7 @@ export const BTN_PRIMARY =
   'min-h-[44px] px-4 rounded-xl text-xs font-medium bg-zinc-950 text-zinc-50 dark:bg-zinc-50 dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2';
 
 export const SectionTitle: React.FC<{ icon: React.ReactNode; children: React.ReactNode }> = ({ icon, children }) => (
-  <h4 className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+  <h4 className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
     {icon}
     {children}
   </h4>
@@ -28,7 +28,7 @@ export const Switch: React.FC<{
     <span>
       <span className="block text-xs font-medium">{label}</span>
       {description && (
-        <span className="block text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">{description}</span>
+        <span className="block text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">{description}</span>
       )}
     </span>
     <span

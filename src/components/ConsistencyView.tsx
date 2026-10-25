@@ -208,7 +208,7 @@ export const ConsistencyView: React.FC = () => {
         aria-label={cellDescription}
       >
         {isCalendar && (
-          <span className={day.ratio >= 0.7 ? (darkMode ? 'text-zinc-900' : 'text-zinc-100') : 'text-zinc-500'}>
+          <span className={day.ratio >= 0.7 ? (darkMode ? 'text-zinc-900' : 'text-zinc-100') : 'text-zinc-600 dark:text-zinc-400'}>
             {day.date.getDate()}
           </span>
         )}
@@ -295,7 +295,7 @@ export const ConsistencyView: React.FC = () => {
             className={`flex-1 py-2 px-2 rounded-lg transition-all text-center ${
               range === r.value
                 ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-xs font-semibold'
-                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
             }`}
           >
             {r.label}

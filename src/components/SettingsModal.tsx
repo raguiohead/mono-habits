@@ -70,7 +70,7 @@ function Segmented<T extends string>({
           className={`min-h-[44px] rounded-lg text-xs transition-colors ${
             value === o.value
               ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 font-semibold shadow-xs'
-              : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
           }`}
         >
           {o.label}
@@ -245,7 +245,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           </button>
         </div>
         <PrivacyContent />
-        <p className="pt-4 text-[11px] text-zinc-500 dark:text-zinc-400">
+        <p className="pt-4 text-[11px] text-zinc-600 dark:text-zinc-400">
           Link público: <a href="/privacidade" className="underline">/privacidade</a>
         </p>
       </ModalShell>
@@ -259,7 +259,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         <div className="flex items-center justify-between pb-3 border-b border-zinc-200/80 dark:border-zinc-800">
           <div>
             <h3 id="settings-title" className="text-base font-semibold tracking-tight">Configurações</h3>
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Conta, aparência, acessibilidade e notificações</p>
+            <p className="text-[11px] text-zinc-600 dark:text-zinc-400">Conta, aparência, acessibilidade e notificações</p>
           </div>
           <button type="button" onClick={close} className="w-11 h-11 -mr-2 flex items-center justify-center rounded-xl opacity-70 hover:opacity-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors" aria-label="Fechar configurações">
             <X className="w-4 h-4" />
@@ -275,7 +275,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               <Avatar photoURL={user.photoURL} name={user.displayName || user.email} className="w-12 h-12" />
               <div className="min-w-0">
                 <p className="text-sm font-semibold truncate">{user.displayName || 'Conta Google'}</p>
-                {user.email && <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 truncate">{user.email}</p>}
+                {user.email && <p className="text-[11px] font-mono text-zinc-600 dark:text-zinc-400 truncate">{user.email}</p>}
               </div>
             </div>
           )}
@@ -329,7 +329,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           </button>
           {Capacitor.isNativePlatform() && (
             <div className="flex items-center justify-between gap-3 pt-1">
-              <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">
+              <span className="text-xs font-mono text-zinc-600 dark:text-zinc-400">
                 Versão {__APP_VERSION__}
               </span>
               <button
@@ -350,7 +350,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           <SectionTitle icon={<EyeOff className="w-3.5 h-3.5" />}>Modo discreto</SectionTitle>
           <div className="space-y-1.5">
             <Segmented label="Modo discreto" value={settings.discreetMode} options={DISCREET_OPTIONS} onChange={(discreetMode) => updateSettings({ discreetMode })} />
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+            <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
               Oculta os nomes (e descrições) de todos os hábitos, nas telas e nos avisos. O botão de olho no topo alterna na hora, até você recarregar o app.
             </p>
           </div>
@@ -376,7 +376,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   className="w-full min-h-[44px] px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-xs font-mono"
                 />
               </div>
-              <p className="col-span-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+              <p className="col-span-2 text-[11px] text-zinc-600 dark:text-zinc-400">
                 A janela pode passar da meia-noite (ex.: 22:00 até 07:00). É reavaliada a cada 30 s e quando você volta ao app.
               </p>
             </div>
@@ -390,7 +390,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             <p className="text-xs font-medium">Layout dos hábitos no Foco</p>
             <Segmented label="Layout dos hábitos no Foco" value={settings.focusLayout} options={LAYOUT_OPTIONS} onChange={(focusLayout) => updateSettings({ focusLayout })} />
             <div aria-hidden="true" className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-3">
-              <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">Prévia</p>
+              <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 mb-2">Prévia</p>
               <div className="grid grid-cols-2 gap-1.5">
                 {settings.focusLayout === 'gallery' ? (
                   <>
@@ -419,7 +419,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 )}
               </div>
             </div>
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+            <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
               Hábitos destacados (até 2, ao editar um hábito) ficam fixados no topo; no Bento e em Capas ocupam a largura toda. Em Capas, cada hábito vira um cartão com a imagem em destaque.
             </p>
           </div>
@@ -435,7 +435,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           <div className="space-y-1.5">
             <p className="text-xs font-medium">Animações</p>
             <Segmented label="Animações" value={settings.motion} options={MOTION_OPTIONS} onChange={(motion) => updateSettings({ motion })} />
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+            <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
               “Sistema” segue a preferência de movimento reduzido do seu aparelho.
             </p>
           </div>
@@ -458,7 +458,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               options={GRACE_OPTIONS}
               onChange={(value) => updateSettings({ graceDaysPerMonth: Number(value) as 0 | 1 | 2 })}
             />
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+            <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
               Um dia de graça perdoa um dia perdido (dos últimos 7) sem quebrar a ofensiva. Ele não conta como
               concluído nem soma à ofensiva, e a cota é por hábito, em cada mês.
             </p>
@@ -510,7 +510,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             <div className="flex items-center justify-between gap-3 py-2 border-t border-zinc-200/70 dark:border-zinc-800/80">
               <div className="min-w-0">
                 <p className="text-xs font-medium">Alarmes exatos (Pomo pontual)</p>
-                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
                   Permite disparar o fim do Pomo no segundo exato com o app fechado.
                 </p>
               </div>
@@ -533,7 +533,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" aria-hidden="true" />
             </summary>
             <div className="space-y-2 pb-3">
-          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+          <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
             {permission === 'denied'
               ? 'As notificações estão bloqueadas. Libere nas configurações do sistema/navegador para receber avisos.'
               : permission === 'unsupported'
@@ -543,7 +543,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               : 'Na web, os lembretes funcionam com o app aberto ou instalado e ativo em segundo plano (no app Android, funcionam mesmo fechado). No iPhone, instale o app na tela de início.'}
           </p>
           {permission !== 'unsupported' && !Capacitor.isNativePlatform() && (
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+            <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
               Não usamos servidor de push: na web, se o navegador encerrar o app, o lembrete não é enviado. Quando
               falta apenas 1 hábito, a notificação traz o botão "Marcar como feito" (no navegador Android; o iPhone não
               mostra botões). O hábito é marcado assim que o app abrir, se ele não estiver aberto.

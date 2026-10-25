@@ -52,9 +52,9 @@ export const HelpView: React.FC = () => {
       </div>
 
       <section aria-label="Perguntas e respostas" className="space-y-2">
-        <h4 className="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Perguntas e respostas</h4>
+        <h4 className="text-xs font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400">Perguntas e respostas</h4>
         {faq.length === 0 ? (
-          <p role="status" className="text-xs text-zinc-500 dark:text-zinc-400 py-3">
+          <p role="status" className="text-xs text-zinc-600 dark:text-zinc-400 py-3">
             Nada encontrado para essa busca. Tente outra palavra.
           </p>
         ) : (
@@ -88,7 +88,7 @@ export const HelpView: React.FC = () => {
 
       {glossary.length > 0 && (
         <section aria-label="Glossário" className="space-y-2">
-          <h4 className="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Glossário rápido</h4>
+          <h4 className="text-xs font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400">Glossário rápido</h4>
           <dl className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 divide-y divide-zinc-200 dark:divide-zinc-800">
             {glossary.map((g) => (
               <div key={g.term} className="px-3.5 py-2.5">

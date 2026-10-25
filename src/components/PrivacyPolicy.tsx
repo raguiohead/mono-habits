@@ -27,7 +27,7 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
 /** Texto da política (usado no modal de configurações e na página pública /privacidade) */
 export const PrivacyContent: React.FC = () => (
   <div className="space-y-5">
-    <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
+    <p className="text-[11px] font-mono text-zinc-600 dark:text-zinc-400">
       Última atualização: {PRIVACY_UPDATED_AT}
     </p>
 

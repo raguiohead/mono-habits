@@ -59,7 +59,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ onAccept }) => {
             <h3 id="welcome-title" className="text-base font-semibold tracking-tight">
               Bem-vindo ao MONO // HABITS
             </h3>
-            <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
+            <p className="text-[11px] font-mono text-zinc-600 dark:text-zinc-400">
               Consistência diária, sem distrações.
             </p>
           </div>
@@ -73,7 +73,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ onAccept }) => {
               </span>
               <div>
                 <p className="text-xs font-semibold">{title}</p>
-                <p className="text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">{text}</p>
+                <p className="text-[11px] leading-relaxed text-zinc-600 dark:text-zinc-400">{text}</p>
               </div>
             </li>
           ))}
@@ -99,7 +99,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ onAccept }) => {
           >
             Aceitar e começar
           </button>
-          <p className="text-center text-[11px] text-zinc-500 dark:text-zinc-400">
+          <p className="text-center text-[11px] text-zinc-600 dark:text-zinc-400">
             Ao continuar, você concorda com a{' '}
             <button
               type="button"

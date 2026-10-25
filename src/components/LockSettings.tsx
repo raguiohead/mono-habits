@@ -195,7 +195,7 @@ export const LockSettings: React.FC = () => {
                   className={`min-h-[44px] rounded-lg text-xs transition-colors ${
                     lock.timeoutMinutes === minutes
                       ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 font-semibold shadow-xs'
-                      : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
                   }`}
                 >
                   {TIMEOUT_LABEL[minutes]}
@@ -213,7 +213,7 @@ export const LockSettings: React.FC = () => {
             />
           )}
           {lock.biometricSupported === false && (
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+            <p className="text-[11px] text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5">
               <Fingerprint className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
               Biometria indisponível neste navegador ou aparelho.
             </p>
@@ -230,7 +230,7 @@ export const LockSettings: React.FC = () => {
         </>
       )}
 
-      <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+      <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
         <strong>Trava de interface, não criptografia.</strong> O bloqueio impede que outra pessoa use o app aberto neste
         aparelho, mas os dados no armazenamento do navegador <strong>não são criptografados</strong>: quem tiver acesso ao
         navegador consegue lê-los. O PIN fica guardado só neste aparelho, como hash (PBKDF2 com sal), e não pode ser

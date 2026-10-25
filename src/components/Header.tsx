@@ -48,7 +48,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings }) => {
             <h1 className="text-[15px] sm:text-base font-semibold tracking-tight leading-none whitespace-nowrap">
               MONO // HABITS
             </h1>
-            <p className="hidden sm:block text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mt-1">
+            <p className="hidden sm:block text-[11px] font-mono text-zinc-600 dark:text-zinc-400 mt-1">
               Consistência Diária Sem Distrações
             </p>
           </div>
@@ -116,7 +116,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings }) => {
             className={`flex-1 py-2 px-2 sm:px-3 rounded-lg transition-all text-center ${
               activeTab === tab.id
                 ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-xs font-semibold'
-                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
             }`}
           >
             {tab.label}

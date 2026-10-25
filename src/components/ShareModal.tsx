@@ -95,7 +95,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ title, options, habitCou
                 aria-selected={i === index}
                 onClick={() => setIndex(i)}
                 className={`min-h-[44px] rounded-lg text-xs font-medium transition-all ${
-                  i === index ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-xs font-semibold' : 'text-zinc-500 dark:text-zinc-400'
+                  i === index ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-xs font-semibold' : 'text-zinc-600 dark:text-zinc-400'
                 }`}
               >
                 {o.label}
@@ -125,7 +125,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ title, options, habitCou
         >
           <span>
             <span className="block text-xs font-medium">Incluir total de hábitos</span>
-            <span className="block text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+            <span className="block text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">
               A imagem nunca mostra nomes de hábitos, notas, e-mail ou nome.
             </span>
           </span>

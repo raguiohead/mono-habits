@@ -23,7 +23,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onOpenCreateModal }) => {
         className={`relative flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition-colors ${
           isActive
             ? 'text-zinc-950 dark:text-zinc-50'
-            : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
+            : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
         }`}
       >
         {icon}
