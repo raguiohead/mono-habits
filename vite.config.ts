@@ -17,6 +17,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      injectRegister: null,
       // SW próprio (src/sw.ts): precisa tratar cliques nas notificações, o que o generateSW não permite
       strategies: 'injectManifest',
       srcDir: 'src',
