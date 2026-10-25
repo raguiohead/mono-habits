@@ -15,7 +15,8 @@ import {
   setLastSyncedUid,
   DEFAULT_HABITS
 } from '@/lib/storage';
-import { wipeDeviceDataAndReload, APP_INDEXED_DB_NAMES } from '@/lib/firebase';
+import { wipeDeviceDataAndReload, APP_INDEXED_DB_NAMES, createFirestoreDb } from '@/lib/firebase';
+import { initializeApp, deleteApp } from 'firebase/app';
 
 const store = new Map<string, string>();
 const memoryStorage: Storage = {
@@ -184,5 +185,25 @@ describe('M1 — isolamento entre contas no mesmo aparelho (evaluateInitialCloud
 
     clearLocalUserData();
     expect(loadLockConfig().enabled).toBe(false);
+  });
+});
+
+describe('UX-01 — Inicialização do Firestore com persistentLocalCache e fallback seguro', () => {
+  it('inicializa o Firestore com cache persistente e retorna instância válida', async () => {
+    const dummyApp = initializeApp({ apiKey: 'fake-api-key', projectId: 'demo-cache-test' }, `test-app-${Date.now()}-1`);
+    const firestore = createFirestoreDb(dummyApp);
+    expect(firestore).toBeDefined();
+    expect(firestore.app).toBe(dummyApp);
+    await deleteApp(dummyApp);
+  });
+
+  it('faz fallback seguro para getFirestore caso initializeFirestore lance erro (ex.: já iniciado ou sem IndexedDB)', async () => {
+    const dummyApp = initializeApp({ apiKey: 'fake-api-key', projectId: 'demo-fallback-test' }, `test-app-${Date.now()}-2`);
+    const firstDb = createFirestoreDb(dummyApp);
+    // Chamada subsequente no mesmo app lança no initializeFirestore e cai no fallback getFirestore
+    const secondDb = createFirestoreDb(dummyApp);
+    expect(secondDb).toBeDefined();
+    expect(secondDb).toBe(firstDb);
+    await deleteApp(dummyApp);
   });
 });

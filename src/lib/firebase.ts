@@ -19,6 +19,9 @@ import {
 } from 'firebase/auth';
 import {
   getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   collection,
   doc,
   setDoc,
@@ -65,6 +68,21 @@ let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
 
+/**
+ * Inicializa o Firestore com cache persistente em IndexedDB e suporte a múltiplas abas (tabManager).
+ * Garante que escritas e check-ins feitos offline sobrevivam a fechamentos e recarregamentos da página.
+ * Recorre com segurança a getFirestore(app) caso já tenha sido inicializado ou o ambiente não suporte IndexedDB.
+ */
+export function createFirestoreDb(firebaseApp: FirebaseApp): Firestore {
+  try {
+    return initializeFirestore(firebaseApp, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
+  } catch {
+    return getFirestore(firebaseApp);
+  }
+}
+
 if (isFirebaseConfigured) {
   try {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
@@ -72,7 +90,7 @@ if (isFirebaseConfigured) {
     auth = Capacitor.isNativePlatform()
       ? initializeAuth(app, { persistence: indexedDBLocalPersistence })
       : getAuth(app);
-    db = getFirestore(app);
+    db = createFirestoreDb(app);
   } catch (error) {
     console.warn('[Firebase] Falha na inicialização:', error);
   }
