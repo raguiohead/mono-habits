@@ -484,3 +484,40 @@ Evoluções que fortalecem a promessa de resiliência e performance do produto:
 
 ---
 *Relatório consolidado e verificado contra a base de código do repositório MONO // HABITS.*
+
+---
+
+## 5. Revisão Independente dos Achados (Claude Code)
+
+Os achados críticos e altos foram verificados novamente contra o código. Resultado:
+
+### 5.1 Confirmados
+- **[PWA-01]** Confirmado: `dist/index.html` injeta `<script id="vite-plugin-pwa:register-sw" src="/registerSW.js">` e `vite.config.ts` não define `injectRegister`, contornando a guarda `!Capacitor.isNativePlatform()` de `src/main.tsx`.
+- **[A11Y-01]** Confirmado: em `HabitModal.tsx` apenas `habit-description` usa `htmlFor`; "Nome do Hábito" e "Categoria" não têm associação.
+- **[PERF-03] / [PWA-02]** Confirmados: `includeAssets` referencia `favicon.svg` inexistente em `public/`; manifesto gerado com `lang: "en"`.
+- **[SEC-03]** Confirmado, mas de impacto baixo (chaves de cliente do Firebase são públicas por design; a proteção real são as regras).
+
+### 5.2 Falso positivo — [SEC-01] descartado
+A checagem de atualização (`UpdateNotice.tsx`, linhas 31, 47 e 69) só executa quando `Capacitor.isNativePlatform()` é verdadeiro. No APK os headers de `vercel.json`/`firebase.json` não se aplicam e o `index.html` não declara CSP via `<meta>`. Na web a chamada a `api.github.com` nunca ocorre. **Nenhuma alteração de CSP é necessária.**
+
+### 5.3 Reclassificado — [UX-01] de Crítica para **Alta**, com cenário corrigido
+O cenário "snapshot antigo sobrescreve dados ao reconectar com o app aberto" **não ocorre**: com o app aberto, o Firestore mantém as escritas pendentes e aplica latency compensation nos snapshots. O risco real é outro:
+1. `src/lib/firebase.ts` usa `getFirestore(app)`, ou seja, cache **apenas em memória**.
+2. Check-ins/edições feitos offline ficam pendentes só na memória; se o app for fechado ou recarregado antes de reconectar, essas escritas se perdem.
+3. Na próxima abertura, a sincronização inicial (`HabitsContext.tsx`, ramo `else` de `evaluateInitialCloudSync`, ~linhas 394-399) substitui o `localStorage` pelo estado remoto, apagando o que só existia localmente.
+
+**Correção recomendada (mais simples que a fila de mutações proposta):** inicializar o Firestore com cache persistente em IndexedDB:
+```ts
+db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+});
+```
+Com isso as escritas pendentes sobrevivem a reinícios e são enviadas ao reconectar.
+
+### 5.4 Prioridade revisada
+1. [PWA-01] `injectRegister: null` no `VitePWA`.
+2. [UX-01] Cache persistente do Firestore (`persistentLocalCache`) + teste cobrindo o cenário.
+3. [A11Y-01] / [A11Y-02] `htmlFor`/`id` nos campos e `aria-label` nos botões iconográficos; [A11Y-04] `aria-label` completo nas células do grafo.
+4. [PERF-03] / [PWA-02] Remover `favicon.svg` de `includeAssets` e definir `lang: 'pt-BR'` no manifesto.
+5. [FSR-02] Impedir alteração de `createdAt` em `update` nas regras (com teste em `tests/rules`).
+6. [SEC-01] **Não aplicar.**
