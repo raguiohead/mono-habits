@@ -34,8 +34,9 @@ export const PrivacyContent: React.FC = () => (
     <Section title="1. Resumo e Controlador">
       <p>
         O MONO // HABITS é um rastreador de hábitos que funciona primeiro no seu dispositivo. Não
-        há anúncios, não vendemos nem compartilhamos seus dados comerciais e não usamos ferramentas de
-        análise ou rastreamento de comportamento.
+        há anúncios e não vendemos nem compartilhamos seus dados comerciais. Estatísticas anônimas de uso e
+        avisos do app por push existem, mas são opcionais e começam desligados: só funcionam se você ligar
+        em Configurações.
       </p>
       <p>
         <strong>Controlador dos dados (LGPD, art. 9º, III):</strong> {PRIVACY_CONTROLLER_NAME} ({PRIVACY_CONTROLLER_LOCATION}) — contato:{' '}
@@ -73,6 +74,12 @@ export const PrivacyContent: React.FC = () => (
         <li>
           <strong>Verificação de atualização no Android:</strong> somente no aplicativo instalado no Android (APK), o app consulta a API pública de lançamentos do GitHub ao abrir e ao voltar ao primeiro plano (no máximo uma vez a cada 6 horas, ou quando você toca em &ldquo;Verificar atualizações&rdquo;). Essa consulta envia apenas seu endereço IP e o cabeçalho técnico do aplicativo (User-Agent) ao GitHub, sem qualquer dado de hábitos ou de conta.
         </li>
+        <li>
+          <strong>Estatísticas de uso anônimas (opcional, desligadas por padrão):</strong> se você ligar em Configurações, o app usa o Google Analytics para Firebase (apenas no navegador, não no app Android) para contar usos como a aba aberta, hábitos criados (só o tipo), sessões do Pomo concluídas, imagens compartilhadas e uso do modo discreto. Nunca enviamos nomes de hábitos, descrições, notas, e-mail ou dados da conta. A Google pode tratar identificadores técnicos do aplicativo, dados do dispositivo e localização aproximada derivada do IP. Respeitamos o "Não rastrear" do navegador, e desligar a opção interrompe a coleta.
+        </li>
+        <li>
+          <strong>Avisos do app por push (opcional, desligados por padrão):</strong> se você ligar em Configurações e permitir as notificações no navegador, registramos este aparelho no Firebase Cloud Messaging (Google), que gera um identificador (token) para entregar mensagens ocasionais, como novas versões e funções. Não guardamos esse token em nossos servidores nem o associamos à sua conta. Desligar a opção cancela o registro.
+        </li>
       </ul>
     </Section>
 
@@ -95,7 +102,7 @@ export const PrivacyContent: React.FC = () => (
     <Section title="4. Para que usamos">
       <p>
         Exclusivamente para operar o app: exibir seus hábitos e estatísticas, sincronizar entre
-        dispositivos quando você conecta sua Conta Google, avisar sobre novas versões no Android e disparar os lembretes que você ativar. Base legal: execução do serviço que
+        dispositivos quando você conecta sua Conta Google, avisar sobre novas versões no Android e disparar os lembretes que você ativar. Se você ligar, também para entender o uso do app de forma agregada e anônima e enviar avisos ocasionais por push. Base legal: execução do serviço que
         você solicitou e seu consentimento (LGPD, art. 7º, I e V).
       </p>
     </Section>
@@ -114,7 +121,7 @@ export const PrivacyContent: React.FC = () => (
       </p>
       <ul className="list-disc pl-4 space-y-1">
         <li>
-          <strong>Google LLC (Firebase e Google Fonts):</strong> autenticação Google, banco de dados em nuvem (quando você conecta sua conta) e entrega de fontes.
+          <strong>Google LLC (Firebase e Google Fonts):</strong> autenticação Google, banco de dados em nuvem (quando você conecta sua conta), entrega de fontes e, somente se você ligar, estatísticas de uso (Google Analytics para Firebase) e avisos por push (Firebase Cloud Messaging).
         </li>
         <li>
           <strong>GitHub, Inc.:</strong> hospedagem e consulta de novas versões do APK no Android (recebe apenas IP e User-Agent a cada verificação).

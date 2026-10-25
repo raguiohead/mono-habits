@@ -2,6 +2,7 @@ import { sanitizeHabitDescription } from '@/lib/habitDescription';
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { type Habit, type LogsMap, type GracesMap, type SlipsMap, type TabType, type SyncStatus, type PomoSession } from '@/types/habit';
+import { logUsage } from '@/lib/usageClient';
 import { useSettings } from '@/context/SettingsContext';
 import { GRACE_BLOCK_MESSAGE, addGrace, getGraceBlock, graceRemaining, isGraced, monthKeyOf, removeGrace } from '@/lib/graces';
 import { sortSessions } from '@/lib/pomo';
@@ -699,6 +700,8 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       saveLocalHabits(updated);
       return updated;
     });
+    // Só a contagem do tipo, nunca o nome (e só com o consentimento de estatísticas)
+    if (!habitData.id) logUsage('habit_created', { kind: newHabit.kind === 'avoid' ? 'avoid' : 'build' });
 
     // 2. Sincroniza com o Firestore se conectado
     if (user && db && isFirebaseConfigured) {
@@ -998,6 +1001,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
 
     void applyPomoGoal(session, allSessions);
+    if (session.kind === 'focus' && session.completed) logUsage('pomo_completed');
 
     if (user && db && isFirebaseConfigured) {
       try {

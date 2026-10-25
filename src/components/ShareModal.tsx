@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Download, Share2, X } from 'lucide-react';
 import { ModalShell } from './ModalShell';
 import { useHabits } from '@/context/HabitsContext';
+import { logUsage } from '@/lib/usageClient';
 import { canvasToPngBlob, renderShareCard, shareOrDownload } from '@/lib/shareCanvas';
 import { CARD_H, CARD_W, type ShareCardSpec } from '@/lib/shareImage';
 
@@ -53,6 +54,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ title, options, habitCou
         setError('Não foi possível gerar a imagem neste navegador.');
         return;
       }
+      logUsage('share_card', { type: options.length > 1 ? 'wrapped' : 'grid' });
       if (mode === 'download') {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');

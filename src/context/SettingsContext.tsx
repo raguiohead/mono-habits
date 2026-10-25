@@ -3,6 +3,7 @@ import { loadSettings, saveSettings } from '@/lib/storage';
 import { TEXT_SIZE_PX, type AppSettings } from '@/lib/settings';
 import { displayTitle, isDiscreetNow, isHabitHidden } from '@/lib/discreet';
 import type { Habit } from '@/types/habit';
+import { logUsage, setUsageEnabled } from '@/lib/usageClient';
 
 interface SettingsContextType {
   settings: AppSettings;
@@ -59,7 +60,16 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const configured = useMemo(() => isDiscreetNow(settings, now), [settings, now]);
   const discreet = override ?? configured;
-  const toggleDiscreet = useCallback(() => setOverride(!(override ?? configured)), [override, configured]);
+  const toggleDiscreet = useCallback(() => {
+    const next = !(override ?? configured);
+    setOverride(next);
+    logUsage('discreet_toggle', { enabled: next });
+  }, [override, configured]);
+
+  // Estatísticas de uso: só carregam e enviam com o consentimento ligado
+  useEffect(() => {
+    void setUsageEnabled(settings.analyticsEnabled);
+  }, [settings.analyticsEnabled]);
 
   const updateSettings = useCallback((patch: Partial<AppSettings>) => {
     if ('discreetMode' in patch || 'discreetFrom' in patch || 'discreetTo' in patch) setOverride(null);

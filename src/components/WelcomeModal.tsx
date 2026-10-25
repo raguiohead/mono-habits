@@ -82,7 +82,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ onAccept }) => {
         <div className="p-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 text-[11px] leading-relaxed text-zinc-600 dark:text-zinc-400 space-y-1.5">
           <p>
             <strong className="text-zinc-950 dark:text-zinc-50">Sua privacidade:</strong> seus hábitos ficam
-            salvos neste aparelho. Sem anúncios, sem rastreamento e sem venda de dados. Com a nuvem
+            salvos neste aparelho. Sem anúncios e sem venda de dados. Estatísticas de uso e avisos por push são opcionais e começam desligados. Com a nuvem
             ativa, os dados são sincronizados com o Google Firebase e só você tem acesso.
           </p>
           <p>
