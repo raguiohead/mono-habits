@@ -47,13 +47,13 @@ Este documento define os padrões arquiteturais, padrões de código e convenç�
 
 ## Somente planos gratuitos
 
-O projeto deve rodar inteiramente em planos gratuitos (Firebase **Spark** + Vercel **Hobby**). Não adicionar nada que exija plano pago, por exemplo:
+O projeto deve rodar inteiramente em planos gratuitos (Firebase **Spark** + GitHub Actions/Releases). Não adicionar nada que exija plano pago, por exemplo:
 
 - **Cloud Functions** (exige o plano Blaze) e, por consequência, push agendado via servidor;
 - Cloud Storage, Cloud Run ou qualquer serviço Google Cloud faturável;
-- recursos Vercel restritos a planos Pro/Enterprise.
+- recursos ou serviços externos pagos.
 
-Dentro do plano gratuito: Firebase Auth, Firestore (respeitando as cotas diárias) e Vercel Web Analytics. Lembretes funcionam localmente, com o app aberto.
+Dentro do plano gratuito: Firebase Auth, Firestore (respeitando as cotas diárias), Firebase Hosting e Firebase Analytics (opcional com consentimento). Lembretes funcionam localmente (notificações locais no dispositivo / PWA).
 
 ### Capas de hábito
 
