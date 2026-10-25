@@ -272,10 +272,11 @@ export const HabitModal: React.FC<HabitModalProps> = ({
 
           {/* Nome */}
           <div>
-            <label className="block font-medium mb-1.5 text-zinc-700 dark:text-zinc-300">
+            <label htmlFor="habit-title" className="block font-medium mb-1.5 text-zinc-700 dark:text-zinc-300">
               Nome do Hábito *
             </label>
             <input
+              id="habit-title"
               type={discreet ? 'password' : 'text'}
               autoComplete="off"
               required
@@ -289,10 +290,11 @@ export const HabitModal: React.FC<HabitModalProps> = ({
 
           {/* Categoria */}
           <div>
-            <label className="block font-medium mb-1.5 text-zinc-700 dark:text-zinc-300">
+            <label htmlFor="habit-category" className="block font-medium mb-1.5 text-zinc-700 dark:text-zinc-300">
               Categoria
             </label>
             <input
+              id="habit-category"
               type="text"
               placeholder="Ex: Saúde, Foco, Trabalho..."
               value={category}
@@ -474,6 +476,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
                     type="button"
                     key={item.key}
                     onClick={() => setIcon(item.key)}
+                    aria-label={`Ícone: ${item.label}`}
                     className={`p-2.5 rounded-xl border flex items-center justify-center transition-all ${
                       isSelected
                         ? 'bg-zinc-950 text-zinc-50 border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50 scale-105'

@@ -189,6 +189,7 @@ export const ConsistencyView: React.FC = () => {
   const renderCell = (day: HeatmapDay | null, key: string) => {
     if (!day) return <span key={key} className={isCalendar ? 'w-full aspect-square' : cellSize} />;
     const isSelected = selectedCell?.key === day.key;
+    const cellDescription = `${formatFriendlyDate(day.key)}: ${day.completedCount}/${day.scheduledCount} (${Math.round(day.ratio * 100)}%)${day.gracedCount ? ` · ${day.gracedCount} dia(s) de graça` : ''}`;
     return (
       <button
         type="button"
@@ -203,8 +204,8 @@ export const ConsistencyView: React.FC = () => {
           // Dia de graça: borda tracejada (não é um dia concluído)
           day.gracedCount ? `${range > 90 ? 'border' : 'border-2'} !border-dashed !border-zinc-500` : ''
         } ${isSelected ? 'ring-2 ring-zinc-500 scale-110 z-10' : ''}`}
-        title={`${formatFriendlyDate(day.key)}: ${day.completedCount}/${day.scheduledCount} (${Math.round(day.ratio * 100)}%)${day.gracedCount ? ` · ${day.gracedCount} dia(s) de graça` : ''}`}
-        aria-label={day.key}
+        title={cellDescription}
+        aria-label={cellDescription}
       >
         {isCalendar && (
           <span className={day.ratio >= 0.7 ? (darkMode ? 'text-zinc-900' : 'text-zinc-100') : 'text-zinc-500'}>

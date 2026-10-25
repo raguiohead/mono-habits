@@ -217,7 +217,10 @@ service cloud.firestore {
 
       match /habits/{habitId} {
         allow read, delete: if isOwner(userId);
-        allow create, update: if isOwner(userId) && isValidHabit(habitId, request.resource.data);
+        allow create: if isOwner(userId) && isValidHabit(habitId, request.resource.data);
+        allow update: if isOwner(userId) &&
+                         isValidHabit(habitId, request.resource.data) &&
+                         request.resource.data.createdAt == resource.data.createdAt;
       }
 
       match /logs/{dateKey} {

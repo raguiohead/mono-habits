@@ -237,6 +237,7 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
                   type="button"
                   onClick={() => toggleHideTitle(habit)}
                   className="p-2 rounded-xl text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  aria-label={habit.hideTitle ? 'Mostrar nome do hábito' : 'Ocultar nome do hábito'}
                   title={habit.hideTitle ? 'Mostrar nome do hábito' : 'Ocultar nome do hábito'}
                 >
                   {habit.hideTitle ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -246,6 +247,7 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
                   type="button"
                   onClick={() => onOpenEditModal(habit)}
                   className="p-2 rounded-xl text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  aria-label="Editar dados do hábito"
                   title="Editar dados do hábito"
                 >
                   <Edit3 className="w-4 h-4" />
@@ -255,6 +257,7 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
                   type="button"
                   onClick={() => toggleArchiveHabit(habit)}
                   className="p-2 rounded-xl text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  aria-label={habit.archived ? 'Restaurar hábito' : 'Arquivar hábito'}
                   title={habit.archived ? 'Restaurar hábito' : 'Arquivar hábito'}
                 >
                   {habit.archived ? <RotateCcw className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
@@ -264,6 +267,7 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
                   type="button"
                   onClick={() => onConfirmDelete(habit)}
                   className="p-2 rounded-xl text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  aria-label="Excluir permanentemente"
                   title="Excluir permanentemente"
                 >
                   <Trash2 className="w-4 h-4" />

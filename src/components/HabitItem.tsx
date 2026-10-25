@@ -234,6 +234,7 @@ const HabitItemBase: React.FC<HabitItemProps> = ({
             toggleHideTitle(habit);
           }}
           className={`${actionBtn} rounded-lg opacity-60 hover:opacity-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors`}
+          aria-label={habit.hideTitle ? 'Mostrar título do hábito' : 'Ocultar título do hábito'}
           title={habit.hideTitle ? 'Mostrar título do hábito' : 'Ocultar título do hábito'}
         >
           {habit.hideTitle ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -247,6 +248,7 @@ const HabitItemBase: React.FC<HabitItemProps> = ({
             onEdit();
           }}
           className={`${actionBtn} rounded-lg opacity-60 hover:opacity-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors`}
+          aria-label="Editar hábito"
           title="Editar hábito"
         >
           <Edit3 className="w-3.5 h-3.5" />

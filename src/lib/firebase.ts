@@ -19,6 +19,11 @@ import {
 } from 'firebase/auth';
 import {
   getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  terminate,
+  clearIndexedDbPersistence,
   collection,
   doc,
   setDoc,
@@ -65,6 +70,21 @@ let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
 
+/**
+ * Inicializa o Firestore com cache persistente em IndexedDB e suporte a múltiplas abas (tabManager).
+ * Garante que escritas e check-ins feitos offline sobrevivam a fechamentos e recarregamentos da página.
+ * Recorre com segurança a getFirestore(app) caso já tenha sido inicializado ou o ambiente não suporte IndexedDB.
+ */
+export function createFirestoreDb(firebaseApp: FirebaseApp): Firestore {
+  try {
+    return initializeFirestore(firebaseApp, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
+  } catch {
+    return getFirestore(firebaseApp);
+  }
+}
+
 if (isFirebaseConfigured) {
   try {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
@@ -72,7 +92,7 @@ if (isFirebaseConfigured) {
     auth = Capacitor.isNativePlatform()
       ? initializeAuth(app, { persistence: indexedDBLocalPersistence })
       : getAuth(app);
-    db = getFirestore(app);
+    db = createFirestoreDb(app);
   } catch (error) {
     console.warn('[Firebase] Falha na inicialização:', error);
   }
@@ -155,7 +175,7 @@ function deleteSingleIndexedDb(idb: IDBFactory, name: string, timeoutMs = 400): 
   });
 }
 
-/** Apaga os bancos IndexedDB do Firebase Auth e do app para não restaurar a sessão após reload */
+/** Apaga os bancos IndexedDB do Firebase Auth, Firestore e do app para não restaurar a sessão após reload */
 export async function deleteAppIndexedDatabases(
   idb: IDBFactory | null | undefined = typeof indexedDB !== 'undefined' ? indexedDB : null
 ): Promise<void> {
@@ -165,7 +185,10 @@ export async function deleteAppIndexedDatabases(
     try {
       const dbs = await idb.databases();
       for (const info of dbs) {
-        if (info?.name && (/^firebase/i.test(info.name) || /^mono-habits/i.test(info.name))) {
+        if (
+          info?.name &&
+          (/^firebase/i.test(info.name) || /^mono-habits/i.test(info.name) || /^firestore\//i.test(info.name))
+        ) {
           names.add(info.name);
         }
       }
@@ -177,8 +200,9 @@ export async function deleteAppIndexedDatabases(
 }
 
 /**
- * Encerra a sessão Firebase (web e nativa), apaga os bancos IndexedDB da sessão/fila,
- * limpa o localStorage do usuário (incluindo o PIN) e só então recarrega a página.
+ * Encerra a sessão Firebase (web e nativa), finaliza o Firestore e limpa seu cache persistente,
+ * apaga os bancos IndexedDB da sessão/fila, limpa o localStorage do usuário (incluindo o PIN)
+ * e só então recarrega a página.
  */
 export async function wipeDeviceDataAndReload(opts?: {
   reload?: () => void;
@@ -186,6 +210,9 @@ export async function wipeDeviceDataAndReload(opts?: {
   nativeSignOutFn?: () => Promise<void>;
   isNative?: boolean;
   idb?: IDBFactory | null;
+  firestoreDb?: Firestore | null;
+  terminateFirestoreFn?: (db: Firestore) => Promise<void>;
+  clearFirestorePersistenceFn?: (db: Firestore) => Promise<void>;
 }): Promise<void> {
   const isNative = opts?.isNative ?? Capacitor.isNativePlatform();
   const runNativeSignOut = opts?.nativeSignOutFn ?? nativeSignOut;
@@ -195,6 +222,9 @@ export async function wipeDeviceDataAndReload(opts?: {
       if (auth) await signOut(auth);
     });
   const reload = opts?.reload ?? (() => window.location.reload());
+  const activeDb = opts?.firestoreDb !== undefined ? opts.firestoreDb : db;
+  const runTerminate = opts?.terminateFirestoreFn ?? terminate;
+  const runClearPersistence = opts?.clearFirestorePersistenceFn ?? clearIndexedDbPersistence;
 
   if (isNative) {
     try {
@@ -208,6 +238,20 @@ export async function wipeDeviceDataAndReload(opts?: {
   } catch {
     /* ignora falha ao deslogar */
   }
+
+  if (activeDb) {
+    try {
+      await runTerminate(activeDb);
+    } catch {
+      /* ignora falha ao finalizar Firestore */
+    }
+    try {
+      await runClearPersistence(activeDb);
+    } catch {
+      /* ignora falha ao limpar persistência do Firestore */
+    }
+  }
+
   await deleteAppIndexedDatabases(opts?.idb);
   clearLocalUserData();
   reload();
