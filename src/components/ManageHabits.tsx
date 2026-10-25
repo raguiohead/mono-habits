@@ -110,7 +110,7 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
             className={`px-3 py-1.5 rounded-lg transition-colors ${
               filter === 'active'
                 ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-xs font-semibold'
-                : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'
+                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
             }`}
           >
             Ativos ({habits.filter((h) => !h.archived).length})
@@ -120,7 +120,7 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
             className={`px-3 py-1.5 rounded-lg transition-colors ${
               filter === 'archived'
                 ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-xs font-semibold'
-                : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'
+                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
             }`}
           >
             Arquivados ({habits.filter((h) => h.archived).length})
@@ -158,7 +158,7 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
                 className={`shrink-0 min-h-[44px] px-3.5 rounded-full border text-xs font-medium whitespace-nowrap transition-colors ${
                   selected
                     ? 'bg-zinc-950 text-zinc-50 border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50 font-semibold'
-                    : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'
+                    : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
                 }`}
               >
                 {opt.label} <span className="font-mono opacity-70">({opt.count})</span>
@@ -185,7 +185,7 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
           <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
             {filter === 'active' ? 'Nenhum hábito ativo no momento.' : 'Nenhum hábito arquivado.'}
           </p>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-zinc-600 dark:text-zinc-400">
             {filter === 'active'
               ? 'Clique no botão acima para adicionar seu primeiro hábito.'
               : 'Hábitos arquivados deixam de aparecer no foco diário sem perder o histórico.'}
@@ -215,14 +215,14 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
                     )}
                   </p>
                   {habit.description && !isHidden(habit) && (
-                    <p className="text-xs text-zinc-500 line-clamp-1 mt-0.5">{habit.description}</p>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-1 mt-0.5">{habit.description}</p>
                   )}
                   <div className="flex flex-wrap items-center gap-2 mt-1">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
                       {habit.category}
                     </span>
                     <span className="text-[10px] text-zinc-400 dark:text-zinc-600">•</span>
-                    <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 truncate">
+                    <span className="text-[11px] font-mono text-zinc-600 dark:text-zinc-400 truncate">
                       {habit.kind === 'avoid' ? 'Evitar · ' : ''}
                       {hasWeeklyTarget(habit) ? weeklyLabel(habit) : formatFrequency(habit.frequency)}
                     </span>
@@ -236,7 +236,7 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
                 <button
                   type="button"
                   onClick={() => toggleHideTitle(habit)}
-                  className="p-2 rounded-xl text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  className="p-2 rounded-xl text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                   aria-label={habit.hideTitle ? 'Mostrar nome do hábito' : 'Ocultar nome do hábito'}
                   title={habit.hideTitle ? 'Mostrar nome do hábito' : 'Ocultar nome do hábito'}
                 >
@@ -246,7 +246,7 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
                 <button
                   type="button"
                   onClick={() => onOpenEditModal(habit)}
-                  className="p-2 rounded-xl text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  className="p-2 rounded-xl text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                   aria-label="Editar dados do hábito"
                   title="Editar dados do hábito"
                 >
@@ -256,7 +256,7 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
                 <button
                   type="button"
                   onClick={() => toggleArchiveHabit(habit)}
-                  className="p-2 rounded-xl text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  className="p-2 rounded-xl text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                   aria-label={habit.archived ? 'Restaurar hábito' : 'Arquivar hábito'}
                   title={habit.archived ? 'Restaurar hábito' : 'Arquivar hábito'}
                 >
@@ -266,7 +266,7 @@ export const ManageHabits: React.FC<ManageHabitsProps> = ({
                 <button
                   type="button"
                   onClick={() => onConfirmDelete(habit)}
-                  className="p-2 rounded-xl text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  className="p-2 rounded-xl text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                   aria-label="Excluir permanentemente"
                   title="Excluir permanentemente"
                 >

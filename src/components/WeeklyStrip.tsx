@@ -70,7 +70,7 @@ export const WeeklyStrip: React.FC = () => {
       {/* Navegador Semanal */}
       <div className="flex items-center justify-between mb-3 px-1 text-xs">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[11px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+          <span className="font-mono text-[11px] uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
             {weekOffset === 0 ? 'Esta Semana' : weekOffset < 0 ? `${Math.abs(weekOffset)} sem. atrás` : `+${weekOffset} sem. à frente`}
           </span>
           {weekOffset !== 0 && (
@@ -122,7 +122,7 @@ export const WeeklyStrip: React.FC = () => {
                   : 'bg-white dark:bg-zinc-900/60 border-zinc-200 dark:border-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
               }`}
             >
-              <span className={`text-[10px] font-mono uppercase ${isSelected ? 'opacity-80' : 'opacity-60'}`}>
+              <span className={`text-[10px] font-mono uppercase ${isSelected ? 'opacity-80' : ''}`}>
                 {item.dayName}
               </span>
               <span className="text-sm font-semibold font-mono mt-0.5">
