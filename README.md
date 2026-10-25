@@ -155,6 +155,54 @@ Nunca commite a chave JSON. Se vazar, exclua-a no Google Cloud Console e gere ou
 
 ---
 
+## 🌿 Fluxo de Branches e Releases
+
+O desenvolvimento do **MONO // HABITS** é estruturado em torno de duas branches principais para garantir estabilidade contínua em produção e agilidade na validação de novas funcionalidades:
+
+- **`development`**: Branch de integração, testes contínuos e distribuição de APKs de teste/debug.
+- **`main`**: Branch estável de produção. Recebe apenas merges aprovados e testados vindos da `development`.
+
+```
+[feature/fix branch]
+        │
+        ▼ (Pull Request)
+  [development] ──► CI: Testes + Regras + Pre-release (APKs dev e debug)
+        │           ▲
+        │           │ (Validação e testes manuais com mono-habits-dev.apk)
+        ▼ (Pull Request com bump de versão)
+     [main]     ──► CI: Release oficial v<versão> (mono-habits.apk) + Deploy produção
+```
+
+### Ciclo de Desenvolvimento
+
+1. **Features e Correções:** Crie uma branch a partir de `development` (ex.: `feat/nova-tela` ou `fix/ajuste-streak`).
+2. **PR para `development`:** Abra um Pull Request apontando para `development`. O CI executa a checagem de tipos, testes unitários, testes de regras do Firestore e compila o APK Debug como artefato.
+3. **Integração na `development`:** Ao realizar o merge na `development`:
+   - O CI compila o **APK Release ASSINADO** (com a keystore oficial do projeto) e o **APK Debug**.
+   - Publica automaticamente um **GitHub Pre-release** com tag `dev-v<versão>-<run_number>` e título `Teste v<versão> (dev #<run_number>)`, anexando `mono-habits-dev.apk` e `mono-habits-debug.apk`.
+   - Limpa automaticamente pre-releases anteriores com o prefixo `dev-*`, mantendo apenas os **5 mais recentes**.
+   - **Isolamento de produção:** Pre-releases são marcados com `--prerelease` (nunca latest). O verificador de atualizações in-app (`src/lib/appUpdate.ts`) ignora pre-releases e procura exclusivamente por `mono-habits.apk`. Usuários de produção nunca são notificados de builds de teste.
+4. **Validação:** Instale o `mono-habits-dev.apk` no dispositivo de teste e valide as alterações.
+5. **Promoção para a `main`:** Após validação completa, abra um Pull Request de `development` para `main`. O merge na `main` gera a release oficial `v<versão>` com `mono-habits.apk` e dispara o deploy de produção (Firebase Hosting e Vercel).
+
+### Como Instalar o APK de Teste
+
+1. No repositório do GitHub, acesse a aba **Releases**.
+2. Abra o pre-release mais recente (identificado pela tag `dev-v<versão>-<run_number>`).
+3. Baixe o arquivo **`mono-habits-dev.apk`**.
+4. **Substituição direta (sem desinstalar):** Como o `mono-habits-dev.apk` é assinado com a mesma keystore de release da produção, o Android permite instalá-lo diretamente por cima da versão já instalada no aparelho. Isso preserva todo o banco de dados local (`localStorage`), configurações e estado de login.
+5. **Login Google nativo funcional:** A assinatura com a chave oficial preserva o fingerprint SHA-1 cadastrado no Firebase Console, permitindo testar o fluxo completo de autenticação Google nativa.
+6. *(Opcional)* Se precisar inspecionar chamadas de rede ou logs detalhados via ADB / Chrome DevTools (`chrome://inspect`), baixe o **`mono-habits-debug.apk`** (requer desinstalação prévia caso haja versão de produção instalada, devido à diferença de keystores).
+
+### Como Subir Versão (Version Bump)
+
+- Durante o desenvolvimento e commits na branch `development`, **não altere** a versão no `package.json`.
+- O incremento da versão semver (`package.json`) é realizado **exclusivamente no Pull Request de `development` para a `main`**.
+- Antes de abrir ou finalizar o PR para `main`, atualize o campo `"version"` no `package.json` (ex: de `"1.3.0"` para `"1.4.0"`).
+- Quando o PR for mergeado na `main`, o workflow de CI detecta que a tag `v<versão>` ainda não existe, cria a tag e publica a release estável oficial, liberando a atualização automática para todos os usuários do app.
+
+---
+
 ## 📊 Estatísticas de uso e avisos por push (Firebase, gratuito)
 
 Os dois recursos são **opcionais e começam desligados** para o usuário (Configurações > Estatísticas de uso anônimas / Novidades do app). Só funcionam no navegador/PWA; o app Android ainda não os usa.
