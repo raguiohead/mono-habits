@@ -6,7 +6,7 @@ import '@fontsource-variable/inter';
 import '@fontsource-variable/jetbrains-mono';
 import './index.css';
 
-// No-op Analytics component replacing @vercel/analytics
+// Componente de analytics no-op
 const Analytics = () => null;
 
 // Registro automático de Service Worker para PWA (offline-ready)
