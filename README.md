@@ -66,7 +66,7 @@ O **MONO // HABITS** foi desenhado com um princípio radical: **eliminar o ruíd
     - Foco visível (`:focus-visible`) para navegação por teclado.
     - Suporte nativo e manual a redução de movimento (`prefers-reduced-motion` e toggle nas configurações).
     - Modo de alto contraste monocromático (`high-contrast`) calibrado.
-    - Ajuste de tamanho de texto e alvos de toque mobile confortáveis (mínimo 44x44px).
+    - Alvos de toque mobile confortáveis (mínimo 44x44px), contraste WCAG AA e atributos ARIA (`aria-current`, `aria-pressed`, `role="timer"`).
 12. **Privacidade e Estatísticas de Uso Opcionais:**
     - Firebase Analytics opcional e desativado por padrão, ativado exclusivamente sob consentimento e respeitando o cabeçalho "Do Not Track" (DNT).
     - Lista restrita de eventos técnicos, sem nomes de hábitos, notas ou dados de conta.
@@ -181,21 +181,10 @@ npm run build
 
 ## 🔒 Segurança do Firebase Firestore
 
-O projeto inclui um arquivo `firestore.rules` pronto para produção. Cada usuário autenticado tem acesso estritamente restrito aos seus próprios documentos:
+O arquivo `firestore.rules` restringe cada usuário autenticado aos próprios dados em `/artifacts/{appId}/users/{userId}/…` e nega todo o resto. Além do dono, as regras validam o formato de cada documento (hábitos, registros diários, tolerâncias, sessões do Pomodoro, configurações): campos permitidos, tipos, tamanhos máximos e `createdAt` imutável após a criação. O modelo de dados completo está documentado no cabeçalho do próprio arquivo.
 
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /artifacts/{appId}/users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
-}
-```
+- Testes: `npm run test:rules` (emulador local); rodam também na CI em todo PR.
+- Publicação: as regras **não** são publicadas pela CI. Depois de alterá-las, rode `firebase deploy --only firestore:rules`.
 
 ### Configuração da Conta Google no Firebase Console:
 1. No [Firebase Console](https://console.firebase.google.com/), acesse **Authentication** > **Sign-in method** e habilite o provedor **Google**.
