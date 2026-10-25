@@ -1,59 +1,138 @@
 # MONO // HABITS ⬛⬜
 
-> Rastreador diário de hábitos estritamente monocromático, local-first, com suporte a PWA mobile, privacidade visual e sincronização em tempo real com Google Firebase.
+> Rastreador diário de hábitos estritamente monocromático, local-first, com suporte a PWA mobile, APK Android nativo, privacidade visual e sincronização em tempo real com Google Firebase.
 
 [![Vite](https://img.shields.io/badge/Vite-6.x-zinc?style=flat-square&logo=vite)](https://vitejs.dev/)
 [![React](https://img.shields.io/badge/React-18.x-zinc?style=flat-square&logo=react)](https://react.dev/)
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.x-zinc?style=flat-square&logo=tailwindcss)](https://tailwindcss.com/)
 [![Firebase](https://img.shields.io/badge/Firebase-11.x-zinc?style=flat-square&logo=firebase)](https://firebase.google.com/)
+[![Capacitor](https://img.shields.io/badge/Capacitor-8.x-zinc?style=flat-square&logo=capacitor)](https://capacitorjs.com/)
 [![PWA](https://img.shields.io/badge/PWA-Ready-zinc?style=flat-square)](https://web.dev/progressive-web-apps/)
-[![Production](https://img.shields.io/badge/Vercel-Live-black?style=flat-square&logo=vercel)](https://mono-habits-kappa.vercel.app)
+[![Firebase Hosting](https://img.shields.io/badge/Firebase_Hosting-Live-black?style=flat-square&logo=firebase)](https://mono-habits.web.app)
+[![Android APK](https://img.shields.io/badge/Android_APK-Latest_Release-zinc?style=flat-square&logo=android)](https://github.com/raguiohead/mono-habits/releases/latest)
 [![License](https://img.shields.io/badge/License-MIT-zinc?style=flat-square)](LICENSE)
 
-**Aplicação em Produção:** [https://mono-habits-kappa.vercel.app](https://mono-habits-kappa.vercel.app)
+**Aplicação Web:** [https://mono-habits.web.app](https://mono-habits.web.app)  
+**Download do APK Android:** [GitHub Releases (Latest)](https://github.com/raguiohead/mono-habits/releases/latest)
 
 ---
 
 ## ⚡ Visão Geral
 
-O **MONO // HABITS** foi desenhado com um princípio radical: **eliminar o ruído visual e as distrações dopaminérgicas** comuns em aplicativos de produtividade. Usando exclusivamente uma escala de cinzas rigorosa (`Zinc`), tipografia precisa e ergonomia orientada ao polegar (*Thumb Zone*), o app transforma a disciplina diária em um ritual limpo e satisfatório.
+O **MONO // HABITS** foi desenhado com um princípio radical: **eliminar o ruído visual e as distrações dopaminérgicas** comuns em aplicativos de produtividade. Usando exclusivamente uma escala de cinzas rigorosa (`Zinc`), tipografia precisa e ergonomia orientada ao polegar (*Thumb Zone*), o app transforma a disciplina diária em um ritual limpo, silencioso e satisfatório.
 
 ---
 
 ## ✨ Funcionalidades Principais
 
-1. **Foco Diário (Daily Focus):**
-   - Fita semanal interativa com suporte a gestos de *swipe* horizontal para alternar semanas.
-   - Barra de progresso diária calculada em tempo real com contagem precisa.
-   - Check-in tátil com alvos mínimos de toque (44px) e animações responsivas sem layout shift.
-   - Cálculo automático de ofensivas (*streaks*) consecutivas.
+1. **Foco Diário (Daily Focus) & Hábitos:**
+   - Fita semanal interativa com suporte a gestos de *swipe* horizontal para alternar semanas e resumo do período.
+   - Barra de progresso diária calculada em tempo real com contagem precisa e percentual.
+   - Check-in ergonômico com alvos mínimos de toque (44px) e animações ágeis sem Cumulative Layout Shift (CLS).
+   - Efeito visual de dia completo (*Day Complete*): inversão monocromática suave ao concluir todos os hábitos do dia.
+   - Cálculo automático de sequências (*streaks*) consecutivas, melhores marcas e dias de tolerância (*graces*).
+   - Suporte a hábitos de ação (positivos) e hábitos de evitação (*avoidance*).
+   - Capas personalizadas para hábitos: temas visuais monocromáticos padrão ou upload de imagem própria comprimida e enquadrada no cliente (sem necessidade de armazenamento na nuvem).
 2. **Modo Discreto (Privacidade Visual):**
-   - Oculte nomes de hábitos sensíveis com um toque no botão de olho (`Eye`/`EyeOff`), exibindo apenas o ícone minimalista e marcadores.
-3. **Consistência em 90 Dias (Analytics):**
+   - Oculte nomes e notas de hábitos sensíveis com um toque no botão de olho (`Eye`/`EyeOff`), exibindo apenas ícones neutros e marcadores.
+3. **Temporizador Pomodoro Integrado (Pomo Focus):**
+   - Timer Pomodoro integrado com contagem regressiva, ciclos de foco e pausas configuráveis.
+   - Associação de metas diárias de pomodoros a hábitos específicos ou ao foco geral.
+   - Avisos sonoros/táteis e notificações de conclusão de ciclo.
+4. **Lembretes Locais & Notificações:**
+   - Lembretes programados executados diretamente no dispositivo (`@capacitor/local-notifications` no Android ou Notification API no navegador/PWA).
+   - Notificações discretas: alertam apenas sobre a contagem de hábitos pendentes sem expor nomes sensíveis na tela de bloqueio.
+   - Ação "Marcar como feito" diretamente na notificação via Service Worker com fila offline (IndexedDB).
+   - Push Notifications opcionais via Firebase Cloud Messaging (FCM) para avisos do app.
+5. **Compartilhamento em Imagem (Share Card):**
+   - Geração de cartão visual de consistência e progresso diretamente via Canvas no cliente.
+   - Permite salvar imagem em PNG ou compartilhar via Web Share API sem expor dados confidenciais ou sensíveis.
+6. **Consistência em 90 Dias & Marcos (Analytics):**
    - Grade de consistência estilo GitHub cobrindo 13 semanas (91 dias).
-   - Intensidade tonal monocromática calibrada conforme a taxa de conclusão do dia.
-   - Métricas de retenção para janelas de 14 e 30 dias.
-4. **Arquitetura Híbrida Local-First + Google Cloud:**
+   - Intensidade tonal monocromática calibrada conforme a taxa de conclusão de cada dia.
+   - Métricas de retenção para janelas de 14 e 30 dias e comemoração de marcos (*milestones*) de disciplina.
+7. **Segurança & Bloqueio de Acesso:**
+   - Bloqueio por PIN/senha ou autenticação biométrica via WebAuthn, garantindo privacidade com o aparelho desbloqueado.
+8. **Arquitetura Híbrida Local-First + Google Cloud:**
    - **Offline Imediato:** Funciona 100% no `localStorage` sem exigir login prévio.
    - **Google Cloud Firestore:** Ao conectar com sua Conta Google, os hábitos locais são migrados e sincronizados automaticamente em tempo real entre todos os seus dispositivos.
-5. **Configurações (Conta, Acessibilidade e Notificações):**
-   - Tamanho do texto, redução de animações, alto contraste e foco visível por teclado.
-   - Lembrete diário (apenas a contagem de pendentes, sem nomes de hábitos) e aviso de fim do Pomo.
-   - Exportação dos dados em JSON, limpeza dos dados do dispositivo e exclusão da conta e dos dados na nuvem.
-   - Política de Privacidade dentro do app e em `/privacidade`.
-6. **PWA Mobile Instalável:**
-   - Ícone monocromático vetorial e meta tags para execução em tela cheia (*standalone*) no iOS e Android.
+   - Fila de sincronização offline resiliente (IndexedDB) para garantir que ações efetuadas sem internet sejam enviadas assim que a rede retornar.
+9. **Atualização In-App no Android:**
+   - Verificador nativo no app Android que consulta a API de releases estáveis do GitHub (`api.github.com/repos/raguiohead/mono-habits/releases/latest`), notificando novas versões e permitindo download direto do APK.
+10. **Fontes Locais & Modo 100% Offline:**
+    - Tipografia com fontes empacotadas localmente via `@fontsource-variable/inter` e `@fontsource-variable/jetbrains-mono`, sem dependência de conexões com CDNs externas (Google Fonts) e compatível com Content Security Policy restritivo (`font-src 'self'`).
+11. **Acessibilidade Completa (A11y):**
+    - Modais acessíveis via `ModalShell` com role `dialog`, controle por tecla `Esc` e retenção de foco (*focus trap*).
+    - Foco visível (`:focus-visible`) para navegação por teclado.
+    - Suporte nativo e manual a redução de movimento (`prefers-reduced-motion` e toggle nas configurações).
+    - Modo de alto contraste monocromático (`high-contrast`) calibrado.
+    - Ajuste de tamanho de texto e alvos de toque mobile confortáveis (mínimo 44x44px).
+12. **Privacidade e Estatísticas de Uso Opcionais:**
+    - Firebase Analytics opcional e desativado por padrão, ativado exclusivamente sob consentimento e respeitando o cabeçalho "Do Not Track" (DNT).
+    - Lista restrita de eventos técnicos, sem nomes de hábitos, notas ou dados de conta.
+    - Exportação completa em JSON dos dados locais e opção de exclusão definitiva da conta e dados da nuvem.
 
 ---
 
 ## 🛠️ Stack Tecnológica
 
-- **Frontend:** React 18, TypeScript, Vite
-- **Estilização:** Tailwind CSS (paleta estritamente monocromática `zinc`, `black`, `white`)
-- **Ícones:** Lucide React (16 ícones minimalistas de categorias)
-- **Persistência:** LocalStorage + Google Firebase (Firebase Auth + Cloud Firestore)
-- **PWA:** `vite-plugin-pwa` com Service Worker e precache offline
-- **Testes:** Vitest (100% de cobertura nos cálculos de streaks, datas e estatísticas)
+- **Frontend:** React 18.3, TypeScript 5.7, Vite 6.1
+- **Mobile (Android):** Capacitor 8.5 (`@capacitor/android`, `@capacitor/core`, `@capacitor/local-notifications`, `@capacitor/splash-screen`, `@capacitor/status-bar`, `@capacitor-firebase/authentication`)
+- **Estilização:** Tailwind CSS 3.4 (paleta estritamente monocromática `zinc`, `black`, `white`)
+- **Fontes:** Fontsource Variable Fonts (`Inter`, `JetBrains Mono`) empacotadas localmente
+- **Ícones:** Lucide React
+- **Persistência:** LocalStorage + Google Firebase 11.4 (Firebase Auth + Cloud Firestore + Firebase Cloud Messaging + Firebase Analytics opcionais)
+- **PWA:** `vite-plugin-pwa` com Service Worker customizado (`injectManifest`, Workbox 7.4) e precache offline
+- **Testes:** Vitest 4.1 (testes unitários) + `@firebase/rules-unit-testing` (testes de regras de segurança do Firestore)
+
+---
+
+## 📁 Estrutura do Projeto
+
+```
+mono-habits/
+├── .github/
+│   └── workflows/
+│       ├── build-android-apk.yml     # CI de testes, APKs debug/dev e release oficial
+│       ├── firebase-hosting.yml      # CD automático para Firebase Hosting (branch main)
+│       └── firestore-rules.yml       # Validação das regras de segurança do Firestore
+├── android/                          # Projeto nativo Android (Capacitor)
+├── public/                           # Assets estáticos, ícones PWA e splash
+├── src/
+│   ├── components/                   # Componentes de interface modulares
+│   ├── context/                      # Contextos React (Habits, Settings, Pomo, Lock)
+│   ├── lib/                          # Lógica de domínio, storage, regras, crypto e Firebase
+│   ├── types/                        # Definições de tipagem TypeScript
+│   ├── App.tsx                       # Componente raiz da aplicação
+│   ├── index.css                     # Tailwind, variáveis de alto contraste e acessibilidade
+│   ├── main.tsx                      # Ponto de entrada React e registro PWA
+│   └── sw.ts                         # Service Worker Workbox + FCM + fila offline
+├── tests/                            # Testes unitários (Vitest) e de regras (Firestore)
+├── capacitor.config.ts               # Configuração do Capacitor Android
+├── firebase.json                     # Regras do Firestore, emuladores e Firebase Hosting
+├── firestore.rules                   # Regras de segurança de acesso por usuário
+├── index.html                        # HTML base com meta tags PWA e mobile
+├── package.json                      # Dependências, scripts e metadados
+└── vite.config.ts                    # Configurações do Vite, PWA e rollup chunks
+```
+
+---
+
+## 📜 Scripts npm
+
+| Comando | Descrição |
+| :--- | :--- |
+| `npm run dev` | Inicia o servidor local de desenvolvimento Vite (`--host 0.0.0.0 --port 3000`) |
+| `npm run build` | Checagem estática de tipos (app e Service Worker) e compilação de produção com Vite |
+| `npm run lint` | Validação de tipos com TypeScript (`tsc --noEmit`) |
+| `npm run preview` | Pré-visualização local do build de produção (`dist/`) |
+| `npm test` | Executa a suíte de testes unitários com Vitest |
+| `npm run test:watch` | Executa os testes unitários em modo observação contínua |
+| `npm run test:rules` | Executa os testes das regras do Firestore no emulador local |
+| `npm run cap:sync` | Compila o build web e sincroniza os assets com o projeto Android (`android/`) |
+| `npm run cap:open` | Abre o projeto Android no Android Studio |
+| `npm run apk:debug` | Sincroniza e compila o APK Android Debug via Gradle |
+| `npm run apk:release` | Sincroniza e compila o APK Android Release via Gradle |
 
 ---
 
@@ -120,44 +199,34 @@ service cloud.firestore {
 
 ### Configuração da Conta Google no Firebase Console:
 1. No [Firebase Console](https://console.firebase.google.com/), acesse **Authentication** > **Sign-in method** e habilite o provedor **Google**.
-2. Na aba **Configurações** de autenticação, em **Domínios autorizados**, adicione o domínio do seu deploy na Vercel (ex: `mono-habits.vercel.app` ou `localhost`).
-
----
-
-## 🌐 Deploy na Vercel
-
-O projeto possui `vercel.json` configurado com cabeçalhos de segurança (CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy) e reescrita SPA:
-
-1. Importe o repositório na [Vercel](https://vercel.com/new).
-2. Configure as variáveis de ambiente (`VITE_FIREBASE_*`) nas configurações do projeto na Vercel.
-3. O build e deploy serão realizados automaticamente a cada push na branch `main`.
+2. Na aba **Configurações** de autenticação, em **Domínios autorizados**, certifique-se de que os domínios do Firebase Hosting (`mono-habits.web.app`, `mono-habits.firebaseapp.com` e `localhost` para testes locais) estejam listados.
 
 ---
 
 ## 🔥 Deploy no Firebase Hosting
 
-O `firebase.json` já inclui a seção `hosting` (pasta `dist`, reescrita SPA, cabeçalhos de segurança e cache equivalentes aos do `vercel.json`):
+O `firebase.json` inclui a seção `hosting` configurada para SPA, com reescrita para `index.html`, cabeçalhos de segurança (CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy) e política de cache otimizada para assets estáticos e Service Worker:
 
-1. Instale a CLI: `npm i -g firebase-tools` e faça `firebase login`.
+1. Instale a CLI: `npm i -g firebase-tools` e faça login com `firebase login`.
 2. Gere o build com as variáveis `VITE_FIREBASE_*` definidas: `npm run build`.
-3. Publique: `firebase deploy --only hosting` (o projeto padrão está em `.firebaserc`).
-4. O domínio `mono-habits.web.app` / `mono-habits.firebaseapp.com` já é autorizado para o login Google; para domínio próprio, adicione-o em **Authentication > Settings > Authorized domains**.
+3. Publique: `firebase deploy --only hosting` (o projeto padrão está configurado em `.firebaserc`).
+4. Os domínios `mono-habits.web.app` e `mono-habits.firebaseapp.com` já vêm autorizados para login Google; para domínios próprios, cadastre-os em **Authentication > Settings > Authorized domains**.
 
-### Deploy automático (GitHub Actions)
+### Deploy Automático (GitHub Actions)
 
-O workflow `.github/workflows/firebase-hosting.yml` roda os testes, gera o build e publica no Firebase Hosting a cada push na `main` (e manualmente em **Actions > Deploy no Firebase Hosting > Run workflow**). Configuração única:
+O workflow `.github/workflows/firebase-hosting.yml` roda os testes, gera o build e publica no Firebase Hosting a cada push na `main` (ou manualmente em **Actions > Deploy no Firebase Hosting > Run workflow**):
 
-1. Na máquina onde a CLI está logada, rode `firebase init hosting:github` (aceite o repositório `raguiohead/mono-habits`; **responda "No" para build/deploy em pull requests e para o workflow de merge**, pois já existe um). A CLI cria a conta de serviço e grava o segredo `FIREBASE_SERVICE_ACCOUNT_MONO_HABITS` no GitHub.
-2. Alternativa manual: no Google Cloud Console > IAM > Contas de serviço, crie uma conta com os papéis **Firebase Hosting Admin** e **Service Account User**, gere uma chave JSON e cole o conteúdo em GitHub > Settings > Secrets and variables > Actions, com o nome `FIREBASE_SERVICE_ACCOUNT_MONO_HABITS`.
-3. Opcional: cadastre os segredos `VITE_FIREBASE_*` (mesmos nomes da Vercel). Sem eles, valem os padrões de `src/lib/firebase.ts`.
+1. Na máquina com Firebase CLI conectada, rode `firebase init hosting:github` (selecione `raguiohead/mono-habits`; recuse a criação de workflows duplicados de PR e merge, pois o repositório já conta com o workflow oficial configurado). A CLI gera a conta de serviço e grava o segredo `FIREBASE_SERVICE_ACCOUNT_MONO_HABITS` no GitHub.
+2. Alternativa manual: no Google Cloud Console > IAM > Contas de serviço, crie uma conta com papéis **Firebase Hosting Admin** e **Service Account User**, gere a chave JSON e adicione em GitHub > Settings > Secrets and variables > Actions sob o nome `FIREBASE_SERVICE_ACCOUNT_MONO_HABITS`.
+3. Opcional: cadastre os segredos `VITE_FIREBASE_*` no repositório do GitHub. Caso não sejam preenchidos, são adotados os padrões definidos em `src/lib/firebase.ts`.
 
-Nunca commite a chave JSON. Se vazar, exclua-a no Google Cloud Console e gere outra.
+> Nunca realize o commit da chave JSON da conta de serviço. Caso ela seja exposta acidentalmente, revogue-a imediatamente no console do Google Cloud e emita uma nova.
 
 ---
 
 ## 🌿 Fluxo de Branches e Releases
 
-O desenvolvimento do **MONO // HABITS** é estruturado em torno de duas branches principais para garantir estabilidade contínua em produção e agilidade na validação de novas funcionalidades:
+O desenvolvimento do **MONO // HABITS** é estruturado em torno de duas branches principais para garantir estabilidade contínua em produção e validação ágil de novas funcionalidades:
 
 - **`development`**: Branch de integração, testes contínuos e distribuição de APKs de teste/debug.
 - **`main`**: Branch estável de produção. Recebe apenas merges aprovados e testados vindos da `development`.
@@ -170,7 +239,7 @@ O desenvolvimento do **MONO // HABITS** é estruturado em torno de duas branches
         │           ▲
         │           │ (Validação e testes manuais com mono-habits-dev.apk)
         ▼ (Pull Request com bump de versão)
-     [main]     ──► CI: Release oficial v<versão> (mono-habits.apk) + Deploy produção
+     [main]     ──► CI: Release oficial v<versão> (mono-habits.apk) + Deploy Firebase Hosting
 ```
 
 ### Ciclo de Desenvolvimento
@@ -183,7 +252,7 @@ O desenvolvimento do **MONO // HABITS** é estruturado em torno de duas branches
    - Limpa automaticamente pre-releases anteriores com o prefixo `dev-*`, mantendo apenas os **5 mais recentes**.
    - **Isolamento de produção:** Pre-releases são marcados com `--prerelease` (nunca latest). O verificador de atualizações in-app (`src/lib/appUpdate.ts`) ignora pre-releases e procura exclusivamente por `mono-habits.apk`. Usuários de produção nunca são notificados de builds de teste.
 4. **Validação:** Instale o `mono-habits-dev.apk` no dispositivo de teste e valide as alterações.
-5. **Promoção para a `main`:** Após validação completa, abra um Pull Request de `development` para `main`. O merge na `main` gera a release oficial `v<versão>` com `mono-habits.apk` e dispara o deploy de produção (Firebase Hosting e Vercel).
+5. **Promoção para a `main`:** Após validação completa, abra um Pull Request de `development` para `main`. O merge na `main` gera a release oficial `v<versão>` com `mono-habits.apk` e dispara o deploy de produção no Firebase Hosting.
 
 ### Como Instalar o APK de Teste
 
@@ -205,15 +274,15 @@ O desenvolvimento do **MONO // HABITS** é estruturado em torno de duas branches
 
 ## 📊 Estatísticas de uso e avisos por push (Firebase, gratuito)
 
-Os dois recursos são **opcionais e começam desligados** para o usuário (Configurações > Estatísticas de uso anônimas / Novidades do app). Só funcionam no navegador/PWA; o app Android ainda não os usa.
+Os dois recursos são **opcionais e começam desligados** para o usuário (Configurações > Estatísticas de uso anônimas / Novidades do app). Funcionam no navegador/PWA.
 
-- **Analytics:** usa o `VITE_FIREBASE_MEASUREMENT_ID` (o padrão do projeto já está no código). Só com consentimento, e respeitando "Não rastrear". Eventos em lista fechada (`src/lib/usage.ts`): nunca nomes de hábitos, notas ou dados de conta. Veja os números em Firebase Console > Analytics.
+- **Analytics:** usa o `VITE_FIREBASE_MEASUREMENT_ID` (o padrão do projeto já está no código). Só com consentimento, e respeitando "Não rastrear". Eventos em lista fechada (`src/lib/usage.ts`): nunca nomes de hábitos, notas ou dados de conta. Acompanhe as métricas em Firebase Console > Analytics.
 - **Push (FCM) com envio manual pelo Console:**
   1. Firebase Console > Configurações do projeto > **Cloud Messaging** > **Certificados Web Push** > gerar par de chaves e copiar a **chave pública**.
-  2. Cadastre-a como `VITE_FIREBASE_VAPID_KEY` (`.env.local`, variáveis da Vercel e, para o deploy do Firebase, o segredo `VITE_FIREBASE_VAPID_KEY` no GitHub). Sem ela, a opção de push não aparece.
+  2. Cadastre-a como `VITE_FIREBASE_VAPID_KEY` no arquivo `.env.local` e, para o deploy do Firebase Hosting, configure o segredo `VITE_FIREBASE_VAPID_KEY` no GitHub Actions. Sem essa variável, a opção de push permanece oculta.
   3. Faça um novo deploy. No app, ative **Novidades do app (push)** e permita as notificações.
   4. Teste: copie o **token** (Configurações > Notificações > "Token deste aparelho") e use em Console > Engajamento > Cloud Messaging > **Enviar mensagem de teste**. Para campanhas, use "Nova campanha" > Notificações e escolha o app web como público.
-- O CSP (`vercel.json` e `firebase.json`) libera `googletagmanager.com` e `google-analytics.com` só por causa do Analytics.
+- O Content Security Policy configurado no `firebase.json` autoriza conexões para `googletagmanager.com` e `google-analytics.com` especificamente para o suporte analítico com consentimento.
 
 ---
 
