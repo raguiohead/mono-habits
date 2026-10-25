@@ -113,10 +113,10 @@ const HabitItemBase: React.FC<HabitItemProps> = ({
   const gallery = variant === 'gallery';
   // Nome acessível dos botões: nunca vaza o título quando está oculto
   const label = hidden ? 'Hábito oculto' : habit.title;
-  // Alvos de toque de 44px na célula (36px + área expandida), sem estourar a célula com texto grande
+  // Alvos de toque mínimos de 44px (área expandida invisível no bento/galeria, min-w/min-h no layout padrão)
   const actionBtn = bento || gallery
     ? "relative w-9 h-9 flex items-center justify-center before:absolute before:-inset-1 before:content-['']"
-    : 'p-1.5';
+    : "relative min-w-[44px] min-h-[44px] flex items-center justify-center";
 
   const checkEl = (
     <>
@@ -207,13 +207,13 @@ const HabitItemBase: React.FC<HabitItemProps> = ({
                 habit.title
               )}
               {featured && (
-                <Pin aria-label="Fixado" className="inline-block w-3.5 h-3.5 ml-1.5 -mt-0.5 text-zinc-500 dark:text-zinc-400" />
+                <Pin aria-label="Fixado" className="inline-block w-3.5 h-3.5 ml-1.5 -mt-0.5 text-zinc-600 dark:text-zinc-400" />
               )}
             </p>
           </div>
           {habit.description && !hidden && (
             <p
-              className={`mt-0.5 text-xs leading-snug break-words text-zinc-500 dark:text-zinc-400 ${
+              className={`mt-0.5 text-xs leading-snug break-words text-zinc-600 dark:text-zinc-400 ${
                 bentoFeatured ? 'line-clamp-2' : 'line-clamp-1'
               } ${isCompleted ? 'opacity-60' : ''}`}
             >
@@ -233,7 +233,7 @@ const HabitItemBase: React.FC<HabitItemProps> = ({
             e.stopPropagation();
             toggleHideTitle(habit);
           }}
-          className={`${actionBtn} rounded-lg opacity-60 hover:opacity-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors`}
+          className={`${actionBtn} rounded-lg opacity-60 hover:opacity-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors`}
           aria-label={habit.hideTitle ? 'Mostrar título do hábito' : 'Ocultar título do hábito'}
           title={habit.hideTitle ? 'Mostrar título do hábito' : 'Ocultar título do hábito'}
         >
@@ -247,7 +247,7 @@ const HabitItemBase: React.FC<HabitItemProps> = ({
             e.stopPropagation();
             onEdit();
           }}
-          className={`${actionBtn} rounded-lg opacity-60 hover:opacity-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors`}
+          className={`${actionBtn} rounded-lg opacity-60 hover:opacity-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors`}
           aria-label="Editar hábito"
           title="Editar hábito"
         >
@@ -260,7 +260,7 @@ const HabitItemBase: React.FC<HabitItemProps> = ({
   const infoEl = (
     <>
         {/* Linha de metadados: ofensiva · categoria · marco, tudo alinhado à esquerda do nome */}
-        <div className="flex items-center gap-x-3 gap-y-1 flex-wrap min-w-0 font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+        <div className="flex items-center gap-x-3 gap-y-1 flex-wrap min-w-0 font-mono text-[11px] text-zinc-600 dark:text-zinc-400">
           <span
             title={`Atual: ${streak} ${unit} · Melhor: ${bestStreak} ${bestUnit}`}
             className={`inline-flex items-center gap-1 tabular-nums ${
@@ -295,13 +295,13 @@ const HabitItemBase: React.FC<HabitItemProps> = ({
           )}
         </div>
         {isBroken && (
-          <p className="mt-1 text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight">
+          <p className="mt-1 text-[10px] text-zinc-600 dark:text-zinc-400 leading-tight">
             Sua melhor continua em {bestStreak} {bestUnit}.
           </p>
         )}
           {progress && (
             <div className="mt-2 space-y-1">
-              <span className="block text-[10px] font-mono tabular-nums text-zinc-500 dark:text-zinc-400">
+              <span className="block text-[10px] font-mono tabular-nums text-zinc-600 dark:text-zinc-400">
                 {goalLabel(progress)}
               </span>
               <div
@@ -321,10 +321,10 @@ const HabitItemBase: React.FC<HabitItemProps> = ({
           )}
           {avoid && (
             <div className="mt-2 space-y-1.5">
-              <p className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 leading-tight">
+              <p className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400 leading-tight">
                 {avoidText}
                 {avoidStatus === 'in-progress' && (
-                  <span className="block text-zinc-400 dark:text-zinc-500">hoje em andamento</span>
+                  <span className="block text-zinc-600 dark:text-zinc-400">hoje em andamento</span>
                 )}
               </p>
               {canSlip && (
@@ -344,7 +344,7 @@ const HabitItemBase: React.FC<HabitItemProps> = ({
           )}
           {week && (
             <div className="mt-2 space-y-1">
-              <span className="block text-[10px] font-mono tabular-nums text-zinc-500 dark:text-zinc-400">
+              <span className="block text-[10px] font-mono tabular-nums text-zinc-600 dark:text-zinc-400">
                 {week.count}/{week.target} {isCurrentWeek ? 'esta semana' : 'na semana'}
               </span>
               <div
@@ -363,7 +363,7 @@ const HabitItemBase: React.FC<HabitItemProps> = ({
             </div>
           )}
           {graced && (
-            <p className="mt-2 text-[10px] font-mono text-zinc-500 dark:text-zinc-400 leading-tight">
+            <p className="mt-2 text-[10px] font-mono text-zinc-600 dark:text-zinc-400 leading-tight">
               Graça usada ·{' '}
               <button
                 type="button"
@@ -391,7 +391,7 @@ const HabitItemBase: React.FC<HabitItemProps> = ({
             </button>
           )}
           {showNoGrace && (
-            <p className="mt-2 text-[10px] font-mono text-zinc-400 dark:text-zinc-500 leading-tight">
+            <p className="mt-2 text-[10px] font-mono text-zinc-600 dark:text-zinc-400 leading-tight">
               Sem dia de graça neste mês
             </p>
           )}

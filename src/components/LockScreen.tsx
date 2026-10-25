@@ -132,7 +132,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({
             <Lock className="w-4 h-4" aria-hidden="true" />
             App bloqueado
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">Digite seu PIN para continuar.</p>
+          <p className="text-xs text-zinc-600 dark:text-zinc-400">Digite seu PIN para continuar.</p>
         </div>
 
         {/* Pontos do PIN */}
@@ -157,7 +157,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({
           {blocked ? (
             <>
               {message ?? 'Muitas tentativas.'}
-              <span className="block text-zinc-500 dark:text-zinc-400">
+              <span className="block text-zinc-600 dark:text-zinc-400">
                 Tente novamente em {formatSeconds(remaining)}.
               </span>
             </>
@@ -205,7 +205,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({
           <button
             type="button"
             onClick={() => setShowForgot(true)}
-            className="min-h-[44px] px-3 text-xs font-mono underline underline-offset-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-50"
+            className="min-h-[44px] px-3 text-xs font-mono underline underline-offset-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-50"
           >
             Esqueci o PIN
           </button>

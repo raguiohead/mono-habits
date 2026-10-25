@@ -138,7 +138,7 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
       {/* Cabeçalho da Data & Barra de Progresso */}
       <div className="p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-xs space-y-3">
         <div>
-          <h2 className="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+          <h2 className="text-xs font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
             Progresso Diário
           </h2>
           <p className="text-sm font-semibold tracking-tight mt-0.5">
@@ -159,7 +159,7 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
           </span>
           <span
             aria-hidden="true"
-            className="text-xs font-mono tabular-nums text-zinc-500 dark:text-zinc-400"
+            className="text-xs font-mono tabular-nums text-zinc-600 dark:text-zinc-400"
           >
             <span className="inline-block min-w-[3ch] text-right">{progressPercent}%</span> do dia
           </span>
@@ -177,7 +177,7 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
       {/* Lista de Hábitos */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+          <h3 className="text-xs font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
             Hábitos do Dia ({scheduledHabits.length})
           </h3>
           <button
@@ -197,7 +197,7 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
             </div>
             <div>
               <h4 className="text-sm font-semibold">Nenhum hábito cadastrado</h4>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-sm mx-auto">
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 max-w-sm mx-auto">
                 Comece do zero ou carregue hábitos minimalistas pré-configurados para testar o fluxo.
               </p>
             </div>
@@ -222,7 +222,7 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
             <h4 className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
               Nenhum hábito programado para este dia
             </h4>
-            <p className="text-[11px] text-zinc-500">
+            <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
               Aproveite seu descanso ou ajuste a frequência semanal dos seus hábitos na aba "Hábitos & Rotinas".
             </p>
           </div>
@@ -255,7 +255,7 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
                         className={`w-full min-h-[44px] px-1 flex items-center justify-between gap-3 text-xs font-mono uppercase tracking-wider transition-opacity ${
                           isCurrent
                             ? 'text-zinc-950 dark:text-zinc-50 font-semibold'
-                            : 'text-zinc-500 dark:text-zinc-400 opacity-80'
+                            : 'text-zinc-600 dark:text-zinc-400'
                         }`}
                       >
                         <span>{PERIOD_LABEL[section.period]}</span>

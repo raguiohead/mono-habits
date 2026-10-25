@@ -115,7 +115,7 @@ export const CoverFramer: React.FC<CoverFramerProps> = ({ cover, onChange, busy 
       </div>
 
       <div className="flex items-center gap-3">
-        <label className="flex-1 flex items-center gap-2 min-h-[44px] text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
+        <label className="flex-1 flex items-center gap-2 min-h-[44px] text-[11px] font-mono text-zinc-600 dark:text-zinc-400">
           Zoom
           <input
             type="range"

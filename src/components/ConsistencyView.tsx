@@ -208,7 +208,7 @@ export const ConsistencyView: React.FC = () => {
         aria-label={cellDescription}
       >
         {isCalendar && (
-          <span className={day.ratio >= 0.7 ? (darkMode ? 'text-zinc-900' : 'text-zinc-100') : 'text-zinc-500'}>
+          <span className={day.ratio >= 0.7 ? (darkMode ? 'text-zinc-900' : 'text-zinc-100') : 'text-zinc-600 dark:text-zinc-400'}>
             {day.date.getDate()}
           </span>
         )}
@@ -239,7 +239,7 @@ export const ConsistencyView: React.FC = () => {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-semibold tracking-tight">Resumo da semana</h3>
-            <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mt-0.5">
+            <p className="text-[11px] font-mono text-zinc-600 dark:text-zinc-400 mt-0.5">
               {weekRangeLabel(summaryWeekKey)}
               {summaryWeekKey === currentWeekKey ? ' · esta semana' : ''}
             </p>
@@ -270,7 +270,7 @@ export const ConsistencyView: React.FC = () => {
             <p
               key={i}
               className={`text-xs leading-relaxed ${
-                summary.hasData ? 'text-zinc-800 dark:text-zinc-200' : 'text-zinc-500 dark:text-zinc-400'
+                summary.hasData ? 'text-zinc-800 dark:text-zinc-200' : 'text-zinc-600 dark:text-zinc-400'
               }`}
             >
               {sentence}
@@ -295,7 +295,7 @@ export const ConsistencyView: React.FC = () => {
             className={`flex-1 py-2 px-2 rounded-lg transition-all text-center ${
               range === r.value
                 ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-xs font-semibold'
-                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
             }`}
           >
             {r.label}
@@ -306,49 +306,49 @@ export const ConsistencyView: React.FC = () => {
       {/* Cards de Métricas Principais */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-xs">
-          <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
+          <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400">
             <Target className="w-4 h-4" />
             <span className="text-[11px] font-mono uppercase tracking-wider">No período</span>
           </div>
           <p className="text-xl sm:text-2xl font-bold font-mono mt-2">{periodRate}%</p>
-          <p className="text-[11px] text-zinc-500 mt-0.5">Taxa de conclusão</p>
+          <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">Taxa de conclusão</p>
         </div>
 
         <div className="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-xs">
-          <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
+          <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400">
             <BarChart2 className="w-4 h-4" />
             <span className="text-[11px] font-mono uppercase tracking-wider">Dias perfeitos</span>
           </div>
           <p className="text-xl sm:text-2xl font-bold font-mono mt-2">{perfectDays}</p>
-          <p className="text-[11px] text-zinc-500 mt-0.5">de {range} dias</p>
+          <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">de {range} dias</p>
         </div>
 
         <div className="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-xs">
-          <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
+          <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400">
             <Flame className="w-4 h-4" />
             <span className="text-[11px] font-mono uppercase tracking-wider">Maior Streak</span>
           </div>
           <p className="text-xl sm:text-2xl font-bold font-mono mt-2">{bestStreak} dias</p>
-          <p className="text-[11px] text-zinc-500 mt-0.5 font-mono">atual: {currentBestStreak}</p>
+          <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5 font-mono">atual: {currentBestStreak}</p>
           {weeklySummary.count > 0 && (
-            <p className="text-[11px] text-zinc-500 mt-0.5 font-mono">
+            <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5 font-mono">
               semanal: {weeklySummary.best} {weeklySummary.best === 1 ? 'semana' : 'semanas'}
             </p>
           )}
           {currentBestStreak === 0 && bestStreak > 0 && (
-            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1 leading-snug">
+            <p className="text-[10px] text-zinc-600 dark:text-zinc-400 mt-1 leading-snug">
               Sua melhor continua em {bestStreak} {bestStreak === 1 ? 'dia' : 'dias'}.
             </p>
           )}
         </div>
 
         <div className="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-xs">
-          <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
+          <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400">
             <Award className="w-4 h-4" />
             <span className="text-[11px] font-mono uppercase tracking-wider">Hábitos</span>
           </div>
           <p className="text-xl sm:text-2xl font-bold font-mono mt-2">{activeHabits.length}</p>
-          <p className="text-[11px] text-zinc-500 mt-0.5">Rotinas ativas</p>
+          <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">Rotinas ativas</p>
         </div>
       </div>
 
@@ -356,7 +356,7 @@ export const ConsistencyView: React.FC = () => {
       <div className="p-4 sm:p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-xs space-y-4">
         <div>
           <h3 className="text-sm font-semibold tracking-tight">Evolução · {rangeInfo.long}</h3>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
             {getBucketSize(range) === 1
               ? 'Taxa de conclusão por dia.'
               : getBucketSize(range) === 7
@@ -379,7 +379,7 @@ export const ConsistencyView: React.FC = () => {
             </div>
           ))}
         </div>
-        <div className="flex gap-1 -mt-2 text-[10px] font-mono text-zinc-500 dark:text-zinc-400">
+        <div className="flex gap-1 -mt-2 text-[10px] font-mono text-zinc-600 dark:text-zinc-400">
           {buckets.map((b, i) => (
             <span key={b.key} className="flex-1 min-w-0 text-center truncate overflow-visible">
               {bucketLabel(b, i, buckets.length, range)}
@@ -393,7 +393,7 @@ export const ConsistencyView: React.FC = () => {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 className="text-sm font-semibold tracking-tight">Grade de Consistência</h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
               A intensidade monocromática reflete sua taxa de conclusão diária.
             </p>
           </div>
@@ -408,7 +408,7 @@ export const ConsistencyView: React.FC = () => {
           </button>
 
           {/* Legenda Monocromática */}
-          <div className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-500 dark:text-zinc-400">
+          <div className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-600 dark:text-zinc-400">
             <span>Menos</span>
             <span className="w-2.5 h-2.5 rounded-xs border border-zinc-300 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900" />
             <span className="w-2.5 h-2.5 rounded-xs border border-zinc-400 dark:border-zinc-700 bg-zinc-300 dark:bg-zinc-700" />
@@ -423,7 +423,7 @@ export const ConsistencyView: React.FC = () => {
 
         {isCalendar ? (
           <div className="space-y-1.5">
-            <div className="grid grid-cols-7 gap-1.5 text-[10px] font-mono text-zinc-500 text-center">
+            <div className="grid grid-cols-7 gap-1.5 text-[10px] font-mono text-zinc-600 dark:text-zinc-400 text-center">
               {WEEKDAY_HEADERS.map((h, i) => (
                 <span key={i}>{h}</span>
               ))}
@@ -437,7 +437,7 @@ export const ConsistencyView: React.FC = () => {
         ) : (
           <div ref={scrollRef} className="overflow-x-auto pb-2 -mx-2 px-2">
             <div className="inline-flex flex-col gap-1.5 min-w-full">
-              <div className={`flex ${range === 365 ? 'gap-1' : 'gap-1.5'} text-[9px] font-mono text-zinc-500 h-3`}>
+              <div className={`flex ${range === 365 ? 'gap-1' : 'gap-1.5'} text-[9px] font-mono text-zinc-600 dark:text-zinc-400 h-3`}>
                 {monthLabels.map((label, i) => (
                   <span key={i} className={`${cellSize.split(' ')[0]} overflow-visible whitespace-nowrap`}>
                     {label}
@@ -456,7 +456,7 @@ export const ConsistencyView: React.FC = () => {
         )}
 
         {/* Detalhes da Célula Selecionada */}
-        <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between gap-3 text-xs font-mono text-zinc-500 dark:text-zinc-400">
+        <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between gap-3 text-xs font-mono text-zinc-600 dark:text-zinc-400">
           <div className="flex items-center gap-2 min-w-0">
             <Calendar className="w-3.5 h-3.5 shrink-0" />
             <span>
@@ -483,7 +483,7 @@ export const ConsistencyView: React.FC = () => {
         >
           <div>
             <h3 className="text-sm font-semibold tracking-tight">Seu ano em hábitos</h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
               3 cartões para compartilhar: grade, números e seu dia mais forte.
             </p>
           </div>

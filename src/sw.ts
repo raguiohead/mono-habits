@@ -2,7 +2,10 @@
 import { clientsClaim } from 'workbox-core';
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
+import { initializeApp } from 'firebase/app';
+import { getMessaging } from 'firebase/messaging/sw';
 import { QUEUE_MESSAGE_TYPE, enqueueCompletion } from './lib/completionQueue';
+import { firebaseConfig } from './lib/firebaseConfig';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -48,7 +51,19 @@ async function queueCompletion(habitId: string, dateKey: string): Promise<void> 
   windows.forEach((client) => client.postMessage({ type: QUEUE_MESSAGE_TYPE }));
 }
 
+// Push do Firebase Cloud Messaging (mensagens enviadas pelo Console): com o app em segundo plano, o SDK
+// mostra a notificação e trata o clique. É inicializado só quando há chave de mensagens configurada.
+if (firebaseConfig.messagingSenderId) {
+  try {
+    getMessaging(initializeApp(firebaseConfig));
+  } catch {
+    /* sem push: o resto do Service Worker segue funcionando */
+  }
+}
+
 self.addEventListener('notificationclick', (event) => {
+  // Notificações do FCM têm FCM_MSG nos dados e são tratadas pelo próprio SDK
+  if ((event.notification.data as Record<string, unknown> | null)?.FCM_MSG) return;
   event.notification.close();
   const data = (event.notification.data ?? {}) as ReminderData;
 

@@ -221,7 +221,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
             <h3 id="habit-modal-title" className="text-base font-semibold tracking-tight">
               {initialHabit ? 'Editar Hábito' : 'Novo Hábito'}
             </h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">
               Configure sua rotina com estética minimalista
             </p>
           </div>
@@ -256,14 +256,14 @@ export const HabitModal: React.FC<HabitModalProps> = ({
                   className={`min-h-[44px] rounded-xl text-xs font-mono border transition-all ${
                     kind === opt.value
                       ? 'bg-zinc-950 text-zinc-50 border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50 font-semibold'
-                      : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400'
+                      : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400'
                   }`}
                 >
                   {opt.label}
                 </button>
               ))}
             </div>
-            <p className="mt-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+            <p className="mt-1.5 text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
               {kind === 'avoid'
                 ? 'Você só registra quando escorregar. Os dias sem registro contam como limpos, e um escorregão não apaga o que você já conquistou.'
                 : 'Você marca o hábito nos dias em que o fizer.'}
@@ -339,7 +339,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
             <p
               id="habit-description-count"
               aria-live="polite"
-              className="mt-1 text-right text-[11px] font-mono tabular-nums text-zinc-500 dark:text-zinc-400"
+              className="mt-1 text-right text-[11px] font-mono tabular-nums text-zinc-600 dark:text-zinc-400"
             >
               {description.length}/{HABIT_DESCRIPTION_MAX}
             </p>
@@ -356,7 +356,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
               <div className="relative rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-zinc-100 dark:bg-zinc-900">
                 <HabitCover cover={cover} className="w-full">
                   {!cover && (
-                    <span className="absolute inset-0 flex items-center justify-center text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
+                    <span className="absolute inset-0 flex items-center justify-center text-[11px] font-mono text-zinc-600 dark:text-zinc-400">
                       Sem capa
                     </span>
                   )}
@@ -403,7 +403,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
               })}
             </div>
             {selectedPattern && (
-              <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">{patternLabel(selectedPattern)}</p>
+              <p className="text-[11px] font-mono text-zinc-600 dark:text-zinc-400">{patternLabel(selectedPattern)}</p>
             )}
 
             <div role="radiogroup" aria-label="Tom da capa" className="grid grid-cols-3 gap-1.5">
@@ -417,7 +417,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
                   className={`min-h-[44px] rounded-xl text-xs font-mono border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 dark:focus-visible:ring-zinc-50 ${
                     coverTone === t.id
                       ? 'bg-zinc-950 text-zinc-50 border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50 font-semibold'
-                      : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400'
+                      : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400'
                   }`}
                 >
                   {t.label}
@@ -454,7 +454,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
               onChange={handleFile}
               className="sr-only"
             />
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+            <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
               A imagem é reduzida e fica salva no aparelho e na sua conta, junto com o hábito.
             </p>
             <p role="alert" aria-live="polite" className="text-[11px] font-medium text-zinc-900 dark:text-zinc-100 empty:hidden">
@@ -508,7 +508,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
               )}
               <div>
                 <p className="font-medium text-xs">Modo Discreto (Ocultar Nome)</p>
-                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">
                   Exibe apenas o ícone e a tag na fita diária para privacidade visual
                 </p>
               </div>
@@ -540,7 +540,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
             >
               <span>
                 <span className="block font-medium text-xs">Destacar (fixar no topo)</span>
-                <span className="block text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                <span className="block text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">
                   Fica no topo do Foco com marca de fixado; no layout Bento ocupa a largura toda (até {MAX_FEATURED} hábitos)
                 </span>
               </span>
@@ -558,7 +558,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
               </span>
             </button>
             {!featuredAllowed && !initialHabit?.featured && (
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+              <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
                 Limite de {MAX_FEATURED} hábitos em destaque atingido. Remova um destaque para escolher outro.
               </p>
             )}
@@ -587,7 +587,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
                   className={`min-h-[44px] rounded-xl text-xs font-mono border transition-all ${
                     scheduleMode === opt.value
                       ? 'bg-zinc-950 text-zinc-50 border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50 font-semibold'
-                      : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400'
+                      : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400'
                   }`}
                 >
                   {opt.label}
@@ -598,7 +598,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
             {scheduleMode === 'days' || kind === 'avoid' ? (
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">Dias da semana</label>
+                  <label className="text-[11px] font-mono text-zinc-600 dark:text-zinc-400">Dias da semana</label>
                   <button
                     type="button"
                     onClick={() => setFrequency([0, 1, 2, 3, 4, 5, 6])}
@@ -618,7 +618,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
                         className={`py-2 rounded-xl text-xs font-mono border transition-all ${
                           selected
                             ? 'bg-zinc-950 text-zinc-50 border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50 font-semibold'
-                            : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400'
+                            : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400'
                         }`}
                       >
                         {dayLabel}
@@ -641,7 +641,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
                   </button>
                   <div className="min-w-[10ch] text-center font-mono" aria-live="polite">
                     <span className="text-2xl font-bold tabular-nums">{weeklyTarget}</span>{' '}
-                    <span className="text-xs text-zinc-500">{weeklyTarget === 1 ? 'vez/semana' : 'vezes/semana'}</span>
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400">{weeklyTarget === 1 ? 'vez/semana' : 'vezes/semana'}</span>
                   </div>
                   <button
                     type="button"
@@ -653,7 +653,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
-                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed text-center">
+                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed text-center">
                   O hábito aparece todos os dias e vale na semana (segunda a domingo) ao atingir a meta.
                 </p>
                 {pendingNote && (
@@ -683,7 +683,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
                     className={`min-h-[44px] px-1 rounded-xl text-[11px] leading-tight font-mono border transition-all ${
                       selected
                         ? 'bg-zinc-950 text-zinc-50 border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50 font-semibold'
-                        : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400'
+                        : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400'
                     }`}
                   >
                     {PERIOD_LABEL[opt]}
@@ -712,7 +712,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
             >
               <span>
                 <span className="block font-medium text-xs">Meta com Pomo</span>
-                <span className="block text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                <span className="block text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">
                   O hábito é concluído sozinho ao atingir a meta do dia com sessões de foco vinculadas
                 </span>
               </span>
@@ -742,7 +742,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
                       className={`min-h-[44px] rounded-xl text-xs font-mono border transition-all ${
                         goalType === type
                           ? 'bg-zinc-950 text-zinc-50 border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50 font-semibold'
-                          : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400'
+                          : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400'
                       }`}
                     >
                       {type === 'minutes' ? 'Minutos focados' : 'Sessões de foco'}
@@ -769,7 +769,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
                       </button>
                       <div className="min-w-[8ch] text-center font-mono" aria-live="polite">
                         <span className="text-2xl font-bold tabular-nums">{value}</span>{' '}
-                        <span className="text-xs text-zinc-500">{goalType === 'minutes' ? 'min/dia' : value === 1 ? 'foco/dia' : 'focos/dia'}</span>
+                        <span className="text-xs text-zinc-600 dark:text-zinc-400">{goalType === 'minutes' ? 'min/dia' : value === 1 ? 'foco/dia' : 'focos/dia'}</span>
                       </div>
                       <button
                         type="button"

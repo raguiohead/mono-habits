@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Download, Share2, X } from 'lucide-react';
 import { ModalShell } from './ModalShell';
 import { useHabits } from '@/context/HabitsContext';
+import { logUsage } from '@/lib/usageClient';
 import { canvasToPngBlob, renderShareCard, shareOrDownload } from '@/lib/shareCanvas';
 import { CARD_H, CARD_W, type ShareCardSpec } from '@/lib/shareImage';
 
@@ -53,6 +54,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ title, options, habitCou
         setError('Não foi possível gerar a imagem neste navegador.');
         return;
       }
+      logUsage('share_card', { type: options.length > 1 ? 'wrapped' : 'grid' });
       if (mode === 'download') {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -95,7 +97,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ title, options, habitCou
                 aria-selected={i === index}
                 onClick={() => setIndex(i)}
                 className={`min-h-[44px] rounded-lg text-xs font-medium transition-all ${
-                  i === index ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-xs font-semibold' : 'text-zinc-500 dark:text-zinc-400'
+                  i === index ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-xs font-semibold' : 'text-zinc-600 dark:text-zinc-400'
                 }`}
               >
                 {o.label}
@@ -125,7 +127,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ title, options, habitCou
         >
           <span>
             <span className="block text-xs font-medium">Incluir total de hábitos</span>
-            <span className="block text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+            <span className="block text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">
               A imagem nunca mostra nomes de hábitos, notas, e-mail ou nome.
             </span>
           </span>

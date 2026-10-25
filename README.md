@@ -155,5 +155,19 @@ Nunca commite a chave JSON. Se vazar, exclua-a no Google Cloud Console e gere ou
 
 ---
 
+## 📊 Estatísticas de uso e avisos por push (Firebase, gratuito)
+
+Os dois recursos são **opcionais e começam desligados** para o usuário (Configurações > Estatísticas de uso anônimas / Novidades do app). Só funcionam no navegador/PWA; o app Android ainda não os usa.
+
+- **Analytics:** usa o `VITE_FIREBASE_MEASUREMENT_ID` (o padrão do projeto já está no código). Só com consentimento, e respeitando "Não rastrear". Eventos em lista fechada (`src/lib/usage.ts`): nunca nomes de hábitos, notas ou dados de conta. Veja os números em Firebase Console > Analytics.
+- **Push (FCM) com envio manual pelo Console:**
+  1. Firebase Console > Configurações do projeto > **Cloud Messaging** > **Certificados Web Push** > gerar par de chaves e copiar a **chave pública**.
+  2. Cadastre-a como `VITE_FIREBASE_VAPID_KEY` (`.env.local`, variáveis da Vercel e, para o deploy do Firebase, o segredo `VITE_FIREBASE_VAPID_KEY` no GitHub). Sem ela, a opção de push não aparece.
+  3. Faça um novo deploy. No app, ative **Novidades do app (push)** e permita as notificações.
+  4. Teste: copie o **token** (Configurações > Notificações > "Token deste aparelho") e use em Console > Engajamento > Cloud Messaging > **Enviar mensagem de teste**. Para campanhas, use "Nova campanha" > Notificações e escolha o app web como público.
+- O CSP (`vercel.json` e `firebase.json`) libera `googletagmanager.com` e `google-analytics.com` só por causa do Analytics.
+
+---
+
 ## 📄 Licença
 Distribuído sob a licença MIT.

@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { HabitsProvider, useHabits } from '@/context/HabitsContext';
 import { PomoProvider } from '@/context/PomoContext';
 import { SettingsProvider } from '@/context/SettingsContext';
@@ -11,6 +11,8 @@ import { getAcceptedPolicyVersion, setAcceptedPolicyVersion } from '@/lib/storag
 import { MilestoneWatcher } from '@/components/MilestoneWatcher';
 import { DayCompleteEffect } from '@/components/DayCompleteEffect';
 import { ReminderScheduler } from '@/components/ReminderScheduler';
+import { PushListener } from '@/components/PushListener';
+import { logUsage } from '@/lib/usageClient';
 import { CompletionQueueSync } from '@/components/CompletionQueueSync';
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import { BottomNav } from '@/components/BottomNav';
@@ -36,6 +38,10 @@ const MainContent: React.FC = () => {
 
   // Estados dos modais
   const [isHabitModalOpen, setIsHabitModalOpen] = useState(false);
+  // Estatística anônima (só com consentimento): qual aba foi aberta
+  useEffect(() => {
+    logUsage('screen_view', { tab: activeTab });
+  }, [activeTab]);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showWelcome, setShowWelcome] = useState(() => getAcceptedPolicyVersion() !== PRIVACY_UPDATED_AT);
@@ -114,6 +120,7 @@ const MainContent: React.FC = () => {
       </Suspense>
 
       <ReminderScheduler />
+      <PushListener />
       <CompletionQueueSync />
       <DayCompleteEffect />
       <MilestoneWatcher />

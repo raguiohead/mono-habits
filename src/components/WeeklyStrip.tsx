@@ -70,7 +70,7 @@ export const WeeklyStrip: React.FC = () => {
       {/* Navegador Semanal */}
       <div className="flex items-center justify-between mb-3 px-1 text-xs">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[11px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+          <span className="font-mono text-[11px] uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
             {weekOffset === 0 ? 'Esta Semana' : weekOffset < 0 ? `${Math.abs(weekOffset)} sem. atrás` : `+${weekOffset} sem. à frente`}
           </span>
           {weekOffset !== 0 && (
@@ -79,7 +79,7 @@ export const WeeklyStrip: React.FC = () => {
                 setWeekOffset(0);
                 setSelectedDateKey(todayKey);
               }}
-              className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
+              className="min-h-[44px] px-2.5 py-1 flex items-center rounded-md text-[10px] font-mono bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
             >
               Hoje
             </button>
@@ -89,7 +89,7 @@ export const WeeklyStrip: React.FC = () => {
         <div className="flex items-center gap-1">
           <button
             onClick={() => setWeekOffset((prev) => prev - 1)}
-            className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
             title="Semana anterior (Swipe direita)"
             aria-label="Semana anterior"
           >
@@ -97,7 +97,7 @@ export const WeeklyStrip: React.FC = () => {
           </button>
           <button
             onClick={() => setWeekOffset((prev) => prev + 1)}
-            className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
             title="Próxima semana (Swipe esquerda)"
             aria-label="Próxima semana"
           >
@@ -115,14 +115,17 @@ export const WeeklyStrip: React.FC = () => {
           return (
             <button
               key={item.key}
+              type="button"
               onClick={() => setSelectedDateKey(item.key)}
+              aria-pressed={isSelected}
+              aria-current={item.isToday ? 'date' : undefined}
               className={`flex flex-col items-center justify-center py-2.5 sm:py-3 rounded-xl border transition-all text-center relative ${
                 isSelected
                   ? 'bg-zinc-950 text-zinc-50 border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50 shadow-sm'
                   : 'bg-white dark:bg-zinc-900/60 border-zinc-200 dark:border-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
               }`}
             >
-              <span className={`text-[10px] font-mono uppercase ${isSelected ? 'opacity-80' : 'opacity-60'}`}>
+              <span className={`text-[10px] font-mono uppercase ${isSelected ? 'opacity-80' : ''}`}>
                 {item.dayName}
               </span>
               <span className="text-sm font-semibold font-mono mt-0.5">

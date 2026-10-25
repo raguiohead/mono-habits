@@ -59,7 +59,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ onAccept }) => {
             <h3 id="welcome-title" className="text-base font-semibold tracking-tight">
               Bem-vindo ao MONO // HABITS
             </h3>
-            <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
+            <p className="text-[11px] font-mono text-zinc-600 dark:text-zinc-400">
               Consistência diária, sem distrações.
             </p>
           </div>
@@ -73,7 +73,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ onAccept }) => {
               </span>
               <div>
                 <p className="text-xs font-semibold">{title}</p>
-                <p className="text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">{text}</p>
+                <p className="text-[11px] leading-relaxed text-zinc-600 dark:text-zinc-400">{text}</p>
               </div>
             </li>
           ))}
@@ -82,7 +82,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ onAccept }) => {
         <div className="p-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 text-[11px] leading-relaxed text-zinc-600 dark:text-zinc-400 space-y-1.5">
           <p>
             <strong className="text-zinc-950 dark:text-zinc-50">Sua privacidade:</strong> seus hábitos ficam
-            salvos neste aparelho. Sem anúncios, sem rastreamento e sem venda de dados. Com a nuvem
+            salvos neste aparelho. Sem anúncios e sem venda de dados. Estatísticas de uso e avisos por push são opcionais e começam desligados. Com a nuvem
             ativa, os dados são sincronizados com o Google Firebase e só você tem acesso.
           </p>
           <p>
@@ -99,7 +99,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ onAccept }) => {
           >
             Aceitar e começar
           </button>
-          <p className="text-center text-[11px] text-zinc-500 dark:text-zinc-400">
+          <p className="text-center text-[11px] text-zinc-600 dark:text-zinc-400">
             Ao continuar, você concorda com a{' '}
             <button
               type="button"

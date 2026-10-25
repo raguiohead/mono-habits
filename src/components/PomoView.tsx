@@ -80,7 +80,7 @@ export const PomoView: React.FC = () => {
             className={`flex-1 py-2 px-2 rounded-lg transition-all text-center disabled:cursor-not-allowed ${
               kind === k
                 ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-xs font-semibold'
-                : 'text-zinc-500 dark:text-zinc-400 enabled:hover:text-zinc-900 dark:enabled:hover:text-zinc-200 disabled:opacity-50'
+                : 'text-zinc-600 dark:text-zinc-400 enabled:hover:text-zinc-900 dark:enabled:hover:text-zinc-200 disabled:opacity-50'
             }`}
           >
             {KIND_LABEL[k]}
@@ -112,21 +112,30 @@ export const PomoView: React.FC = () => {
               className="stroke-zinc-950 dark:stroke-zinc-50 transition-[stroke-dashoffset] duration-300 ease-linear"
             />
           </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+          <div
+            role="timer"
+            aria-live="off"
+            aria-label={`Temporizador: ${formatClock(remainingSeconds)}`}
+            className="absolute inset-0 flex flex-col items-center justify-center gap-1"
+          >
             <TomatoIcon
               className={`w-6 h-6 text-zinc-400 dark:text-zinc-500 ${status === 'running' ? 'animate-pulse' : ''}`}
             />
             <span className="font-mono text-5xl font-bold tracking-tighter tabular-nums">
               {formatClock(remainingSeconds)}
             </span>
-            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
               {status === 'paused' ? 'Pausado' : KIND_LABEL[kind]}
             </span>
+          </div>
+          {/* Anúncio acessível de alteração de estado (não verboso, apenas em transições) */}
+          <div className="sr-only" aria-live="polite" aria-atomic="true">
+            {status === 'paused' ? 'Temporizador pausado' : status === 'running' ? `Temporizador em andamento: ${KIND_LABEL[kind]}` : 'Temporizador pronto'}
           </div>
         </div>
 
         {/* Ciclo */}
-        <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
+        <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-600 dark:text-zinc-400">
           <div className="flex items-center gap-1.5">
             {Array.from({ length: FOCUS_BEFORE_LONG_BREAK }).map((_, i) => (
               <span
@@ -148,7 +157,7 @@ export const PomoView: React.FC = () => {
         {!idle && kind === 'focus' && linkedHabitId && (() => {
           const linked = activeHabits.find((h) => h.id === linkedHabitId);
           return linked?.pomoGoal ? (
-            <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 text-center">
+            <p className="text-[11px] font-mono text-zinc-600 dark:text-zinc-400 text-center">
               Vinculado a {habitName(linked, isHidden(linked))} · meta {goalTarget(linked.pomoGoal)}
             </p>
           ) : null;
@@ -180,7 +189,7 @@ export const PomoView: React.FC = () => {
                   className="w-16 text-center text-2xl font-bold bg-transparent border-b border-zinc-300 dark:border-zinc-700 focus:border-zinc-950 dark:focus:border-zinc-50 outline-none tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   aria-label="Minutos"
                 />
-                <span className="text-xs text-zinc-500">min</span>
+                <span className="text-xs text-zinc-600 dark:text-zinc-400">min</span>
               </label>
               <button
                 type="button"
@@ -202,7 +211,7 @@ export const PomoView: React.FC = () => {
                   className={`px-3 py-1 rounded-full text-[11px] font-mono border transition-colors ${
                     minutes === p
                       ? 'bg-zinc-950 text-zinc-50 border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50'
-                      : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:border-zinc-400 dark:hover:border-zinc-600'
+                      : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-400 dark:hover:border-zinc-600'
                   }`}
                 >
                   {p}
@@ -215,7 +224,7 @@ export const PomoView: React.FC = () => {
         {/* Vincular o foco a um hábito com meta (somente ocioso, em foco) */}
         {idle && kind === 'focus' && linkableHabits.length > 0 && (
           <div className="w-full space-y-1.5">
-            <label htmlFor="pomo-habit" className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <label htmlFor="pomo-habit" className="block text-[11px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
               Vincular a hábito
             </label>
             <select
@@ -289,7 +298,7 @@ export const PomoView: React.FC = () => {
             key={item.label}
             className="p-3 sm:p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-xs"
           >
-            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
               {item.label}
             </span>
             <p className="text-xl font-bold font-mono mt-1.5">{item.value}</p>
@@ -299,11 +308,11 @@ export const PomoView: React.FC = () => {
 
       {/* Histórico */}
       <div className="space-y-3">
-        <h3 className="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+        <h3 className="text-xs font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
           Histórico
         </h3>
         {history.length === 0 ? (
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 py-6 text-center border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl">
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 py-6 text-center border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl">
             Nenhuma sessão registrada ainda. Inicie seu primeiro foco.
           </p>
         ) : (
@@ -314,7 +323,7 @@ export const PomoView: React.FC = () => {
               return (
                 <li key={s.id} className="flex items-center justify-between gap-3 px-4 py-3 text-xs font-mono">
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className="w-4 h-4 shrink-0 flex items-center justify-center text-zinc-500">
+                    <span className="w-4 h-4 shrink-0 flex items-center justify-center text-zinc-600 dark:text-zinc-400">
                       {s.completed ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
                     </span>
                     <span
@@ -324,7 +333,7 @@ export const PomoView: React.FC = () => {
                       {KIND_LABEL[s.kind]}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 min-w-0 text-zinc-500 dark:text-zinc-400">
+                  <div className="flex items-center gap-3 min-w-0 text-zinc-600 dark:text-zinc-400">
                     <span className="tabular-nums">
                       {formatClock(s.actualSeconds)}
                       {!s.completed && ` / ${formatClock(s.plannedSeconds)}`}
