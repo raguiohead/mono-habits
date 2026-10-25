@@ -23,11 +23,12 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.ts',
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'icon.svg'],
+      includeAssets: ['apple-touch-icon.png', 'icon.svg'],
       manifest: {
         name: 'MONO // HABITS',
         short_name: 'MonoHabits',
         description: 'Rastreador diário de hábitos estritamente monocromático e focado em consistência.',
+        lang: 'pt-BR',
         theme_color: '#09090b',
         background_color: '#09090b',
         display: 'standalone',
