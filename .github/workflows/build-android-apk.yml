@@ -48,6 +48,9 @@ jobs:
 
       - run: npm ci
 
+      # Testes unitários antes de compilar: PRs e a development só geram APK com a suíte passando
+      - run: npm test
+
       - name: Build web e sincronização com Capacitor
         run: npm run cap:sync
         env:
