@@ -68,6 +68,8 @@ export default defineConfig({
       output: {
         // Firebase é a maior dependência: em um chunk próprio, cacheado entre deploys do app
         manualChunks(id) {
+          // Analytics e Cloud Messaging são opcionais e carregados sob demanda: ficam fora do chunk principal
+          if (/node_modules\/(@firebase\/(analytics|messaging|installations)|firebase\/(analytics|messaging))/.test(id)) return;
           if (id.includes('node_modules/firebase') || id.includes('node_modules/@firebase')) return 'firebase';
         }
       }
