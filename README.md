@@ -79,7 +79,7 @@ O **MONO // HABITS** foi desenhado com um princípio radical: **eliminar o ruíd
 13. **Central de Ajuda, Boas-Vindas & Política de Privacidade:**
     - Central de Ajuda integrada (`HelpView`): FAQ pesquisável categorizado em Hábitos, Pomo e Conta, com busca textual tolerante a acentuação e glossário explicativo dos conceitos e mecânicas da aplicação.
     - Boas-vindas guiadas (`WelcomeModal`): tela de onboarding na primeira inicialização (ou atualização de termos), apresentando os pilares do app (Foco diário, Pomo, Modo discreto e Local-first) com aceite explícito.
-    - Política de Privacidade in-app (`PrivacyPolicy`): termos transparentes e acessíveis diretamente na interface sobre armazenamento estritamente local e governança de dados.
+    - Política de Privacidade in-app (`PrivacyPolicy`): termos transparentes e acessíveis diretamente na interface sobre o que fica no aparelho, o que é sincronizado na nuvem ao entrar com a Conta Google e os recursos opcionais de estatísticas e push.
 
 ---
 
