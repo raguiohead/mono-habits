@@ -39,3 +39,13 @@ local.properties
 *.jks
 *.keystore
 
+# Variáveis de ambiente locais (mantém o exemplo versionado)
+.env*
+!.env.example
+
+# Documentos internos (mantidos só localmente)
+/CHECKUP.md
+/DEVELOPMENT.md
+/metadata.json
+/docs/
+
