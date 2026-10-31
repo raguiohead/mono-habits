@@ -559,7 +559,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 description={
                   pushAvailable
                     ? 'Receba avisos ocasionais sobre novas versões e funções. Você pode desligar quando quiser.'
-                    : 'Este navegador não suporta avisos por push.'
+                    : 'Este aparelho ou navegador não suporta avisos por push.'
                 }
                 checked={settings.pushEnabled && pushAvailable}
                 onChange={togglePush}

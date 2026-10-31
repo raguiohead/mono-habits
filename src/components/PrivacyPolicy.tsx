@@ -78,7 +78,7 @@ export const PrivacyContent: React.FC = () => (
           <strong>Estatísticas de uso anônimas (opcional, desligadas por padrão):</strong> se você ligar em Configurações, o app usa o Google Analytics para Firebase (apenas no navegador, não no app Android) para contar usos como a aba aberta, hábitos criados (só o tipo), sessões do Pomo concluídas, imagens compartilhadas e uso do modo discreto. Nunca enviamos nomes de hábitos, descrições, notas, e-mail ou dados da conta. A Google pode tratar identificadores técnicos do aplicativo, dados do dispositivo e localização aproximada derivada do IP. Respeitamos o "Não rastrear" do navegador, e desligar a opção interrompe a coleta.
         </li>
         <li>
-          <strong>Avisos do app por push (opcional, desligados por padrão):</strong> se você ligar em Configurações e permitir as notificações no navegador, registramos este aparelho no Firebase Cloud Messaging (Google), que gera um identificador (token) para entregar mensagens ocasionais, como novas versões e funções. Não guardamos esse token em nossos servidores nem o associamos à sua conta. Desligar a opção cancela o registro.
+          <strong>Avisos do app por push (opcional, desligados por padrão):</strong> se você ligar em Configurações e permitir as notificações no navegador ou no aparelho, registramos este aparelho no Firebase Cloud Messaging (Google), que gera um identificador (token) para entregar mensagens ocasionais, como novas versões e funções. Não guardamos esse token em nossos servidores nem o associamos à sua conta. Desligar a opção cancela o registro.
         </li>
       </ul>
     </Section>
