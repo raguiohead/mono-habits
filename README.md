@@ -86,7 +86,7 @@ O **MONO // HABITS** foi desenhado com um princípio radical: **eliminar o ruíd
 ## 🛠️ Stack Tecnológica
 
 - **Frontend:** React 18.3, TypeScript 5.7, Vite 6.1
-- **Mobile (Android):** Capacitor 8.5 (`@capacitor/android`, `@capacitor/core`, `@capacitor/local-notifications`, `@capacitor/splash-screen`, `@capacitor/status-bar`, `@capacitor-firebase/authentication`)
+- **Mobile (Android):** Capacitor 8.5 (`@capacitor/android`, `@capacitor/core`, `@capacitor/local-notifications`, `@capacitor/push-notifications`, `@capacitor/splash-screen`, `@capacitor/status-bar`, `@capacitor-firebase/authentication`)
 - **Estilização:** Tailwind CSS 3.4 (paleta estritamente monocromática `zinc`, `black`, `white`)
 - **Fontes:** Fontsource Variable Fonts (`Inter`, `JetBrains Mono`) empacotadas localmente
 - **Ícones:** Lucide React
@@ -276,14 +276,15 @@ O desenvolvimento do **MONO // HABITS** é estruturado em torno de duas branches
 
 ## 📊 Estatísticas de uso e avisos por push (Firebase, gratuito)
 
-Os dois recursos são **opcionais e começam desligados** para o usuário (Configurações > Estatísticas de uso anônimas / Novidades do app). Funcionam no navegador/PWA.
+Os dois recursos são **opcionais e começam desligados** para o usuário (Configurações > Estatísticas de uso anônimas / Novidades do app). O Analytics funciona no navegador/PWA; o push funciona no navegador/PWA e no app Android.
 
 - **Analytics:** usa o `VITE_FIREBASE_MEASUREMENT_ID` (o padrão do projeto já está no código). Só com consentimento, e respeitando "Não rastrear". Eventos em lista fechada (`src/lib/usage.ts`): nunca nomes de hábitos, notas ou dados de conta. Acompanhe as métricas em Firebase Console > Analytics.
 - **Push (FCM) com envio manual pelo Console:**
   1. Firebase Console > Configurações do projeto > **Cloud Messaging** > **Certificados Web Push** > gerar par de chaves e copiar a **chave pública**.
   2. Cadastre-a como `VITE_FIREBASE_VAPID_KEY` no arquivo `.env.local` e, para o deploy do Firebase Hosting, configure o segredo `VITE_FIREBASE_VAPID_KEY` no GitHub Actions. Sem essa variável, a opção de push permanece oculta.
   3. Faça um novo deploy. No app, ative **Novidades do app (push)** e permita as notificações.
-  4. Teste: copie o **token** (Configurações > Notificações > "Token deste aparelho") e use em Console > Engajamento > Cloud Messaging > **Enviar mensagem de teste**. Para campanhas, use "Nova campanha" > Notificações e escolha o app web como público.
+  4. Teste: copie o **token** (Configurações > Notificações > "Token deste aparelho") e use em Console > Engajamento > Cloud Messaging > **Enviar mensagem de teste**. Para campanhas, use "Nova campanha" > Notificações e escolha o app web, o app Android ou os dois como público.
+  5. **Android:** não usa a chave VAPID, só o `google-services.json` e o plugin `@capacitor/push-notifications`. O token só é gerado quando o usuário liga a opção (`firebase_messaging_auto_init_enabled` desligado no manifesto).
 - O Content Security Policy configurado no `firebase.json` autoriza conexões para `googletagmanager.com` e `google-analytics.com` especificamente para o suporte analítico com consentimento.
 
 ---

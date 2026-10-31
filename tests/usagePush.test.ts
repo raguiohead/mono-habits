@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { USAGE_EVENT_NAMES, isDoNotTrack, sanitizeUsageEvent } from '@/lib/usage';
-import { isValidVapidKey, pushToastText } from '@/lib/push';
+import { isValidVapidKey, nativePushPayload, pushToastText } from '@/lib/push';
 import { DEFAULT_SETTINGS, sanitizeSettings } from '@/lib/settings';
 
 describe('eventos de uso (lista fechada)', () => {
@@ -43,6 +43,12 @@ describe('push', () => {
     expect(pushToastText({ notification: { title: 5 as unknown as string } })).toBe('');
     expect(pushToastText(null)).toBe('');
     expect(pushToastText({ notification: { body: 'x'.repeat(300) } }).length).toBeLessThanOrEqual(160);
+  });
+  it('nativePushPayload normaliza a notificação do Android para o formato do toast', () => {
+    expect(pushToastText(nativePushPayload({ title: 'Novidade', body: 'v1.4.0', data: {} }))).toBe('Novidade: v1.4.0');
+    expect(pushToastText(nativePushPayload({ data: { title: 'T', body: 'B' } }))).toBe('T: B');
+    expect(nativePushPayload({ title: 'x', data: 'inválido' }).data).toBeNull();
+    expect(pushToastText(nativePushPayload({}))).toBe('');
   });
   it('valida o formato da chave VAPID', () => {
     expect(isValidVapidKey('B' + 'a1_-'.repeat(21))).toBe(true);
