@@ -32,6 +32,10 @@ O **MONO // HABITS** foi desenhado com um princípio radical: **eliminar o ruíd
    - Efeito visual de dia completo (*Day Complete*): inversão monocromática suave ao concluir todos os hábitos do dia.
    - Cálculo automático de sequências (*streaks*) consecutivas, melhores marcas e dias de tolerância (*graces*).
    - Suporte a hábitos de ação (positivos) e hábitos de evitação (*avoidance*).
+   - Hábitos com frequência semanal: configuração de metas de dias por semana (1 a 7 vezes), com acompanhamento de progresso, sequências semanais (*weekly streak*) e histórico de cronograma de metas.
+   - Períodos do dia: agrupamento por turnos (Manhã, Tarde, Noite ou Qualquer hora) organizando hábitos na tela de Foco, com destaque automático para o período atual.
+   - Categorias de hábitos: organização temática personalizável (categoria padrão 'Geral') para contagem e filtragem estruturada.
+   - Hábitos em destaque (layout Bento): fixação de até 2 hábitos prioritários no topo do Foco, com células de destaque em grade bento e prioridade visual.
    - Capas personalizadas para hábitos: temas visuais monocromáticos padrão ou upload de imagem própria comprimida e enquadrada no cliente (sem necessidade de armazenamento na nuvem).
 2. **Modo Discreto (Privacidade Visual):**
    - Oculte nomes e notas de hábitos sensíveis com um toque no botão de olho (`Eye`/`EyeOff`), exibindo apenas ícones neutros e marcadores.
@@ -51,6 +55,7 @@ O **MONO // HABITS** foi desenhado com um princípio radical: **eliminar o ruíd
    - Grade de consistência estilo GitHub cobrindo 13 semanas (91 dias).
    - Intensidade tonal monocromática calibrada conforme a taxa de conclusão de cada dia.
    - Métricas de retenção para janelas de 14 e 30 dias e comemoração de marcos (*milestones*) de disciplina.
+   - Resumo semanal em texto determinístico: análise analítica gerada localmente sem uso de IA externa, sintetizando a taxa de conclusão em relação à semana anterior, identificando o dia mais consistente das últimas 8 semanas e apontando hábitos que demandam atenção, com total compatibilidade com o Modo Discreto.
 7. **Segurança & Bloqueio de Acesso:**
    - Bloqueio por PIN/senha ou autenticação biométrica via WebAuthn, garantindo privacidade com o aparelho desbloqueado.
 8. **Arquitetura Híbrida Local-First + Google Cloud:**
@@ -71,13 +76,17 @@ O **MONO // HABITS** foi desenhado com um princípio radical: **eliminar o ruíd
     - Firebase Analytics opcional e desativado por padrão, ativado exclusivamente sob consentimento e respeitando o cabeçalho "Do Not Track" (DNT).
     - Lista restrita de eventos técnicos, sem nomes de hábitos, notas ou dados de conta.
     - Exportação completa em JSON dos dados locais e opção de exclusão definitiva da conta e dados da nuvem.
+13. **Central de Ajuda, Boas-Vindas & Política de Privacidade:**
+    - Central de Ajuda integrada (`HelpView`): FAQ pesquisável categorizado em Hábitos, Pomo e Conta, com busca textual tolerante a acentuação e glossário explicativo dos conceitos e mecânicas da aplicação.
+    - Boas-vindas guiadas (`WelcomeModal`): tela de onboarding na primeira inicialização (ou atualização de termos), apresentando os pilares do app (Foco diário, Pomo, Modo discreto e Local-first) com aceite explícito.
+    - Política de Privacidade in-app (`PrivacyPolicy`): termos transparentes e acessíveis diretamente na interface sobre o que fica no aparelho, o que é sincronizado na nuvem ao entrar com a Conta Google e os recursos opcionais de estatísticas e push.
 
 ---
 
 ## 🛠️ Stack Tecnológica
 
 - **Frontend:** React 18.3, TypeScript 5.7, Vite 6.1
-- **Mobile (Android):** Capacitor 8.5 (`@capacitor/android`, `@capacitor/core`, `@capacitor/local-notifications`, `@capacitor/splash-screen`, `@capacitor/status-bar`, `@capacitor-firebase/authentication`)
+- **Mobile (Android):** Capacitor 8.5 (`@capacitor/android`, `@capacitor/core`, `@capacitor/local-notifications`, `@capacitor/push-notifications`, `@capacitor/splash-screen`, `@capacitor/status-bar`, `@capacitor-firebase/authentication`)
 - **Estilização:** Tailwind CSS 3.4 (paleta estritamente monocromática `zinc`, `black`, `white`)
 - **Fontes:** Fontsource Variable Fonts (`Inter`, `JetBrains Mono`) empacotadas localmente
 - **Ícones:** Lucide React
@@ -152,15 +161,18 @@ cp .env.example .env
 ```
 Preencha suas chaves do Firebase se desejar ativar a sincronização em nuvem:
 ```env
+VITE_APP_ID=mono-habit-tracker
 VITE_FIREBASE_API_KEY=sua_api_key
 VITE_FIREBASE_AUTH_DOMAIN=seu_projeto.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=seu_projeto_id
-VITE_FIREBASE_STORAGE_BUCKET=seu_projeto.appspot.com
+VITE_FIREBASE_STORAGE_BUCKET=seu_projeto.firebasestorage.app
 VITE_FIREBASE_MESSAGING_SENDER_ID=seu_sender_id
 VITE_FIREBASE_APP_ID=seu_app_id
-VITE_APP_ID=mono-habit-tracker
+# Opcionais (Analytics e Web Push FCM):
+VITE_FIREBASE_MEASUREMENT_ID=G-XXXXXXXXXX
+VITE_FIREBASE_VAPID_KEY=sua_chave_publica_vapid
 ```
-> **Nota:** Se as variáveis do Firebase não forem preenchidas, o aplicativo entrará em **Modo Local Offline** automático, persistindo perfeitamente no `localStorage`.
+> **Nota:** Se o arquivo `.env` não for preenchido, o aplicativo utiliza por padrão a configuração pública do projeto oficial no Firebase (`src/lib/firebaseConfig.ts`), conectando ao backend de produção caso você faça login com sua Conta Google. Para sincronizar com seu próprio projeto Firebase, preencha o `.env` com suas credenciais. De qualquer forma, o modo local (`localStorage`) funciona perfeitamente sem necessidade de login.
 
 ### 3. Executar em Desenvolvimento
 ```bash
@@ -185,6 +197,7 @@ O arquivo `firestore.rules` restringe cada usuário autenticado aos próprios da
 
 - Testes: `npm run test:rules` (emulador local); rodam também na CI em todo PR.
 - Publicação: as regras **não** são publicadas pela CI. Depois de alterá-las, rode `firebase deploy --only firestore:rules`.
+- Vulnerabilidades: para relatar falhas de segurança de forma responsável, consulte nossa política em [SECURITY.md](SECURITY.md).
 
 ### Configuração da Conta Google no Firebase Console:
 1. No [Firebase Console](https://console.firebase.google.com/), acesse **Authentication** > **Sign-in method** e habilite o provedor **Google**.
@@ -207,7 +220,7 @@ O workflow `.github/workflows/firebase-hosting.yml` roda os testes, gera o build
 
 1. Na máquina com Firebase CLI conectada, rode `firebase init hosting:github` (selecione `raguiohead/mono-habits`; recuse a criação de workflows duplicados de PR e merge, pois o repositório já conta com o workflow oficial configurado). A CLI gera a conta de serviço e grava o segredo `FIREBASE_SERVICE_ACCOUNT_MONO_HABITS` no GitHub.
 2. Alternativa manual: no Google Cloud Console > IAM > Contas de serviço, crie uma conta com papéis **Firebase Hosting Admin** e **Service Account User**, gere a chave JSON e adicione em GitHub > Settings > Secrets and variables > Actions sob o nome `FIREBASE_SERVICE_ACCOUNT_MONO_HABITS`.
-3. Opcional: cadastre os segredos `VITE_FIREBASE_*` no repositório do GitHub. Caso não sejam preenchidos, são adotados os padrões definidos em `src/lib/firebase.ts`.
+3. Opcional: cadastre os segredos `VITE_FIREBASE_*` no repositório do GitHub. Caso não sejam preenchidos, são adotados os padrões definidos em `src/lib/firebaseConfig.ts`.
 
 > Nunca realize o commit da chave JSON da conta de serviço. Caso ela seja exposta acidentalmente, revogue-a imediatamente no console do Google Cloud e emita uma nova.
 
@@ -233,7 +246,7 @@ O desenvolvimento do **MONO // HABITS** é estruturado em torno de duas branches
 
 ### Ciclo de Desenvolvimento
 
-1. **Features e Correções:** Crie uma branch a partir de `development` (ex.: `feat/nova-tela` ou `fix/ajuste-streak`).
+1. **Features e Correções:** Crie uma branch a partir de `development` (ex.: `feat/nova-tela` ou `fix/ajuste-streak`). Push em branches `feat/*` também executa o CI (`.github/workflows/build-android-apk.yml`), rodando testes e gerando o APK Debug como artefato para inspeção antes mesmo de abrir o PR.
 2. **PR para `development`:** Abra um Pull Request apontando para `development`. O CI executa a checagem de tipos, testes unitários, testes de regras do Firestore e compila o APK Debug como artefato.
 3. **Integração na `development`:** Ao realizar o merge na `development`:
    - O CI compila o **APK Release ASSINADO** (com a keystore oficial do projeto) e o **APK Debug**.
@@ -263,17 +276,19 @@ O desenvolvimento do **MONO // HABITS** é estruturado em torno de duas branches
 
 ## 📊 Estatísticas de uso e avisos por push (Firebase, gratuito)
 
-Os dois recursos são **opcionais e começam desligados** para o usuário (Configurações > Estatísticas de uso anônimas / Novidades do app). Funcionam no navegador/PWA.
+Os dois recursos são **opcionais e começam desligados** para o usuário (Configurações > Estatísticas de uso anônimas / Novidades do app). O Analytics funciona no navegador/PWA; o push funciona no navegador/PWA e no app Android.
 
 - **Analytics:** usa o `VITE_FIREBASE_MEASUREMENT_ID` (o padrão do projeto já está no código). Só com consentimento, e respeitando "Não rastrear". Eventos em lista fechada (`src/lib/usage.ts`): nunca nomes de hábitos, notas ou dados de conta. Acompanhe as métricas em Firebase Console > Analytics.
 - **Push (FCM) com envio manual pelo Console:**
   1. Firebase Console > Configurações do projeto > **Cloud Messaging** > **Certificados Web Push** > gerar par de chaves e copiar a **chave pública**.
   2. Cadastre-a como `VITE_FIREBASE_VAPID_KEY` no arquivo `.env.local` e, para o deploy do Firebase Hosting, configure o segredo `VITE_FIREBASE_VAPID_KEY` no GitHub Actions. Sem essa variável, a opção de push permanece oculta.
   3. Faça um novo deploy. No app, ative **Novidades do app (push)** e permita as notificações.
-  4. Teste: copie o **token** (Configurações > Notificações > "Token deste aparelho") e use em Console > Engajamento > Cloud Messaging > **Enviar mensagem de teste**. Para campanhas, use "Nova campanha" > Notificações e escolha o app web como público.
+  4. Teste: copie o **token** (Configurações > Notificações > "Token deste aparelho") e use em Console > Engajamento > Cloud Messaging > **Enviar mensagem de teste**. Para campanhas, use "Nova campanha" > Notificações e escolha o app web, o app Android ou os dois como público.
+  5. **Android:** não usa a chave VAPID, só o `google-services.json` e o plugin `@capacitor/push-notifications`. O token só é gerado quando o usuário liga a opção (`firebase_messaging_auto_init_enabled` desligado no manifesto).
 - O Content Security Policy configurado no `firebase.json` autoriza conexões para `googletagmanager.com` e `google-analytics.com` especificamente para o suporte analítico com consentimento.
 
 ---
 
 ## 📄 Licença
-Distribuído sob a licença MIT.
+
+Distribuído sob a licença [MIT](LICENSE).
