@@ -10,6 +10,9 @@ import {
   getLinkableTasks
 } from '@/lib/tasks';
 import { useHabits } from '@/context/HabitsContext';
+import { useSettings } from '@/context/SettingsContext';
+import { getTasksToken, hasValidTasksToken, clearTasksToken } from '@/lib/googleTasksAuth';
+import { executeTasksSync } from '@/lib/tasksSync';
 import {
   db,
   appId,
@@ -48,18 +51,122 @@ interface TasksContextType {
   incrementTaskEstimate: (taskId: string, delta?: number) => Promise<void>;
   /** Obtém todas as tarefas, incluindo tombstones (para o motor de sync) */
   getAllTasksWithDeleted: () => PomoTask[];
+  /** Sincronização em andamento com o Google Tasks */
+  isSyncingGoogle: boolean;
+  /** Mensagem de erro ao sincronizar com Google Tasks (ou null) */
+  googleSyncError: string | null;
+  /** Executa sincronização bidirecional com o Google Tasks */
+  syncWithGoogle: (opts?: { interactive?: boolean }) => Promise<boolean>;
+  /** Conecta uma lista do Google Tasks */
+  connectGoogleTasks: (listId: string, listTitle: string) => Promise<void>;
+  /** Desconecta do Google Tasks e remove a lista */
+  disconnectGoogleTasks: () => Promise<void>;
 }
 
 const TasksContext = createContext<TasksContextType | undefined>(undefined);
 
 export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, showToast } = useHabits();
+  const { settings, updateSettings } = useSettings();
 
   const [rawTasks, setRawTasks] = useState<PomoTask[]>(() => loadLocalTasks());
   const rawTasksRef = useRef<PomoTask[]>(rawTasks);
   rawTasksRef.current = rawTasks;
 
+  const [isSyncingGoogle, setIsSyncingGoogle] = useState(false);
+  const [googleSyncError, setGoogleSyncError] = useState<string | null>(null);
+  const debounceTimerRef = useRef<number | null>(null);
+
   const initialSyncedRef = useRef(false);
+
+  // Sincronização com o Google Tasks
+  const syncWithGoogle = useCallback(
+    async (opts?: { interactive?: boolean }): Promise<boolean> => {
+      const config = settings.googleTasks;
+      if (!config?.listId) return false;
+
+      setIsSyncingGoogle(true);
+      setGoogleSyncError(null);
+
+      try {
+        const token = await getTasksToken({ interactive: opts?.interactive ?? false });
+        const { nextTasks, syncedAt } = await executeTasksSync({
+          listId: config.listId,
+          accessToken: token,
+          localTasks: rawTasksRef.current
+        });
+
+        setRawTasks(nextTasks);
+        saveLocalTasks(nextTasks);
+
+        if (user && db && isFirebaseConfigured) {
+          await Promise.all(
+            nextTasks.map((t) => {
+              const taskRef = doc(db!, 'artifacts', appId, 'users', user.uid, 'tasks', t.id);
+              return setDoc(taskRef, t);
+            })
+          );
+        }
+
+        updateSettings({
+          googleTasks: {
+            ...config,
+            lastSyncAt: syncedAt
+          }
+        });
+
+        return true;
+      } catch (err: any) {
+        console.warn('[TasksContext] Erro ao sincronizar com Google Tasks:', err);
+        const msg = err?.message || 'Falha na sincronização com o Google Tasks.';
+        setGoogleSyncError(msg);
+        return false;
+      } finally {
+        setIsSyncingGoogle(false);
+      }
+    },
+    [settings.googleTasks, user, updateSettings]
+  );
+
+  const triggerDebouncedGoogleSync = useCallback(() => {
+    if (!settings.googleTasks?.listId || !hasValidTasksToken()) return;
+    if (debounceTimerRef.current) {
+      window.clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = window.setTimeout(() => {
+      void syncWithGoogle({ interactive: false });
+    }, 5000);
+  }, [settings.googleTasks?.listId, syncWithGoogle]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        window.clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
+  const connectGoogleTasks = useCallback(
+    async (listId: string, listTitle: string) => {
+      updateSettings({
+        googleTasks: {
+          listId,
+          listTitle
+        }
+      });
+      setTimeout(() => {
+        void syncWithGoogle({ interactive: false });
+      }, 100);
+    },
+    [updateSettings, syncWithGoogle]
+  );
+
+  const disconnectGoogleTasks = useCallback(async () => {
+    clearTasksToken();
+    setGoogleSyncError(null);
+    updateSettings({ googleTasks: undefined });
+    showToast('Google Tasks desconectado.');
+  }, [updateSettings, showToast]);
 
   // Sincronização em tempo real via Firestore
   useEffect(() => {
@@ -143,8 +250,10 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           console.error('[Firestore] Falha ao salvar tarefa:', err);
         }
       }
+
+      triggerDebouncedGoogleSync();
     },
-    [user]
+    [user, triggerDebouncedGoogleSync]
   );
 
   const createTask = useCallback(
@@ -348,7 +457,12 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       toggleTaskDone,
       reorderTasks,
       incrementTaskEstimate,
-      getAllTasksWithDeleted
+      getAllTasksWithDeleted,
+      isSyncingGoogle,
+      googleSyncError,
+      syncWithGoogle,
+      connectGoogleTasks,
+      disconnectGoogleTasks
     }),
     [
       tasks,
@@ -362,7 +476,12 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       toggleTaskDone,
       reorderTasks,
       incrementTaskEstimate,
-      getAllTasksWithDeleted
+      getAllTasksWithDeleted,
+      isSyncingGoogle,
+      googleSyncError,
+      syncWithGoogle,
+      connectGoogleTasks,
+      disconnectGoogleTasks
     ]
   );
 

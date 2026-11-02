@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Plus,
   Minus,
@@ -8,11 +8,13 @@ import {
   ChevronDown,
   ChevronUp,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  RefreshCw
 } from 'lucide-react';
 import { useTasks } from '@/context/TasksContext';
 import { useHabits } from '@/context/HabitsContext';
-import { useDiscreet } from '@/context/SettingsContext';
+import { useSettings, useDiscreet } from '@/context/SettingsContext';
+import { hasValidTasksToken } from '@/lib/googleTasksAuth';
 import { taskProgress, MIN_TASK_POMOS, MAX_TASK_POMOS, DEFAULT_TASK_POMOS } from '@/lib/tasks';
 import { ModalShell } from './ModalShell';
 import { type PomoTask } from '@/types/habit';
@@ -25,10 +27,20 @@ export const PomoTasks: React.FC = () => {
     updateTask,
     deleteTask,
     toggleTaskDone,
-    reorderTasks
+    reorderTasks,
+    isSyncingGoogle,
+    syncWithGoogle
   } = useTasks();
   const { pomoSessions } = useHabits();
+  const { settings } = useSettings();
   const { active: isDiscreet } = useDiscreet();
+
+  // Ao abrir o componente (aba Pomo), sincroniza em background se houver token válido
+  useEffect(() => {
+    if (settings.googleTasks?.listId && hasValidTasksToken()) {
+      void syncWithGoogle({ interactive: false });
+    }
+  }, [settings.googleTasks?.listId, syncWithGoogle]);
 
   // Criação rápida
   const [newTitle, setNewTitle] = useState('');
@@ -98,6 +110,19 @@ export const PomoTasks: React.FC = () => {
         <h3 className="text-xs font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
           Tarefas ({activeTasks.length})
         </h3>
+
+        {settings.googleTasks && (
+          <button
+            type="button"
+            onClick={() => syncWithGoogle({ interactive: false })}
+            disabled={isSyncingGoogle}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-50 border border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 transition-colors"
+            title={`Sincronizar com lista ${settings.googleTasks.listTitle}`}
+          >
+            <RefreshCw className={`w-3 h-3 ${isSyncingGoogle ? 'animate-spin text-zinc-950 dark:text-zinc-50' : ''}`} />
+            <span>{isSyncingGoogle ? 'Sincronizando...' : 'Google Tasks'}</span>
+          </button>
+        )}
       </div>
 
       {/* Formulário de Adicionar Rápida */}
