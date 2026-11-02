@@ -10,6 +10,12 @@ export const FOCUS_LAYOUTS: readonly FocusLayout[] = ['list', 'bento', 'gallery'
 export type DiscreetMode = 'off' | 'on' | 'auto';
 export type MotionPref = 'system' | 'reduce' | 'full';
 
+export interface GoogleTasksSettings {
+  listId: string;
+  listTitle: string;
+  lastSyncAt?: number;
+}
+
 export interface AppSettings {
   // Acessibilidade
   textSize: TextSize;
@@ -33,6 +39,8 @@ export interface AppSettings {
   pomoAlerts: boolean; // notificação do sistema ao fim de uma sessão do Pomo
   sound: boolean;
   vibration: boolean;
+  // Google Tasks (sync bidirecional opcional)
+  googleTasks?: GoogleTasksSettings;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -68,6 +76,20 @@ export function sanitizeSettings(raw: unknown): AppSettings {
   const p = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const bool = (v: unknown, fallback: boolean) => (typeof v === 'boolean' ? v : fallback);
   const d = DEFAULT_SETTINGS;
+  let googleTasks: GoogleTasksSettings | undefined = undefined;
+  if (p.googleTasks && typeof p.googleTasks === 'object') {
+    const gt = p.googleTasks as Record<string, unknown>;
+    if (typeof gt.listId === 'string' && gt.listId.trim() && typeof gt.listTitle === 'string' && gt.listTitle.trim()) {
+      googleTasks = {
+        listId: gt.listId.trim().slice(0, 100),
+        listTitle: gt.listTitle.trim().slice(0, 100),
+        ...(typeof gt.lastSyncAt === 'number' && Number.isFinite(gt.lastSyncAt) && gt.lastSyncAt > 0
+          ? { lastSyncAt: gt.lastSyncAt }
+          : {})
+      };
+    }
+  }
+
   return {
     textSize: p.textSize === 'large' || p.textSize === 'xlarge' ? p.textSize : 'normal',
     motion: p.motion === 'reduce' || p.motion === 'full' ? p.motion : 'system',
@@ -84,7 +106,8 @@ export function sanitizeSettings(raw: unknown): AppSettings {
     weeklySummaryInReminder: bool(p.weeklySummaryInReminder, d.weeklySummaryInReminder),
     pomoAlerts: bool(p.pomoAlerts, d.pomoAlerts),
     sound: bool(p.sound, d.sound),
-    vibration: bool(p.vibration, d.vibration)
+    vibration: bool(p.vibration, d.vibration),
+    ...(googleTasks ? { googleTasks } : {})
   };
 }
 

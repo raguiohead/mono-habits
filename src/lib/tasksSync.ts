@@ -1,0 +1,302 @@
+import { type PomoTask } from '@/types/habit';
+import {
+  type GoogleTaskItem,
+  listTasks,
+  insertTask,
+  patchTask,
+  deleteTask as apiDeleteTask
+} from './googleTasksApi';
+
+export interface SyncPlan {
+  /** Tarefas a serem inseridas ou atualizadas no armazenamento local */
+  toUpsertLocal: PomoTask[];
+  /** IDs de tarefas locais a serem marcadas com deleted: true */
+  toTombstoneLocal: string[];
+  /** Tarefas locais que precisam ser criadas no Google Tasks */
+  toPushCreateRemote: {
+    localTaskId: string;
+    payload: {
+      title: string;
+      notes?: string;
+      status: 'needsAction' | 'completed';
+      completed?: string;
+    };
+  }[];
+  /** Tarefas locais que precisam ser atualizadas no Google Tasks */
+  toPushUpdateRemote: {
+    localTaskId: string;
+    googleTaskId: string;
+    payload: {
+      title?: string;
+      notes?: string | null;
+      status?: 'needsAction' | 'completed';
+      completed?: string | null;
+    };
+  }[];
+  /** IDs de tarefas do Google Tasks a serem excluídas */
+  toDeleteRemote: string[];
+}
+
+/**
+ * Motor puro de merge bidirecional com Last-Writer-Wins (LWW) baseado em timestamps.
+ */
+export function mergeTasks(
+  localTasks: PomoTask[],
+  remoteItems: GoogleTaskItem[],
+  listId: string
+): SyncPlan {
+  const toUpsertLocal: PomoTask[] = [];
+  const toTombstoneLocal: string[] = [];
+  const toPushCreateRemote: SyncPlan['toPushCreateRemote'] = [];
+  const toPushUpdateRemote: SyncPlan['toPushUpdateRemote'] = [];
+  const toDeleteRemote: string[] = [];
+
+  // Mapa de itens remotos por ID do Google
+  const remoteMap = new Map<string, GoogleTaskItem>();
+  remoteItems.forEach((r) => remoteMap.set(r.id, r));
+
+  // Mapa de tarefas locais que têm vínculo com esta lista
+  const linkedLocalByGoogleId = new Map<string, PomoTask>();
+  localTasks.forEach((l) => {
+    if (l.google?.listId === listId && l.google.taskId) {
+      linkedLocalByGoogleId.set(l.google.taskId, l);
+    }
+  });
+
+  // 1. Processa tarefas locais
+  for (const local of localTasks) {
+    const googleRef = local.google?.listId === listId ? local.google : undefined;
+
+    // Tarefa local ainda não vinculada a esta lista
+    if (!googleRef) {
+      if (!local.deleted) {
+        toPushCreateRemote.push({
+          localTaskId: local.id,
+          payload: {
+            title: local.title,
+            ...(local.notes ? { notes: local.notes } : {}),
+            status: local.done ? 'completed' : 'needsAction',
+            ...(local.done && local.doneAt ? { completed: new Date(local.doneAt).toISOString() } : {})
+          }
+        });
+      }
+      continue;
+    }
+
+    const remote = remoteMap.get(googleRef.taskId);
+
+    // Se a tarefa existia no Google mas sumiu do retorno (ou não veio)
+    if (!remote) {
+      if (local.deleted) {
+        // Já está deletada localmente e não existe no Google: nada a fazer
+      } else {
+        // Pode ter sido excluída no Google -> marca tombstone localmente
+        toTombstoneLocal.push(local.id);
+      }
+      continue;
+    }
+
+    // Remoto marcado como excluído ou oculto
+    if (remote.deleted || remote.hidden) {
+      if (!local.deleted) {
+        toTombstoneLocal.push(local.id);
+      }
+      continue;
+    }
+
+    // Local marcado como deletado
+    if (local.deleted) {
+      toDeleteRemote.push(remote.id);
+      continue;
+    }
+
+    // Ambas existem e estão ativas -> Conflito LWW
+    const localUpdated = local.updatedAt || local.createdAt;
+    const remoteUpdated = new Date(remote.updated).getTime() || 0;
+
+    // Diferença mínima de 500 ms para evitar roundtrips desnecessários
+    if (remoteUpdated > localUpdated + 500) {
+      // Google é mais recente -> atualiza local preservando estimatedPomos, order e createdAt
+      const remoteDone = remote.status === 'completed';
+      const updatedLocal: PomoTask = {
+        ...local,
+        title: remote.title || local.title,
+        notes: remote.notes || undefined,
+        done: remoteDone,
+        doneAt: remoteDone
+          ? remote.completed
+            ? new Date(remote.completed).getTime()
+            : local.doneAt || remoteUpdated
+          : undefined,
+        updatedAt: remoteUpdated,
+        google: {
+          listId,
+          taskId: remote.id,
+          updated: remote.updated
+        }
+      };
+      toUpsertLocal.push(updatedLocal);
+    } else if (localUpdated > remoteUpdated + 500) {
+      // Local é mais recente -> envia atualização ao Google
+      toPushUpdateRemote.push({
+        localTaskId: local.id,
+        googleTaskId: remote.id,
+        payload: {
+          title: local.title,
+          notes: local.notes || null,
+          status: local.done ? 'completed' : 'needsAction',
+          completed: local.done
+            ? local.doneAt
+              ? new Date(local.doneAt).toISOString()
+              : new Date().toISOString()
+            : null
+        }
+      });
+    }
+  }
+
+  // 2. Processa itens remotos que não têm tarefa local correspondente
+  let nextOrder = localTasks.reduce((max, t) => Math.max(max, t.order ?? 0), 0) + 1;
+
+  for (const remote of remoteItems) {
+    if (remote.deleted || remote.hidden) continue;
+    if (linkedLocalByGoogleId.has(remote.id)) continue;
+
+    const remoteUpdated = new Date(remote.updated).getTime() || Date.now();
+    const remoteDone = remote.status === 'completed';
+
+    // Tarefas criadas no Google entram com estimatedPomos = 1
+    const newLocal: PomoTask = {
+      id: `task-${remoteUpdated}-${Math.random().toString(36).slice(2, 7)}`,
+      title: remote.title || 'Sem título',
+      notes: remote.notes || undefined,
+      estimatedPomos: 1,
+      done: remoteDone,
+      doneAt: remoteDone
+        ? remote.completed
+          ? new Date(remote.completed).getTime()
+          : remoteUpdated
+        : undefined,
+      createdAt: remoteUpdated,
+      updatedAt: remoteUpdated,
+      order: nextOrder++,
+      google: {
+        listId,
+        taskId: remote.id,
+        updated: remote.updated
+      }
+    };
+
+    toUpsertLocal.push(newLocal);
+  }
+
+  return {
+    toUpsertLocal,
+    toTombstoneLocal,
+    toPushCreateRemote,
+    toPushUpdateRemote,
+    toDeleteRemote
+  };
+}
+
+/**
+ * Executa a sincronização completa entre o app e uma lista do Google Tasks.
+ */
+export async function executeTasksSync(opts: {
+  listId: string;
+  accessToken: string;
+  localTasks: PomoTask[];
+}): Promise<{
+  nextTasks: PomoTask[];
+  syncedAt: number;
+}> {
+  const { listId, accessToken, localTasks } = opts;
+
+  // 1. Busca todas as tarefas da lista no Google
+  const remoteItems = await listTasks(accessToken, listId, {
+    showDeleted: true,
+    showHidden: true
+  });
+
+  // 2. Calcula o plano de merge LWW
+  const plan = mergeTasks(localTasks, remoteItems, listId);
+
+  // Mapa de trabalho de tarefas locais
+  const taskMap = new Map<string, PomoTask>();
+  localTasks.forEach((t) => taskMap.set(t.id, { ...t }));
+
+  // 3. Executa push de exclusões para o Google
+  await Promise.all(
+    plan.toDeleteRemote.map((googleTaskId) =>
+      apiDeleteTask(accessToken, listId, googleTaskId).catch((err) =>
+        console.warn(`[TasksSync] Falha ao excluir tarefa ${googleTaskId} no Google:`, err)
+      )
+    )
+  );
+
+  // 4. Executa push de criações locais para o Google
+  await Promise.all(
+    plan.toPushCreateRemote.map(async (item) => {
+      try {
+        const created = await insertTask(accessToken, listId, item.payload);
+        const current = taskMap.get(item.localTaskId);
+        if (current) {
+          taskMap.set(item.localTaskId, {
+            ...current,
+            google: {
+              listId,
+              taskId: created.id,
+              updated: created.updated
+            }
+          });
+        }
+      } catch (err) {
+        console.error(`[TasksSync] Falha ao criar tarefa ${item.localTaskId} no Google:`, err);
+      }
+    })
+  );
+
+  // 5. Executa push de atualizações para o Google
+  await Promise.all(
+    plan.toPushUpdateRemote.map(async (item) => {
+      try {
+        const updated = await patchTask(accessToken, listId, item.googleTaskId, item.payload);
+        const current = taskMap.get(item.localTaskId);
+        if (current) {
+          taskMap.set(item.localTaskId, {
+            ...current,
+            google: {
+              listId,
+              taskId: updated.id,
+              updated: updated.updated
+            }
+          });
+        }
+      } catch (err) {
+        console.error(`[TasksSync] Falha ao atualizar tarefa ${item.localTaskId} no Google:`, err);
+      }
+    })
+  );
+
+  // 6. Aplica tombstones locais
+  for (const taskId of plan.toTombstoneLocal) {
+    const current = taskMap.get(taskId);
+    if (current) {
+      taskMap.set(taskId, {
+        ...current,
+        deleted: true,
+        updatedAt: Date.now()
+      });
+    }
+  }
+
+  // 7. Aplica upserts locais
+  for (const task of plan.toUpsertLocal) {
+    taskMap.set(task.id, task);
+  }
+
+  return {
+    nextTasks: Array.from(taskMap.values()),
+    syncedAt: Date.now()
+  };
+}
