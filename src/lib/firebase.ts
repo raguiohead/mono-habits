@@ -42,7 +42,7 @@ const env = import.meta.env;
 export const appId = env.VITE_APP_ID || 'mono-habit-tracker';
 
 /** Subcoleções usadas pelo app sob `/artifacts/{appId}/users/{uid}` */
-export const USER_COLLECTIONS = ['habits', 'logs', 'graces', 'slips', 'pomoSessions'] as const;
+export const USER_COLLECTIONS = ['habits', 'logs', 'graces', 'slips', 'pomoSessions', 'tasks'] as const;
 
 /** Bancos IndexedDB do Firebase Auth/SDK e da fila do Service Worker a apagar na limpeza do aparelho */
 export const APP_INDEXED_DB_NAMES = [

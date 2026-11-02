@@ -44,6 +44,20 @@ rules_version = '2';
 //    - actualSeconds: number (obrigatório, 0..86400)
 //    - completed: bool (obrigatório)
 //    - habitId: string (opcional, 1..100)
+//    - taskId: string (opcional, 1..100)
+//
+// 5. Subcoleção: tasks/{taskId}
+//    - id: string (obrigatório, == taskId, 1..100)
+//    - title: string (obrigatório, 1..200)
+//    - notes: string (opcional, <= 1000)
+//    - estimatedPomos: number (obrigatório, 1..12)
+//    - done: bool (obrigatório)
+//    - doneAt: number (opcional, >= 0)
+//    - createdAt: number (obrigatório, >= 0)
+//    - updatedAt: number (obrigatório, >= 0)
+//    - order: number (obrigatório)
+//    - deleted: bool (opcional)
+//    - google: map (opcional, { listId: 1..100, taskId: 1..100, updated: 1..50 })
 // ===============================================================
 
 service cloud.firestore {
@@ -183,7 +197,8 @@ service cloud.firestore {
           'plannedSeconds',
           'actualSeconds',
           'completed',
-          'habitId'
+          'habitId',
+          'taskId'
         ]) &&
         data.keys().hasAll([
           'id',
@@ -208,7 +223,60 @@ service cloud.firestore {
         data.actualSeconds >= 0 &&
         data.actualSeconds <= 86400 &&
         data.completed is bool &&
-        (!('habitId' in data) || (data.habitId is string && data.habitId.size() >= 1 && data.habitId.size() <= 100));
+        (!('habitId' in data) || (data.habitId is string && data.habitId.size() >= 1 && data.habitId.size() <= 100)) &&
+        (!('taskId' in data) || (data.taskId is string && data.taskId.size() >= 1 && data.taskId.size() <= 100));
+    }
+
+    function isValidTaskGoogle(google) {
+      return google is map &&
+        google.keys().hasOnly(['listId', 'taskId', 'updated']) &&
+        google.keys().hasAll(['listId', 'taskId', 'updated']) &&
+        google.listId is string &&
+        google.listId.size() >= 1 &&
+        google.listId.size() <= 100 &&
+        google.taskId is string &&
+        google.taskId.size() >= 1 &&
+        google.taskId.size() <= 100 &&
+        google.updated is string &&
+        google.updated.size() >= 1 &&
+        google.updated.size() <= 50;
+    }
+
+    function isValidTask(taskId, data) {
+      return taskId.size() >= 1 &&
+        taskId.size() <= 100 &&
+        data.keys().hasOnly([
+          'id',
+          'title',
+          'notes',
+          'estimatedPomos',
+          'done',
+          'doneAt',
+          'createdAt',
+          'updatedAt',
+          'order',
+          'deleted',
+          'google'
+        ]) &&
+        data.keys().hasAll(['id', 'title', 'estimatedPomos', 'done', 'createdAt', 'updatedAt', 'order']) &&
+        data.id is string &&
+        data.id == taskId &&
+        data.title is string &&
+        data.title.size() >= 1 &&
+        data.title.size() <= 200 &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 1000)) &&
+        data.estimatedPomos is number &&
+        data.estimatedPomos >= 1 &&
+        data.estimatedPomos <= 12 &&
+        data.done is bool &&
+        (!('doneAt' in data) || (data.doneAt is number && data.doneAt >= 0)) &&
+        data.createdAt is number &&
+        data.createdAt >= 0 &&
+        data.updatedAt is number &&
+        data.updatedAt >= 0 &&
+        data.order is number &&
+        (!('deleted' in data) || data.deleted is bool) &&
+        (!('google' in data) || isValidTaskGoogle(data.google));
     }
 
     match /artifacts/mono-habit-tracker/users/{userId} {
@@ -241,6 +309,14 @@ service cloud.firestore {
       match /pomoSessions/{sessionId} {
         allow read, delete: if isOwner(userId);
         allow create, update: if isOwner(userId) && isValidPomoSession(sessionId, request.resource.data);
+      }
+
+      match /tasks/{taskId} {
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidTask(taskId, request.resource.data);
+        allow update: if isOwner(userId) &&
+                         isValidTask(taskId, request.resource.data) &&
+                         request.resource.data.createdAt == resource.data.createdAt;
       }
     }
 

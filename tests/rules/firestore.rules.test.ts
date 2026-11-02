@@ -13,7 +13,7 @@ import { fallbackCover, sanitizeHabitCover } from '../../src/lib/covers';
 import { sanitizeHabitDescription } from '../../src/lib/habitDescription';
 import { normalizePomoGoal } from '../../src/lib/pomoGoals';
 import { applyWeeklyTargetChange } from '../../src/lib/weekly';
-import { type Habit, type PomoSession } from '../../src/types/habit';
+import { type Habit, type PomoSession, type PomoTask } from '../../src/types/habit';
 
 const PROJECT_ID = 'demo-mono-habits';
 const APP_ID = 'mono-habit-tracker';
@@ -131,7 +131,7 @@ describe('A2 — Regras de Segurança do Firestore (firestore.rules)', () => {
     await assertSucceeds(deleteDoc(legacyRef));
   });
 
-  it('permite ao dono criar, ler, atualizar e excluir logs, graces, slips e pomoSessions reais (e deletar doc raiz do usuário)', async () => {
+  it('permite ao dono criar, ler, atualizar e excluir logs, graces, slips, pomoSessions e tasks reais (e deletar doc raiz do usuário)', async () => {
     const db = testEnv.authenticatedContext(OWNER_UID).firestore();
     const dateKey = '2026-10-19';
 
@@ -175,7 +175,7 @@ describe('A2 — Regras de Segurança do Firestore (firestore.rules)', () => {
     await assertSucceeds(getDoc(slipRef));
     await assertSucceeds(deleteDoc(slipRef));
 
-    // PomoSessions (com e sem habitId)
+    // PomoSessions (com e sem habitId, e com taskId)
     const focusSession: PomoSession = {
       id: 'pomo-1760000000000',
       kind: 'focus',
@@ -184,7 +184,8 @@ describe('A2 — Regras de Segurança do Firestore (firestore.rules)', () => {
       plannedSeconds: 1500,
       actualSeconds: 1500,
       completed: true,
-      habitId: 'habit-1'
+      habitId: 'habit-1',
+      taskId: 'task-1760000000000'
     };
     const breakSession: PomoSession = {
       id: 'pomo-1760002000000',
@@ -201,6 +202,41 @@ describe('A2 — Regras de Segurança do Firestore (firestore.rules)', () => {
     await assertSucceeds(setDoc(breakRef, breakSession));
     await assertSucceeds(getDoc(focusRef));
     await assertSucceeds(deleteDoc(breakRef));
+
+    // Tasks (tarefa básica e tarefa completa com google e tombstones)
+    const taskBasic: PomoTask = {
+      id: 'task-1760000000000',
+      title: 'Escrever especificações da feature',
+      estimatedPomos: 2,
+      done: false,
+      createdAt: 1760000000000,
+      updatedAt: 1760000000000,
+      order: 0
+    };
+    const taskRich: PomoTask = {
+      id: 'task-rich-1',
+      title: 'Revisar pull request',
+      notes: 'Checar cobertura de testes unitários e regras do Firestore',
+      estimatedPomos: 4,
+      done: true,
+      doneAt: 1760003600000,
+      createdAt: 1760000000000,
+      updatedAt: 1760003600000,
+      order: 1,
+      deleted: true,
+      google: {
+        listId: 'list-dev-tasks',
+        taskId: 'gtask-987',
+        updated: '2026-11-02T20:30:00.000Z'
+      }
+    };
+    const taskBasicRef = doc(db, subDocPath(OWNER_UID, 'tasks', taskBasic.id));
+    const taskRichRef = doc(db, subDocPath(OWNER_UID, 'tasks', taskRich.id));
+    await assertSucceeds(setDoc(taskBasicRef, taskBasic));
+    await assertSucceeds(setDoc(taskRichRef, taskRich));
+    await assertSucceeds(getDoc(taskBasicRef));
+    await assertSucceeds(updateDoc(taskBasicRef, { estimatedPomos: 3, updatedAt: Date.now() }));
+    await assertSucceeds(deleteDoc(taskRichRef));
 
     // Deleção do documento raiz do usuário (usada no batch de deleteAllCloudData)
     await assertSucceeds(deleteDoc(doc(db, userDocPath(OWNER_UID))));
@@ -234,6 +270,15 @@ describe('A2 — Regras de Segurança do Firestore (firestore.rules)', () => {
         actualSeconds: 1500,
         completed: true
       });
+      await setDoc(doc(adminDb, subDocPath(OWNER_UID, 'tasks', 'task-1')), {
+        id: 'task-1',
+        title: 'Tarefa original',
+        estimatedPomos: 2,
+        done: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+        order: 0
+      });
     });
 
     const otherDb = testEnv.authenticatedContext(OTHER_UID).firestore();
@@ -249,6 +294,20 @@ describe('A2 — Regras de Segurança do Firestore (firestore.rules)', () => {
       await assertFails(getDoc(doc(clientDb, subDocPath(OWNER_UID, 'graces', '2026-10-19'))));
       await assertFails(getDoc(doc(clientDb, subDocPath(OWNER_UID, 'slips', '2026-10-19'))));
       await assertFails(getDoc(doc(clientDb, subDocPath(OWNER_UID, 'pomoSessions', 'pomo-1'))));
+      await assertFails(getDoc(doc(clientDb, subDocPath(OWNER_UID, 'tasks', 'task-1'))));
+      await assertFails(
+        setDoc(doc(clientDb, subDocPath(OWNER_UID, 'tasks', 'task-hack')), {
+          id: 'task-hack',
+          title: 'Hacked',
+          estimatedPomos: 1,
+          done: false,
+          createdAt: 1000,
+          updatedAt: 1000,
+          order: 0
+        })
+      );
+      await assertFails(updateDoc(doc(clientDb, subDocPath(OWNER_UID, 'tasks', 'task-1')), { title: 'Invasão' }));
+      await assertFails(deleteDoc(doc(clientDb, subDocPath(OWNER_UID, 'tasks', 'task-1'))));
       await assertFails(deleteDoc(doc(clientDb, userDocPath(OWNER_UID))));
     }
   });
@@ -302,6 +361,35 @@ describe('A2 — Regras de Segurança do Firestore (firestore.rules)', () => {
         bonus: 999
       })
     );
+    await assertFails(
+      setDoc(doc(db, subDocPath(OWNER_UID, 'tasks', 'task-1')), {
+        id: 'task-1',
+        title: 'Tarefa',
+        estimatedPomos: 2,
+        done: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+        order: 0,
+        campoInesperado: true
+      })
+    );
+    await assertFails(
+      setDoc(doc(db, subDocPath(OWNER_UID, 'tasks', 'task-1')), {
+        id: 'task-1',
+        title: 'Tarefa',
+        estimatedPomos: 2,
+        done: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+        order: 0,
+        google: {
+          listId: 'l1',
+          taskId: 't1',
+          updated: '2026-11-02T20:00:00Z',
+          extra: 'hacked'
+        }
+      })
+    );
   });
 
   it('nega tipos errados e valores fora do domínio esperado', async () => {
@@ -349,6 +437,66 @@ describe('A2 — Regras de Segurança do Firestore (firestore.rules)', () => {
         plannedSeconds: 1500,
         actualSeconds: 1500,
         completed: true
+      })
+    );
+    // pomoSession com taskId inválido (vazio)
+    await assertFails(
+      setDoc(doc(db, subDocPath(OWNER_UID, 'pomoSessions', 'pomo-1')), {
+        id: 'pomo-1',
+        kind: 'focus',
+        startedAt: 1000,
+        endedAt: 2000,
+        plannedSeconds: 1500,
+        actualSeconds: 1500,
+        completed: true,
+        taskId: ''
+      })
+    );
+    // task com id divergente
+    await assertFails(
+      setDoc(doc(db, subDocPath(OWNER_UID, 'tasks', 'task-1')), {
+        id: 'task-outro',
+        title: 'Título',
+        estimatedPomos: 2,
+        done: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+        order: 0
+      })
+    );
+    // task com estimatedPomos fora de 1..12
+    await assertFails(
+      setDoc(doc(db, subDocPath(OWNER_UID, 'tasks', 'task-1')), {
+        id: 'task-1',
+        title: 'Título',
+        estimatedPomos: 0,
+        done: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+        order: 0
+      })
+    );
+    await assertFails(
+      setDoc(doc(db, subDocPath(OWNER_UID, 'tasks', 'task-1')), {
+        id: 'task-1',
+        title: 'Título',
+        estimatedPomos: 13,
+        done: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+        order: 0
+      })
+    );
+    // task com done não-booleano
+    await assertFails(
+      setDoc(doc(db, subDocPath(OWNER_UID, 'tasks', 'task-1')), {
+        id: 'task-1',
+        title: 'Título',
+        estimatedPomos: 2,
+        done: 'sim',
+        createdAt: 1000,
+        updatedAt: 1000,
+        order: 0
       })
     );
   });
@@ -415,6 +563,44 @@ describe('A2 — Regras de Segurança do Firestore (firestore.rules)', () => {
           from: `2026-01-${String((i % 28) + 1).padStart(2, '0')}`,
           target: 3
         }))
+      })
+    );
+    // task.title > 200 chars
+    await assertFails(
+      setDoc(doc(db, subDocPath(OWNER_UID, 'tasks', 'task-1')), {
+        id: 'task-1',
+        title: 'a'.repeat(201),
+        estimatedPomos: 2,
+        done: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+        order: 0
+      })
+    );
+    // task.notes > 1000 chars
+    await assertFails(
+      setDoc(doc(db, subDocPath(OWNER_UID, 'tasks', 'task-1')), {
+        id: 'task-1',
+        title: 'Título',
+        notes: 'n'.repeat(1001),
+        estimatedPomos: 2,
+        done: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+        order: 0
+      })
+    );
+    // pomoSessions.taskId > 100 chars
+    await assertFails(
+      setDoc(doc(db, subDocPath(OWNER_UID, 'pomoSessions', 'pomo-1')), {
+        id: 'pomo-1',
+        kind: 'focus',
+        startedAt: 1000,
+        endedAt: 2000,
+        plannedSeconds: 1500,
+        actualSeconds: 1500,
+        completed: true,
+        taskId: 't'.repeat(101)
       })
     );
   });
@@ -508,7 +694,7 @@ describe('A2 — Regras de Segurança do Firestore (firestore.rules)', () => {
     await assertSucceeds(updateDoc(legacyV1Ref, { archived: true }));
   });
 
-  it('impede alteração do campo createdAt na atualização de hábitos (FSR-02)', async () => {
+  it('impede alteração do campo createdAt na atualização de hábitos e tarefas (FSR-02)', async () => {
     const db = testEnv.authenticatedContext(OWNER_UID).firestore();
     const habitRef = doc(db, subDocPath(OWNER_UID, 'habits', 'habit-created-at-check'));
     const initialHabit: Habit = {
@@ -529,6 +715,22 @@ describe('A2 — Regras de Segurança do Firestore (firestore.rules)', () => {
     await assertFails(updateDoc(habitRef, { createdAt: 1760000999999 }));
     await assertFails(setDoc(habitRef, { ...initialHabit, createdAt: 1760000999999 }));
     await assertFails(setDoc(habitRef, { createdAt: 1760000999999 }, { merge: true }));
+
+    // Tarefas também devem preservar createdAt
+    const taskRef = doc(db, subDocPath(OWNER_UID, 'tasks', 'task-created-at-check'));
+    const initialTask: PomoTask = {
+      id: 'task-created-at-check',
+      title: 'Tarefa imutabilidade',
+      estimatedPomos: 2,
+      done: false,
+      createdAt: 1760000000000,
+      updatedAt: 1760000000000,
+      order: 0
+    };
+    await assertSucceeds(setDoc(taskRef, initialTask));
+    await assertSucceeds(updateDoc(taskRef, { title: 'Título atualizado' }));
+    await assertFails(updateDoc(taskRef, { createdAt: 1760000999999 }));
+    await assertFails(setDoc(taskRef, { ...initialTask, createdAt: 1760000999999 }));
   });
 
   it('nega coleções desconhecidas, escrita direta no doc do usuário e appId diferente de mono-habit-tracker', async () => {
