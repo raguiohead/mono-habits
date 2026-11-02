@@ -68,6 +68,20 @@ export type TabType = 'today' | 'stats' | 'pomo' | 'manage';
 
 export type PomoKind = 'focus' | 'short' | 'long';
 
+export interface PomoTask {
+  id: string; // 'task-<ts>'
+  title: string; // 1..200
+  notes?: string; // <= 1000
+  estimatedPomos: number; // 1..12 (reusar limites de pomoGoals)
+  done: boolean;
+  doneAt?: number;
+  createdAt: number;
+  updatedAt: number; // base para merge (LWW) na Fase 2
+  order: number; // ordenação manual
+  deleted?: boolean; // tombstone (necessário p/ sync bidirecional)
+  google?: { listId: string; taskId: string; updated: string }; // Fase 2
+}
+
 /** Sessão de Pomodoro registrada (concluída ou interrompida) */
 export interface PomoSession {
   id: string;
@@ -78,6 +92,7 @@ export interface PomoSession {
   actualSeconds: number;
   completed: boolean;
   habitId?: string; // hábito vinculado (só sessões de foco)
+  taskId?: string; // tarefa vinculada (só sessões de foco)
 }
 
 export type GraphRange = 7 | 15 | 30 | 90 | 365;
