@@ -755,4 +755,127 @@ describe('A2 — Regras de Segurança do Firestore (firestore.rules)', () => {
     // Caminho fora de /artifacts/mono-habit-tracker
     await assertFails(setDoc(doc(db, `users/${OWNER_UID}`), { name: 'Teste' }));
   });
+
+  it('permite ao dono criar, ler, atualizar e excluir prefs/googleTasks com validação estrita, e nega prefId inválido, campos inválidos ou invasões', async () => {
+    const ownerDb = testEnv.authenticatedContext(OWNER_UID).firestore();
+    const otherDb = testEnv.authenticatedContext(OTHER_UID).firestore();
+    const unauthDb = testEnv.unauthenticatedContext().firestore();
+
+    const validPrefRef = doc(ownerDb, subDocPath(OWNER_UID, 'prefs', 'googleTasks'));
+    const validData = {
+      listId: 'google-tasks-list-123',
+      listTitle: 'Tarefas de Trabalho',
+      updatedAt: 1760000000000
+    };
+
+    // 1. Sucesso para o dono: criar, ler, atualizar e excluir
+    await assertSucceeds(setDoc(validPrefRef, validData));
+    await assertSucceeds(getDoc(validPrefRef));
+    await assertSucceeds(
+      updateDoc(validPrefRef, {
+        listTitle: 'Tarefas de Trabalho Renomeadas',
+        updatedAt: 1760000001000
+      })
+    );
+    await assertSucceeds(deleteDoc(validPrefRef));
+
+    // 2. Nega prefId diferente de 'googleTasks'
+    const invalidPrefRef = doc(ownerDb, subDocPath(OWNER_UID, 'prefs', 'otherPref'));
+    await assertFails(setDoc(invalidPrefRef, validData));
+
+    // 3. Nega campos extras (hasOnly)
+    await assertFails(
+      setDoc(validPrefRef, {
+        ...validData,
+        extraField: 'proibido'
+      })
+    );
+
+    // 4. Nega campos ausentes (hasAll)
+    await assertFails(
+      setDoc(validPrefRef, {
+        listId: 'l1',
+        listTitle: 't1'
+      })
+    );
+    await assertFails(
+      setDoc(validPrefRef, {
+        listId: 'l1',
+        updatedAt: 123
+      })
+    );
+
+    // 5. Nega tipos incorretos
+    await assertFails(
+      setDoc(validPrefRef, {
+        listId: 12345,
+        listTitle: 'Título',
+        updatedAt: 1000
+      })
+    );
+    await assertFails(
+      setDoc(validPrefRef, {
+        listId: 'l1',
+        listTitle: true,
+        updatedAt: 1000
+      })
+    );
+    await assertFails(
+      setDoc(validPrefRef, {
+        listId: 'l1',
+        listTitle: 'Título',
+        updatedAt: '1000'
+      })
+    );
+
+    // 6. Nega limites de tamanho (strings vazias ou > 100 caracteres) e updatedAt negativo
+    await assertFails(
+      setDoc(validPrefRef, {
+        listId: '',
+        listTitle: 'Título',
+        updatedAt: 1000
+      })
+    );
+    await assertFails(
+      setDoc(validPrefRef, {
+        listId: 'l1',
+        listTitle: '',
+        updatedAt: 1000
+      })
+    );
+    await assertFails(
+      setDoc(validPrefRef, {
+        listId: 'a'.repeat(101),
+        listTitle: 'Título',
+        updatedAt: 1000
+      })
+    );
+    await assertFails(
+      setDoc(validPrefRef, {
+        listId: 'l1',
+        listTitle: 'b'.repeat(101),
+        updatedAt: 1000
+      })
+    );
+    await assertFails(
+      setDoc(validPrefRef, {
+        listId: 'l1',
+        listTitle: 'Título',
+        updatedAt: -1
+      })
+    );
+
+    // 7. Nega acesso para outro usuário ou não autenticado
+    await assertSucceeds(setDoc(validPrefRef, validData));
+    const otherPrefRef = doc(otherDb, subDocPath(OWNER_UID, 'prefs', 'googleTasks'));
+    const unauthPrefRef = doc(unauthDb, subDocPath(OWNER_UID, 'prefs', 'googleTasks'));
+
+    await assertFails(getDoc(otherPrefRef));
+    await assertFails(getDoc(unauthPrefRef));
+    await assertFails(setDoc(otherPrefRef, validData));
+    await assertFails(setDoc(unauthPrefRef, validData));
+    await assertFails(updateDoc(otherPrefRef, { listTitle: 'Hacked' }));
+    await assertFails(deleteDoc(otherPrefRef));
+    await assertFails(deleteDoc(unauthPrefRef));
+  });
 });
