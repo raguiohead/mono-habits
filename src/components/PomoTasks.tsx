@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus,
   Minus,
@@ -35,12 +35,17 @@ export const PomoTasks: React.FC = () => {
   const { settings } = useSettings();
   const { active: isDiscreet } = useDiscreet();
 
-  // Ao abrir o componente (aba Pomo), tenta sincronizar em background se houver lista conectada (sem UI)
+  // Ao abrir o componente (aba Pomo) ou trocar de lista, tenta sincronizar em background (sem UI).
+  // syncWithGoogle muda a cada sync (ele grava lastSyncAt nas configurações); por isso fica num ref:
+  // depender dele aqui fazia o efeito disparar outro sync ao fim de cada sync (loop infinito).
+  const syncRef = useRef(syncWithGoogle);
+  syncRef.current = syncWithGoogle;
+  const connectedListId = settings.googleTasks?.listId;
   useEffect(() => {
-    if (settings.googleTasks?.listId && canSyncInBackground()) {
-      void syncWithGoogle({ interactive: false });
+    if (connectedListId && canSyncInBackground()) {
+      void syncRef.current({ interactive: false });
     }
-  }, [settings.googleTasks?.listId, syncWithGoogle]);
+  }, [connectedListId]);
 
   // Criação rápida
   const [newTitle, setNewTitle] = useState('');
