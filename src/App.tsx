@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { HabitsProvider, useHabits } from '@/context/HabitsContext';
+import { TasksProvider } from '@/context/TasksContext';
 import { PomoProvider } from '@/context/PomoContext';
 import { SettingsProvider } from '@/context/SettingsContext';
 import { LockProvider } from '@/context/LockContext';
@@ -156,9 +157,11 @@ export default function App() {
       {/* O bloqueio fica acima dos dados: bloqueado, nada sensível é montado */}
       <LockProvider>
         <HabitsProvider>
-          <PomoProvider>
-            <MainContent />
-          </PomoProvider>
+          <TasksProvider>
+            <PomoProvider>
+              <MainContent />
+            </PomoProvider>
+          </TasksProvider>
         </HabitsProvider>
       </LockProvider>
     </SettingsProvider>

@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { type Habit, type PomoKind, type PomoSession } from '@/types/habit';
+import { type Habit, type PomoKind, type PomoSession, type PomoTask } from '@/types/habit';
 import { useHabits } from '@/context/HabitsContext';
+import { useTasks } from '@/context/TasksContext';
 import { useSettings } from '@/context/SettingsContext';
 import {
   cancelNativePomoNotification,
@@ -18,6 +19,7 @@ import {
 } from '@/lib/storage';
 import { toDateKey } from '@/lib/dateUtils';
 import { getLinkableHabits } from '@/lib/pomoGoals';
+import { taskProgress } from '@/lib/tasks';
 import { clampMinutes, formatClock, getNextKind, KIND_LABEL, type PomoDurations } from '@/lib/pomo';
 
 interface PomoContextType {
@@ -38,6 +40,15 @@ interface PomoContextType {
   /** Hábito vinculado ao foco (o selecionado, ou o da sessão em andamento) */
   linkedHabitId: string | null;
   setLinkedHabit: (habitId: string | null) => void;
+  /** Tarefas que podem ser vinculadas a um foco */
+  linkableTasks: PomoTask[];
+  /** Tarefa vinculada ao foco (a selecionada, ou a da sessão em andamento) */
+  linkedTaskId: string | null;
+  setLinkedTask: (taskId: string | null) => void;
+  /** Tarefa que atingiu a estimativa em pomos e aguarda decisão do usuário */
+  pendingTaskPrompt: string | null;
+  dismissPendingTaskPrompt: () => void;
+  resolvePendingTaskPrompt: (action: 'complete' | 'add_pomo' | 'later') => Promise<void>;
 }
 
 const PomoContext = createContext<PomoContextType | undefined>(undefined);
@@ -65,14 +76,20 @@ function playBeeps(ctx: AudioContext | null) {
 
 export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { savePomoSession, showToast, activeHabits, logs, pomoSessions } = useHabits();
+  const { linkableTasks, tasks, toggleTaskDone, incrementTaskEstimate } = useTasks();
   const { settings: appSettings } = useSettings();
 
   const [settings, setSettings] = useState<PomoSettings>(() => loadPomoSettings());
   const [timer, setTimer] = useState<PomoTimerState | null>(() => loadPomoTimer());
   const [now, setNow] = useState<number>(() => Date.now());
+  const [pendingTaskPrompt, setPendingTaskPrompt] = useState<string | null>(null);
 
   const audioRef = useRef<AudioContext | null>(null);
   const finishingRef = useRef(false);
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
+  const pomoSessionsRef = useRef(pomoSessions);
+  pomoSessionsRef.current = pomoSessions;
 
   const updateSettings = useCallback((updater: (prev: PomoSettings) => PomoSettings) => {
     setSettings((prev) => {
@@ -96,7 +113,8 @@ export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     actualSeconds: Math.round(actualMs / 1000),
     completed,
     // Só quando há vínculo: o Firestore não aceita undefined
-    ...(t.habitId ? { habitId: t.habitId } : {})
+    ...(t.habitId ? { habitId: t.habitId } : {}),
+    ...(t.taskId ? { taskId: t.taskId } : {})
   });
 
   // Conclusão natural da sessão
@@ -105,7 +123,18 @@ export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (finishingRef.current) return;
       finishingRef.current = true;
 
-      void savePomoSession(buildSession(t, t.endsAt, t.plannedMs, true));
+      const session = buildSession(t, t.endsAt, t.plannedMs, true);
+      void savePomoSession(session);
+
+      if (t.kind === 'focus' && t.taskId) {
+        const task = tasksRef.current.find((tk) => tk.id === t.taskId);
+        if (task && !task.done) {
+          const prog = taskProgress(task, [...pomoSessionsRef.current, session]);
+          if (prog.met) {
+            setPendingTaskPrompt(t.taskId);
+          }
+        }
+      }
 
       const cycleCount = t.kind === 'focus' ? settings.cycleCount + 1 : settings.cycleCount;
       const next = getNextKind(t.kind, cycleCount);
@@ -216,8 +245,15 @@ export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ? settings.lastHabitId
       : null;
 
+  // Tarefa vinculável escolhida (a última usada, se ainda estiver pendente e não deletada)
+  const selectedTaskId =
+    settings.lastTaskId && linkableTasks.some((t) => t.id === settings.lastTaskId)
+      ? settings.lastTaskId
+      : null;
+
   const kind = timer?.kind ?? settings.kind;
   const linkedHabitId = timer ? timer.habitId ?? null : selectedHabitId;
+  const linkedTaskId = timer ? timer.taskId ?? null : selectedTaskId;
   const status: PomoContextType['status'] = timer ? timer.status : 'idle';
   const totalSeconds = timer ? Math.round(timer.plannedMs / 1000) : settings.durations[kind] * 60;
   const remainingSeconds = timer
@@ -258,9 +294,10 @@ export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       endsAt: startedAt + plannedMs,
       remainingMs: plannedMs,
       // O vínculo só vale para foco
-      ...(settings.kind === 'focus' && selectedHabitId ? { habitId: selectedHabitId } : {})
+      ...(settings.kind === 'focus' && selectedHabitId ? { habitId: selectedHabitId } : {}),
+      ...(settings.kind === 'focus' && selectedTaskId ? { taskId: selectedTaskId } : {})
     });
-  }, [timer, settings, selectedHabitId, updateTimer]);
+  }, [timer, settings, selectedHabitId, selectedTaskId, updateTimer]);
 
   const pause = useCallback(() => {
     if (timer?.status !== 'running') return;
@@ -321,6 +358,37 @@ export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [timer, updateSettings]
   );
 
+  const setLinkedTask = useCallback(
+    (taskId: string | null) => {
+      if (timer) return;
+      updateSettings((prev) => {
+        const { lastTaskId: _previous, ...rest } = prev;
+        void _previous;
+        return taskId ? { ...rest, lastTaskId: taskId } : rest;
+      });
+    },
+    [timer, updateSettings]
+  );
+
+  const dismissPendingTaskPrompt = useCallback(() => {
+    setPendingTaskPrompt(null);
+  }, []);
+
+  const resolvePendingTaskPrompt = useCallback(
+    async (action: 'complete' | 'add_pomo' | 'later') => {
+      const taskId = pendingTaskPrompt;
+      setPendingTaskPrompt(null);
+      if (!taskId) return;
+
+      if (action === 'complete') {
+        await toggleTaskDone(taskId);
+      } else if (action === 'add_pomo') {
+        await incrementTaskEstimate(taskId, 1);
+      }
+    },
+    [pendingTaskPrompt, toggleTaskDone, incrementTaskEstimate]
+  );
+
   return (
     <PomoContext.Provider
       value={{
@@ -338,7 +406,13 @@ export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setMinutes,
         linkableHabits,
         linkedHabitId,
-        setLinkedHabit
+        setLinkedHabit,
+        linkableTasks,
+        linkedTaskId,
+        setLinkedTask,
+        pendingTaskPrompt,
+        dismissPendingTaskPrompt,
+        resolvePendingTaskPrompt
       }}
     >
       {children}

@@ -38,6 +38,7 @@ import { Avatar } from './Avatar';
 import { ModalShell } from './ModalShell';
 import { BTN, BTN_PRIMARY, SectionTitle, Switch } from './settingsControls';
 import { LockSettings } from './LockSettings';
+import { GoogleTasksSettingsSection } from './GoogleTasksSettingsSection';
 import { PrivacyContent } from './PrivacyPolicy';
 import { HelpView } from './HelpView';
 import { isPushConfigured, isPushSupported, enablePush, disablePush } from '@/lib/pushClient';
@@ -366,6 +367,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             </button>
           )}
         </section>
+
+        {/* Google Tasks */}
+        <GoogleTasksSettingsSection />
 
         {/* Ajuda */}
         <section className="space-y-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/40 p-4">

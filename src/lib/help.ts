@@ -90,6 +90,13 @@ export const FAQ: FaqItem[] = [
       'O hábito só pode ser marcado depois que você cumprir o tempo ou o número de sessões definidos, feitos no Pomo vinculado a ele. Enquanto isso, o cartão mostra o progresso e o checkbox fica bloqueado.'
   },
   {
+    id: 'pomo-tarefas',
+    category: 'pomo',
+    question: 'Como funcionam as tarefas no Pomo?',
+    answer:
+      'Você pode cadastrar tarefas pontuais com estimativa de pomos e vinculá-las ao foco. Ao concluir as sessões planejadas, o app pergunta se a tarefa foi finalizada ou se você prefere adicionar mais pomos de foco.'
+  },
+  {
     id: 'conta-precisa',
     category: 'conta',
     question: 'Preciso de conta para usar?',
