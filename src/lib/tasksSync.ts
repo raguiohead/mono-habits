@@ -96,10 +96,28 @@ export function mergeTasks(
       continue;
     }
 
-    // Remoto marcado como excluído ou oculto
-    if (remote.deleted || remote.hidden) {
+    // Remoto marcado como excluído no Google: vira tombstone local
+    if (remote.deleted) {
       if (!local.deleted) {
         toTombstoneLocal.push(local.id);
+      }
+      continue;
+    }
+
+    // Remoto oculto no Google (ex: "Limpar tarefas concluídas" no Google Tasks)
+    // Mantém a tarefa local como concluída e remove o vínculo google, sem tombstone
+    if (remote.hidden) {
+      if (!local.deleted) {
+        const isCompleted = remote.status === 'completed' || local.done;
+        toUpsertLocal.push({
+          ...local,
+          done: isCompleted ? true : local.done,
+          doneAt: isCompleted
+            ? local.doneAt || (remote.completed ? new Date(remote.completed).getTime() : Date.now())
+            : local.doneAt,
+          google: undefined,
+          updatedAt: Date.now()
+        });
       }
       continue;
     }
