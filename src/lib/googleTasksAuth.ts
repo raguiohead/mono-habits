@@ -1,5 +1,4 @@
-import { Capacitor } from '@capacitor/core';
-import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import {
   isNoCredentialsError,
   isNativeSignInCanceled,
@@ -7,6 +6,12 @@ import {
 } from './firebase';
 
 export { isNoCredentialsError, isNativeSignInCanceled, NO_GOOGLE_ACCOUNTS_MESSAGE };
+
+export interface GoogleTasksAuthPlugin {
+  authorize(options?: { interactive?: boolean }): Promise<{ accessToken: string }>;
+}
+
+export const GoogleTasksAuth = registerPlugin<GoogleTasksAuthPlugin>('GoogleTasksAuth');
 
 export const GOOGLE_TASKS_API_DISABLED_MESSAGE =
   'A API do Google Tasks está desativada no Google Cloud. Ative-a no console do projeto e tente de novo.';
@@ -20,9 +25,13 @@ export const GOOGLE_TASKS_NETWORK_ERROR_MESSAGE =
 export const GOOGLE_TASKS_GENERIC_ERROR_MESSAGE =
   'Não foi possível conectar ao Google Tasks. Tente novamente mais tarde.';
 
+export const GOOGLE_TASKS_CONSENT_REQUIRED_MESSAGE =
+  'Autorização necessária para sincronizar com o Google Tasks. Reconecte sua conta.';
+
 export type GoogleTasksErrorKind =
   | 'canceled'
   | 'no_credentials'
+  | 'consent_required'
   | 'api_disabled'
   | 'permission_denied'
   | 'network'
@@ -38,11 +47,23 @@ function getErrorString(error: unknown): string {
 }
 
 /**
+ * Detecta se o erro indica necessidade de consentimento / autorização interativa.
+ */
+export function isConsentRequiredError(error: unknown): boolean {
+  if (!error) return false;
+  const code = (error as any)?.code;
+  if (typeof code === 'string' && /consent_required/i.test(code)) return true;
+  const text = getErrorString(error);
+  return /consent_required|consent\s+required/i.test(text);
+}
+
+/**
  * Classifica categoricamente a origem do erro do fluxo do Google Tasks.
  */
 export function classifyGoogleTasksError(error: unknown): GoogleTasksErrorKind {
   if (isNativeSignInCanceled(error)) return 'canceled';
   if (isNoCredentialsError(error)) return 'no_credentials';
+  if (isConsentRequiredError(error)) return 'consent_required';
 
   const text = getErrorString(error);
 
@@ -95,6 +116,8 @@ export function formatGoogleTasksError(error: unknown): string | null {
       return null;
     case 'no_credentials':
       return NO_GOOGLE_ACCOUNTS_MESSAGE;
+    case 'consent_required':
+      return GOOGLE_TASKS_CONSENT_REQUIRED_MESSAGE;
     case 'api_disabled':
       return GOOGLE_TASKS_API_DISABLED_MESSAGE;
     case 'permission_denied':
@@ -129,6 +152,14 @@ let inMemoryToken: TokenCache | null = null;
 /**
  * Retorna true se houver token válido em memória (com margem de 60 segundos antes de expirar).
  */
+/**
+ * Sync em background (sem gesto do usuário) só pode pedir token quando isso não abre UI:
+ * no Android o plugin nativo obtém o token em silêncio; na web o GIS abriria um popup (bloqueado sem clique).
+ */
+export function canSyncInBackground(): boolean {
+  return Capacitor.isNativePlatform() || hasValidTasksToken();
+}
+
 export function hasValidTasksToken(): boolean {
   if (!inMemoryToken) return false;
   return Date.now() < inMemoryToken.expiresAt - 60_000;
@@ -211,18 +242,15 @@ async function getWebTasksToken(interactive = true): Promise<string> {
 }
 
 /**
- * Solicita token de acesso no Android via Capacitor FirebaseAuthentication.
+ * Solicita token de acesso no Android via plugin nativo GoogleTasksAuth.
  */
-async function getNativeTasksToken(): Promise<string> {
+async function getNativeTasksToken(interactive = true): Promise<string> {
   try {
-    const result = await FirebaseAuthentication.signInWithGoogle({
-      scopes: [TASKS_SCOPE]
-    });
-
-    const accessToken = result.credential?.accessToken;
+    const result = await GoogleTasksAuth.authorize({ interactive });
+    const accessToken = result?.accessToken;
     if (!accessToken) {
       throw new Error(
-        'O plugin nativo do Firebase não retornou o accessToken com o escopo do Google Tasks.'
+        'O plugin nativo GoogleTasksAuth não retornou o accessToken com o escopo do Google Tasks.'
       );
     }
 
@@ -235,6 +263,11 @@ async function getNativeTasksToken(): Promise<string> {
     return accessToken;
   } catch (error: any) {
     console.error('[GoogleTasksAuth Native]', error);
+    if (isConsentRequiredError(error)) {
+      const consentErr: any = new Error('Consent required');
+      consentErr.code = 'consent_required';
+      throw consentErr;
+    }
     throw error;
   }
 }
@@ -251,7 +284,7 @@ export async function getTasksToken(opts?: { interactive?: boolean }): Promise<s
   const interactive = opts?.interactive ?? true;
 
   if (Capacitor.isNativePlatform()) {
-    return await getNativeTasksToken();
+    return await getNativeTasksToken(interactive);
   }
 
   return await getWebTasksToken(interactive);

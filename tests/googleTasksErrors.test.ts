@@ -5,13 +5,41 @@ import {
   NO_GOOGLE_ACCOUNTS_MESSAGE
 } from '@/lib/firebase';
 import {
+  isConsentRequiredError,
   classifyGoogleTasksError,
   formatGoogleTasksError,
   GOOGLE_TASKS_API_DISABLED_MESSAGE,
   GOOGLE_TASKS_PERMISSION_DENIED_MESSAGE,
   GOOGLE_TASKS_NETWORK_ERROR_MESSAGE,
-  GOOGLE_TASKS_GENERIC_ERROR_MESSAGE
+  GOOGLE_TASKS_GENERIC_ERROR_MESSAGE,
+  GOOGLE_TASKS_CONSENT_REQUIRED_MESSAGE
 } from '@/lib/googleTasksAuth';
+
+describe('isConsentRequiredError', () => {
+  it('detecta erro com code consent_required', () => {
+    expect(isConsentRequiredError({ code: 'consent_required' })).toBe(true);
+    expect(isConsentRequiredError({ code: 'CONSENT_REQUIRED' })).toBe(true);
+  });
+
+  it('detecta em instâncias de Error com mensagem ou code', () => {
+    const err = new Error('Consent required');
+    (err as any).code = 'consent_required';
+    expect(isConsentRequiredError(err)).toBe(true);
+    expect(isConsentRequiredError(new Error('Consent required for this scope'))).toBe(true);
+  });
+
+  it('detecta em strings contendo consent_required', () => {
+    expect(isConsentRequiredError('consent_required')).toBe(true);
+    expect(isConsentRequiredError('Error: consent_required by user')).toBe(true);
+  });
+
+  it('retorna false para outros erros ou valores nulos', () => {
+    expect(isConsentRequiredError(null)).toBe(false);
+    expect(isConsentRequiredError(undefined)).toBe(false);
+    expect(isConsentRequiredError(new Error('User canceled'))).toBe(false);
+    expect(isConsentRequiredError({ code: 403 })).toBe(false);
+  });
+});
 
 describe('isNoCredentialsError', () => {
   it('detecta erro do Credential Manager 28433 em strings', () => {
@@ -80,6 +108,13 @@ describe('classifyGoogleTasksError e formatGoogleTasksError', () => {
     const err = new Error('No credentials available (Credential Manager 28433)');
     expect(classifyGoogleTasksError(err)).toBe('no_credentials');
     expect(formatGoogleTasksError(err)).toBe(NO_GOOGLE_ACCOUNTS_MESSAGE);
+  });
+
+  it('retorna mensagem de autorização necessária para consent_required', () => {
+    const err: any = new Error('Consent required');
+    err.code = 'consent_required';
+    expect(classifyGoogleTasksError(err)).toBe('consent_required');
+    expect(formatGoogleTasksError(err)).toBe(GOOGLE_TASKS_CONSENT_REQUIRED_MESSAGE);
   });
 
   it('retorna mensagem limpa para erro 403 / API desativada sem exibir JSON cru', () => {
