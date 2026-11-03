@@ -241,8 +241,10 @@ export async function executeTasksSync(opts: {
         const created = await insertTask(accessToken, listId, item.payload);
         const current = taskMap.get(item.localTaskId);
         if (current) {
+          const remoteUpdated = new Date(created.updated).getTime() || Date.now();
           taskMap.set(item.localTaskId, {
             ...current,
+            updatedAt: remoteUpdated,
             google: {
               listId,
               taskId: created.id,
@@ -263,8 +265,10 @@ export async function executeTasksSync(opts: {
         const updated = await patchTask(accessToken, listId, item.googleTaskId, item.payload);
         const current = taskMap.get(item.localTaskId);
         if (current) {
+          const remoteUpdated = new Date(updated.updated).getTime() || Date.now();
           taskMap.set(item.localTaskId, {
             ...current,
+            updatedAt: remoteUpdated,
             google: {
               listId,
               taskId: updated.id,
