@@ -152,6 +152,14 @@ let inMemoryToken: TokenCache | null = null;
 /**
  * Retorna true se houver token válido em memória (com margem de 60 segundos antes de expirar).
  */
+/**
+ * Sync em background (sem gesto do usuário) só pode pedir token quando isso não abre UI:
+ * no Android o plugin nativo obtém o token em silêncio; na web o GIS abriria um popup (bloqueado sem clique).
+ */
+export function canSyncInBackground(): boolean {
+  return Capacitor.isNativePlatform() || hasValidTasksToken();
+}
+
 export function hasValidTasksToken(): boolean {
   if (!inMemoryToken) return false;
   return Date.now() < inMemoryToken.expiresAt - 60_000;

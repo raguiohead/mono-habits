@@ -14,6 +14,7 @@ import {
 import { useTasks } from '@/context/TasksContext';
 import { useHabits } from '@/context/HabitsContext';
 import { useSettings, useDiscreet } from '@/context/SettingsContext';
+import { canSyncInBackground } from '@/lib/googleTasksAuth';
 import { taskProgress, MIN_TASK_POMOS, MAX_TASK_POMOS, DEFAULT_TASK_POMOS } from '@/lib/tasks';
 import { ModalShell } from './ModalShell';
 import { type PomoTask } from '@/types/habit';
@@ -36,7 +37,7 @@ export const PomoTasks: React.FC = () => {
 
   // Ao abrir o componente (aba Pomo), tenta sincronizar em background se houver lista conectada (sem UI)
   useEffect(() => {
-    if (settings.googleTasks?.listId) {
+    if (settings.googleTasks?.listId && canSyncInBackground()) {
       void syncWithGoogle({ interactive: false });
     }
   }, [settings.googleTasks?.listId, syncWithGoogle]);

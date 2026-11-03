@@ -22,7 +22,8 @@ import {
   getTasksToken,
   hasValidTasksToken,
   clearTasksToken,
-  classifyGoogleTasksError
+  classifyGoogleTasksError,
+  canSyncInBackground
 } from '@/lib/googleTasksAuth';
 
 describe('googleTasksAuth token flow', () => {
@@ -156,5 +157,23 @@ describe('googleTasksAuth token flow', () => {
       expect(token).toBe('web-interactive-token-321');
       expect(requestedPrompt).toBe('');
     });
+  });
+});
+
+describe('canSyncInBackground', () => {
+  beforeEach(() => {
+    clearTasksToken();
+    vi.restoreAllMocks();
+  });
+
+  it('permite sync em background no Android mesmo sem token em memória (token silencioso)', () => {
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    expect(canSyncInBackground()).toBe(true);
+  });
+
+  it('na web sem token válido não tenta (o GIS abriria popup sem gesto do usuário)', () => {
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(false);
+    expect(hasValidTasksToken()).toBe(false);
+    expect(canSyncInBackground()).toBe(false);
   });
 });
