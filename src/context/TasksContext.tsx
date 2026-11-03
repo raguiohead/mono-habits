@@ -14,7 +14,6 @@ import { useHabits } from '@/context/HabitsContext';
 import { useSettings } from '@/context/SettingsContext';
 import {
   getTasksToken,
-  hasValidTasksToken,
   clearTasksToken,
   formatGoogleTasksError
 } from '@/lib/googleTasksAuth';
@@ -149,7 +148,7 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 
   const triggerDebouncedGoogleSync = useCallback(() => {
-    if (!settings.googleTasks?.listId || !hasValidTasksToken()) return;
+    if (!settings.googleTasks?.listId) return;
     if (debounceTimerRef.current) {
       window.clearTimeout(debounceTimerRef.current);
     }

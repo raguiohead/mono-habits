@@ -14,7 +14,6 @@ import {
 import { useTasks } from '@/context/TasksContext';
 import { useHabits } from '@/context/HabitsContext';
 import { useSettings, useDiscreet } from '@/context/SettingsContext';
-import { hasValidTasksToken } from '@/lib/googleTasksAuth';
 import { taskProgress, MIN_TASK_POMOS, MAX_TASK_POMOS, DEFAULT_TASK_POMOS } from '@/lib/tasks';
 import { ModalShell } from './ModalShell';
 import { type PomoTask } from '@/types/habit';
@@ -35,9 +34,9 @@ export const PomoTasks: React.FC = () => {
   const { settings } = useSettings();
   const { active: isDiscreet } = useDiscreet();
 
-  // Ao abrir o componente (aba Pomo), sincroniza em background se houver token válido
+  // Ao abrir o componente (aba Pomo), tenta sincronizar em background se houver lista conectada (sem UI)
   useEffect(() => {
-    if (settings.googleTasks?.listId && hasValidTasksToken()) {
+    if (settings.googleTasks?.listId) {
       void syncWithGoogle({ interactive: false });
     }
   }, [settings.googleTasks?.listId, syncWithGoogle]);
