@@ -300,3 +300,80 @@ export async function executeTasksSync(opts: {
     syncedAt: Date.now()
   };
 }
+
+/**
+ * Compara se duas versões de uma tarefa diferem em campos de negócio ou sincronização.
+ */
+export function isTaskChanged(a: PomoTask, b: PomoTask): boolean {
+  if (a.title !== b.title) return true;
+  if ((a.notes || undefined) !== (b.notes || undefined)) return true;
+  if (a.done !== b.done) return true;
+  if (a.doneAt !== b.doneAt) return true;
+  if (Boolean(a.deleted) !== Boolean(b.deleted)) return true;
+  if (a.estimatedPomos !== b.estimatedPomos) return true;
+  if (a.order !== b.order) return true;
+  if (a.updatedAt !== b.updatedAt) return true;
+  if (a.google?.listId !== b.google?.listId) return true;
+  if (a.google?.taskId !== b.google?.taskId) return true;
+  if (a.google?.updated !== b.google?.updated) return true;
+  return false;
+}
+
+/**
+ * Mescla o resultado de uma sincronização do Google Tasks sobre o estado atual em memória,
+ * evitando condições de corrida onde edições concorrentes feitas pelo usuário durante
+ * as chamadas de rede seriam sobrescritas.
+ */
+export function applySyncResult(
+  currentTasks: PomoTask[],
+  syncedTasks: PomoTask[],
+  syncStartedAt: number
+): {
+  mergedTasks: PomoTask[];
+  changedTasks: PomoTask[];
+} {
+  const currentMap = new Map<string, PomoTask>();
+  currentTasks.forEach((t) => currentMap.set(t.id, t));
+
+  const syncedMap = new Map<string, PomoTask>();
+  syncedTasks.forEach((t) => syncedMap.set(t.id, t));
+
+  const mergedTasks: PomoTask[] = [];
+  const changedTasks: PomoTask[] = [];
+
+  // 1. Processa tarefas retornadas pelo sync
+  for (const synced of syncedTasks) {
+    const current = currentMap.get(synced.id);
+
+    if (!current) {
+      // Nova tarefa criada a partir do Google
+      mergedTasks.push(synced);
+      changedTasks.push(synced);
+      continue;
+    }
+
+    // Se a tarefa local foi modificada pelo usuário após o início do sync:
+    const localUpdatedAt = current.updatedAt || current.createdAt;
+    const editedLocallyDuringSync = localUpdatedAt > syncStartedAt;
+
+    if (editedLocallyDuringSync) {
+      // Preserva a versão atual local sem sobrescrever
+      mergedTasks.push(current);
+    } else {
+      // Nenhuma alteração concorrente local: adota a versão do sync
+      mergedTasks.push(synced);
+      if (isTaskChanged(current, synced)) {
+        changedTasks.push(synced);
+      }
+    }
+  }
+
+  // 2. Preserva tarefas criadas localmente durante o sync (que não estavam no snapshot inicial)
+  for (const current of currentTasks) {
+    if (!syncedMap.has(current.id)) {
+      mergedTasks.push(current);
+    }
+  }
+
+  return { mergedTasks, changedTasks };
+}

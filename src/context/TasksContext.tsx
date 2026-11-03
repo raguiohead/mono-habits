@@ -12,7 +12,7 @@ import {
 import { useHabits } from '@/context/HabitsContext';
 import { useSettings } from '@/context/SettingsContext';
 import { getTasksToken, hasValidTasksToken, clearTasksToken } from '@/lib/googleTasksAuth';
-import { executeTasksSync } from '@/lib/tasksSync';
+import { executeTasksSync, applySyncResult } from '@/lib/tasksSync';
 import {
   db,
   appId,
@@ -74,6 +74,7 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   rawTasksRef.current = rawTasks;
 
   const [isSyncingGoogle, setIsSyncingGoogle] = useState(false);
+  const isSyncingGoogleRef = useRef(false);
   const [googleSyncError, setGoogleSyncError] = useState<string | null>(null);
   const debounceTimerRef = useRef<number | null>(null);
 
@@ -85,23 +86,34 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const config = settings.googleTasks;
       if (!config?.listId) return false;
 
+      // Evita dois syncs simultâneos concorrentes
+      if (isSyncingGoogleRef.current) return false;
+      isSyncingGoogleRef.current = true;
       setIsSyncingGoogle(true);
       setGoogleSyncError(null);
 
       try {
         const token = await getTasksToken({ interactive: opts?.interactive ?? false });
+        const syncStartedAt = Date.now();
         const { nextTasks, syncedAt } = await executeTasksSync({
           listId: config.listId,
           accessToken: token,
           localTasks: rawTasksRef.current
         });
 
-        setRawTasks(nextTasks);
-        saveLocalTasks(nextTasks);
+        let mergedToSave: PomoTask[] = [];
+
+        setRawTasks((prev) => {
+          const result = applySyncResult(prev, nextTasks, syncStartedAt);
+          mergedToSave = result.mergedTasks;
+          return result.mergedTasks;
+        });
+
+        saveLocalTasks(mergedToSave);
 
         if (user && db && isFirebaseConfigured) {
           await Promise.all(
-            nextTasks.map((t) => {
+            mergedToSave.map((t) => {
               const taskRef = doc(db!, 'artifacts', appId, 'users', user.uid, 'tasks', t.id);
               return setDoc(taskRef, t);
             })
@@ -122,6 +134,7 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setGoogleSyncError(msg);
         return false;
       } finally {
+        isSyncingGoogleRef.current = false;
         setIsSyncingGoogle(false);
       }
     },
