@@ -94,7 +94,7 @@ export const FAQ: FaqItem[] = [
     category: 'pomo',
     question: 'Como funcionam as tarefas no Pomo?',
     answer:
-      'Você pode cadastrar tarefas pontuais com estimativa de pomos e vinculá-las ao foco. Ao concluir as sessões planejadas, o app pergunta se a tarefa foi finalizada ou se você prefere adicionar mais pomos de foco.'
+      'Você pode cadastrar tarefas pontuais com estimativa de pomos e vinculá-las ao foco. Ao concluir as sessões planejadas, o app pergunta se a tarefa foi finalizada ou se você prefere adicionar mais pomos de foco. A sincronização com o Google Tasks está em beta (recurso em teste): durante a conexão, o Google pode exibir um aviso de app não verificado porque o processo de verificação OAuth do Google ainda está em andamento; isso deixa de aparecer assim que a verificação for concluída.'
   },
   {
     id: 'conta-precisa',
