@@ -11,7 +11,12 @@ import {
 } from '@/lib/tasks';
 import { useHabits } from '@/context/HabitsContext';
 import { useSettings } from '@/context/SettingsContext';
-import { getTasksToken, hasValidTasksToken, clearTasksToken } from '@/lib/googleTasksAuth';
+import {
+  getTasksToken,
+  hasValidTasksToken,
+  clearTasksToken,
+  formatGoogleTasksError
+} from '@/lib/googleTasksAuth';
 import { executeTasksSync, applySyncResult } from '@/lib/tasksSync';
 import {
   db,
@@ -131,7 +136,7 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return true;
       } catch (err: any) {
         console.warn('[TasksContext] Erro ao sincronizar com Google Tasks:', err);
-        const msg = err?.message || 'Falha na sincronização com o Google Tasks.';
+        const msg = formatGoogleTasksError(err) || 'Falha na sincronização com o Google Tasks.';
         setGoogleSyncError(msg);
         return false;
       } finally {

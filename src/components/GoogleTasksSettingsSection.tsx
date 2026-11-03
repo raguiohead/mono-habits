@@ -3,7 +3,11 @@ import { CheckSquare, RefreshCw, LogOut, Check, AlertCircle, Loader2 } from 'luc
 import { useTasks } from '@/context/TasksContext';
 import { useSettings } from '@/context/SettingsContext';
 import { useHabits } from '@/context/HabitsContext';
-import { getTasksToken } from '@/lib/googleTasksAuth';
+import {
+  getTasksToken,
+  formatGoogleTasksError,
+  isNativeSignInCanceled
+} from '@/lib/googleTasksAuth';
 import { listTaskLists, type GoogleTaskList } from '@/lib/googleTasksApi';
 import { SectionTitle, BTN, BTN_PRIMARY } from './settingsControls';
 import { ModalShell } from './ModalShell';
@@ -20,26 +24,36 @@ export const GoogleTasksSettingsSection: React.FC = () => {
   } = useTasks();
 
   const [loadingLists, setLoadingLists] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
   const [availableLists, setAvailableLists] = useState<GoogleTaskList[] | null>(null);
   const [selectedListId, setSelectedListId] = useState<string>('');
 
   const config = settings.googleTasks;
 
   const handleStartConnect = async () => {
+    setConnectError(null);
     setLoadingLists(true);
     try {
       const token = await getTasksToken({ interactive: true });
       const lists = await listTaskLists(token);
       if (lists.length === 0) {
-        showToast('Nenhuma lista de tarefas encontrada na sua conta Google.');
-        setLoadingLists(false);
+        const emptyMsg = 'Nenhuma lista de tarefas encontrada na sua conta Google.';
+        setConnectError(emptyMsg);
+        showToast(emptyMsg);
         return;
       }
       setAvailableLists(lists);
       setSelectedListId(lists[0].id);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[GoogleTasksConnect]', err);
-      showToast(`Falha ao conectar Google Tasks: ${err?.message || 'Tente novamente.'}`);
+      if (isNativeSignInCanceled(err)) {
+        return;
+      }
+      const message = formatGoogleTasksError(err);
+      if (message) {
+        setConnectError(message);
+        showToast(message);
+      }
     } finally {
       setLoadingLists(false);
     }
@@ -50,6 +64,7 @@ export const GoogleTasksSettingsSection: React.FC = () => {
     const chosen = availableLists.find((l) => l.id === selectedListId);
     if (!chosen) return;
 
+    setConnectError(null);
     await connectGoogleTasks(chosen.id, chosen.title);
     setAvailableLists(null);
     showToast(`Conectado à lista "${chosen.title}". Sincronizando...`);
@@ -63,10 +78,16 @@ export const GoogleTasksSettingsSection: React.FC = () => {
   };
 
   const handleReconnect = async () => {
+    setConnectError(null);
     const ok = await syncWithGoogle({ interactive: true });
     if (ok) {
       showToast('Reconectado e sincronizado com o Google Tasks!');
     }
+  };
+
+  const handleDisconnect = async () => {
+    setConnectError(null);
+    await disconnectGoogleTasks();
   };
 
   const formatLastSync = (timestamp?: number) => {
@@ -127,6 +148,23 @@ export const GoogleTasksSettingsSection: React.FC = () => {
             </div>
           )}
 
+          {connectError && (
+            <div className="p-3 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 text-xs text-red-600 dark:text-red-400 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="flex-1 space-y-2">
+                <p>{connectError}</p>
+                <button
+                  type="button"
+                  onClick={handleStartConnect}
+                  disabled={loadingLists}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-600 text-white hover:bg-red-700 transition-colors"
+                >
+                  Tentar novamente
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
             <button
               type="button"
@@ -150,7 +188,7 @@ export const GoogleTasksSettingsSection: React.FC = () => {
 
           <button
             type="button"
-            onClick={disconnectGoogleTasks}
+            onClick={handleDisconnect}
             disabled={isSyncingGoogle}
             className={`${BTN} w-full justify-center text-red-600 dark:text-red-400 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20`}
           >
@@ -160,6 +198,23 @@ export const GoogleTasksSettingsSection: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-3">
+          {connectError && (
+            <div className="p-3 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 text-xs text-red-600 dark:text-red-400 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="flex-1 space-y-2">
+                <p>{connectError}</p>
+                <button
+                  type="button"
+                  onClick={handleStartConnect}
+                  disabled={loadingLists}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-600 text-white hover:bg-red-700 transition-colors"
+                >
+                  Tentar novamente
+                </button>
+              </div>
+            </div>
+          )}
+
           <button
             type="button"
             onClick={handleStartConnect}
