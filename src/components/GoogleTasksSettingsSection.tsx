@@ -108,7 +108,12 @@ export const GoogleTasksSettingsSection: React.FC = () => {
 
   return (
     <section className="space-y-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/40 p-4">
-      <SectionTitle icon={<CheckSquare className="w-3.5 h-3.5" />}>Google Tasks</SectionTitle>
+      <SectionTitle icon={<CheckSquare className="w-3.5 h-3.5" />}>
+        <span>Google Tasks</span>
+        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-zinc-400 dark:border-zinc-600 text-zinc-600 dark:text-zinc-300">
+          BETA
+        </span>
+      </SectionTitle>
 
       <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
         Sincronize tarefas pontuais com estimativa de pomos nos dois sentidos com uma lista da sua
@@ -214,6 +219,10 @@ export const GoogleTasksSettingsSection: React.FC = () => {
               </div>
             </div>
           )}
+
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+            Recurso em teste. O Google pode exibir um aviso de app não verificado durante a conexão; isso deixa de aparecer após a verificação do app.
+          </p>
 
           <button
             type="button"
