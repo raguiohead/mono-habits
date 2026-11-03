@@ -101,22 +101,20 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           localTasks: rawTasksRef.current
         });
 
-        let mergedToSave: PomoTask[] = [];
-        let changedToPersist: PomoTask[] = [];
+        const { mergedTasks, changedTasks } = applySyncResult(
+          rawTasksRef.current,
+          nextTasks,
+          syncStartedAt
+        );
 
-        setRawTasks((prev) => {
-          const result = applySyncResult(prev, nextTasks, syncStartedAt);
-          mergedToSave = result.mergedTasks;
-          changedToPersist = result.changedTasks;
-          return result.mergedTasks;
-        });
-
-        saveLocalTasks(mergedToSave);
+        rawTasksRef.current = mergedTasks;
+        setRawTasks(mergedTasks);
+        saveLocalTasks(mergedTasks);
 
         // Grava no Firestore apenas as tarefas que sofreram mutação no sync
-        if (user && db && isFirebaseConfigured && changedToPersist.length > 0) {
+        if (user && db && isFirebaseConfigured && changedTasks.length > 0) {
           await Promise.all(
-            changedToPersist.map((t) => {
+            changedTasks.map((t) => {
               const taskRef = doc(db!, 'artifacts', appId, 'users', user.uid, 'tasks', t.id);
               return setDoc(taskRef, t);
             })

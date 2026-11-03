@@ -379,8 +379,19 @@ export function applySyncResult(
     const editedLocallyDuringSync = localUpdatedAt > syncStartedAt;
 
     if (editedLocallyDuringSync) {
-      // Preserva a versão atual local sem sobrescrever
-      mergedTasks.push(current);
+      // Preserva a versão atual local sem sobrescrever,
+      // mas anexa o vínculo google do sync se o local ainda não possuía vínculo
+      // (evita que uma tarefa recém-criada no Google perca o ID e seja duplicada no próximo ciclo)
+      if (!current.google && synced.google) {
+        const preservedWithGoogle: PomoTask = {
+          ...current,
+          google: synced.google
+        };
+        mergedTasks.push(preservedWithGoogle);
+        changedTasks.push(preservedWithGoogle);
+      } else {
+        mergedTasks.push(current);
+      }
     } else {
       // Nenhuma alteração concorrente local: adota a versão do sync
       mergedTasks.push(synced);

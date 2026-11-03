@@ -420,7 +420,12 @@ describe('applySyncResult (prevenção de condição de corrida)', () => {
         done: false,
         createdAt: 1000,
         updatedAt: 12000, // Maior que syncStartedAt (edição concorrente)
-        order: 0
+        order: 0,
+        google: {
+          listId: 'l-1',
+          taskId: 'g-1',
+          updated: '2026-11-02T10:00:00.000Z'
+        }
       }
     ];
 
@@ -543,5 +548,94 @@ describe('applySyncResult (prevenção de condição de corrida)', () => {
     expect(mergedTasks[0].id).toBe('task-remota-1');
     expect(changedTasks).toHaveLength(1);
     expect(changedTasks[0].id).toBe('task-remota-1');
+  });
+
+  it('copia o campo google para tarefa editada localmente durante o sync se ela ainda não tinha vínculo, evitando duplicação', () => {
+    const syncStartedAt = 10000;
+
+    // Tarefa criada localmente sem google antes do sync, editada concorrentemente durante o sync
+    const currentTasks: PomoTask[] = [
+      {
+        id: 'task-1',
+        title: 'Título atualizado localmente enquanto sincronizava',
+        estimatedPomos: 4,
+        done: false,
+        createdAt: 5000,
+        updatedAt: 12000, // Editada durante o sync (12000 > 10000)
+        order: 0
+      }
+    ];
+
+    // O sync executou insertTask no Google e retornou o vínculo gerado
+    const syncedTasks: PomoTask[] = [
+      {
+        id: 'task-1',
+        title: 'Título antigo',
+        estimatedPomos: 2,
+        done: false,
+        createdAt: 5000,
+        updatedAt: 10500,
+        order: 0,
+        google: {
+          listId: 'l-1',
+          taskId: 'gtask-recem-criada',
+          updated: '2026-11-02T12:00:00.000Z'
+        }
+      }
+    ];
+
+    const { mergedTasks, changedTasks } = applySyncResult(currentTasks, syncedTasks, syncStartedAt);
+
+    expect(mergedTasks).toHaveLength(1);
+    const merged = mergedTasks[0];
+    // Preserva a edição local:
+    expect(merged.title).toBe('Título atualizado localmente enquanto sincronizava');
+    expect(merged.estimatedPomos).toBe(4);
+    expect(merged.updatedAt).toBe(12000);
+    // Mas recebe o vínculo google gerado pelo sync:
+    expect(merged.google).toEqual({
+      listId: 'l-1',
+      taskId: 'gtask-recem-criada',
+      updated: '2026-11-02T12:00:00.000Z'
+    });
+    // Deve ser incluída em changedTasks para persistir o novo vínculo google:
+    expect(changedTasks).toHaveLength(1);
+    expect(changedTasks[0].id).toBe('task-1');
+    expect(changedTasks[0].google?.taskId).toBe('gtask-recem-criada');
+  });
+
+  it('retorna mergedTasks com todas as tarefas locais intactas de forma síncrona sem risco de apagar o storage', () => {
+    const syncStartedAt = 10000;
+
+    const currentTasks: PomoTask[] = [
+      {
+        id: 'task-1',
+        title: 'Tarefa Existente 1',
+        estimatedPomos: 2,
+        done: false,
+        createdAt: 5000,
+        updatedAt: 5000,
+        order: 0
+      },
+      {
+        id: 'task-2',
+        title: 'Tarefa Existente 2',
+        estimatedPomos: 1,
+        done: true,
+        doneAt: 6000,
+        createdAt: 4000,
+        updatedAt: 6000,
+        order: 1
+      }
+    ];
+
+    const syncedTasks: PomoTask[] = currentTasks.map((t) => ({ ...t }));
+
+    const { mergedTasks, changedTasks } = applySyncResult(currentTasks, syncedTasks, syncStartedAt);
+
+    expect(mergedTasks).toHaveLength(2);
+    expect(mergedTasks.map((t) => t.id)).toEqual(['task-1', 'task-2']);
+    // Nenhuma mudança em relação ao estado inicial -> changedTasks vazio (sem escritas no Firestore)
+    expect(changedTasks).toHaveLength(0);
   });
 });
