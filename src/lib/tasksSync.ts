@@ -109,13 +109,19 @@ export function mergeTasks(
     if (remote.hidden) {
       if (!local.deleted) {
         const isCompleted = remote.status === 'completed' || local.done;
+        const { google: _removedGoogle, ...localWithoutGoogle } = local;
         toUpsertLocal.push({
-          ...local,
+          ...localWithoutGoogle,
           done: isCompleted ? true : local.done,
-          doneAt: isCompleted
-            ? local.doneAt || (remote.completed ? new Date(remote.completed).getTime() : Date.now())
-            : local.doneAt,
-          google: undefined,
+          ...(isCompleted
+            ? {
+                doneAt:
+                  local.doneAt ||
+                  (remote.completed ? new Date(remote.completed).getTime() : Date.now())
+              }
+            : local.doneAt !== undefined
+              ? { doneAt: local.doneAt }
+              : {}),
           updatedAt: Date.now()
         });
       }
@@ -136,16 +142,20 @@ export function mergeTasks(
     if (remoteUpdated > localUpdated + 500) {
       // Google é mais recente -> atualiza local preservando estimatedPomos, order e createdAt
       const remoteDone = remote.status === 'completed';
+      const cleanRemoteNotes = remote.notes?.trim();
+      const { notes: _prevNotes, doneAt: _prevDoneAt, ...baseLocal } = local;
       const updatedLocal: PomoTask = {
-        ...local,
+        ...baseLocal,
         title: remote.title || local.title,
-        notes: remote.notes || undefined,
+        ...(cleanRemoteNotes ? { notes: cleanRemoteNotes } : {}),
         done: remoteDone,
-        doneAt: remoteDone
-          ? remote.completed
-            ? new Date(remote.completed).getTime()
-            : local.doneAt || remoteUpdated
-          : undefined,
+        ...(remoteDone
+          ? {
+              doneAt: remote.completed
+                ? new Date(remote.completed).getTime()
+                : local.doneAt || remoteUpdated
+            }
+          : {}),
         updatedAt: remoteUpdated,
         google: {
           listId,
@@ -182,19 +192,22 @@ export function mergeTasks(
 
     const remoteUpdated = new Date(remote.updated).getTime() || Date.now();
     const remoteDone = remote.status === 'completed';
+    const cleanRemoteNotes = remote.notes?.trim();
 
     // Tarefas criadas no Google entram com estimatedPomos = 1
     const newLocal: PomoTask = {
       id: `task-${remoteUpdated}-${Math.random().toString(36).slice(2, 7)}`,
       title: remote.title || 'Sem título',
-      notes: remote.notes || undefined,
       estimatedPomos: 1,
       done: remoteDone,
-      doneAt: remoteDone
-        ? remote.completed
-          ? new Date(remote.completed).getTime()
-          : remoteUpdated
-        : undefined,
+      ...(cleanRemoteNotes ? { notes: cleanRemoteNotes } : {}),
+      ...(remoteDone
+        ? {
+            doneAt: remote.completed
+              ? new Date(remote.completed).getTime()
+              : remoteUpdated
+          }
+        : {}),
       createdAt: remoteUpdated,
       updatedAt: remoteUpdated,
       order: nextOrder++,
@@ -341,6 +354,16 @@ export function isTaskChanged(a: PomoTask, b: PomoTask): boolean {
   return false;
 }
 
+function sanitizeUndefined<T extends Record<string, any>>(obj: T): T {
+  const result: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      result[key] = value;
+    }
+  }
+  return result as T;
+}
+
 /**
  * Mescla o resultado de uma sincronização do Google Tasks sobre o estado atual em memória,
  * evitando condições de corrida onde edições concorrentes feitas pelo usuário durante
@@ -364,7 +387,8 @@ export function applySyncResult(
   const changedTasks: PomoTask[] = [];
 
   // 1. Processa tarefas retornadas pelo sync
-  for (const synced of syncedTasks) {
+  for (const rawSynced of syncedTasks) {
+    const synced = sanitizeUndefined(rawSynced);
     const current = currentMap.get(synced.id);
 
     if (!current) {
@@ -383,14 +407,14 @@ export function applySyncResult(
       // mas anexa o vínculo google do sync se o local ainda não possuía vínculo
       // (evita que uma tarefa recém-criada no Google perca o ID e seja duplicada no próximo ciclo)
       if (!current.google && synced.google) {
-        const preservedWithGoogle: PomoTask = {
+        const preservedWithGoogle: PomoTask = sanitizeUndefined({
           ...current,
           google: synced.google
-        };
+        });
         mergedTasks.push(preservedWithGoogle);
         changedTasks.push(preservedWithGoogle);
       } else {
-        mergedTasks.push(current);
+        mergedTasks.push(sanitizeUndefined(current));
       }
     } else {
       // Nenhuma alteração concorrente local: adota a versão do sync
@@ -404,7 +428,7 @@ export function applySyncResult(
   // 2. Preserva tarefas criadas localmente durante o sync (que não estavam no snapshot inicial)
   for (const current of currentTasks) {
     if (!syncedMap.has(current.id)) {
-      mergedTasks.push(current);
+      mergedTasks.push(sanitizeUndefined(current));
     }
   }
 
