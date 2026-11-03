@@ -145,3 +145,29 @@ export function createPomoTask(params: {
     ...(notes ? { notes } : {})
   };
 }
+
+/**
+ * Converte uma PomoTask em objeto plano seguro para o Firestore,
+ * removendo estritamente qualquer chave cujo valor seja undefined
+ * (inclusive em objetos aninhados, como google).
+ * O Firestore rejeita chamadas a setDoc/updateDoc que contenham campos com valor undefined.
+ */
+export function toFirestoreTask(task: PomoTask): Record<string, unknown> {
+  const clean = (val: unknown): unknown => {
+    if (val === null || typeof val !== 'object') {
+      return val;
+    }
+    if (Array.isArray(val)) {
+      return val.map(clean);
+    }
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(val as Record<string, unknown>)) {
+      if (value !== undefined) {
+        result[key] = clean(value);
+      }
+    }
+    return result;
+  };
+
+  return clean(task) as Record<string, unknown>;
+}

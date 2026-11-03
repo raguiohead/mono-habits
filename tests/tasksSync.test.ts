@@ -638,4 +638,32 @@ describe('applySyncResult (prevenção de condição de corrida)', () => {
     // Nenhuma mudança em relação ao estado inicial -> changedTasks vazio (sem escritas no Firestore)
     expect(changedTasks).toHaveLength(0);
   });
+
+  it('não gera nenhuma chave com valor undefined ao importar do Google Tasks uma tarefa sem notas ou não concluída', () => {
+    const listId = 'test-list-123';
+    const localTasks: PomoTask[] = [];
+    const remoteItems: GoogleTaskItem[] = [
+      {
+        id: 'gtask-no-notes',
+        title: 'Tarefa vinda do Google sem notas',
+        status: 'needsAction',
+        updated: '2026-11-02T15:00:00.000Z'
+      }
+    ];
+
+    const plan = mergeTasks(localTasks, remoteItems, listId);
+    expect(plan.toUpsertLocal).toHaveLength(1);
+    const importedTask = plan.toUpsertLocal[0];
+
+    expect('notes' in importedTask).toBe(false);
+    expect('doneAt' in importedTask).toBe(false);
+    expect(Object.values(importedTask)).not.toContain(undefined);
+
+    const { mergedTasks, changedTasks } = applySyncResult(localTasks, plan.toUpsertLocal, Date.now());
+    expect(mergedTasks).toHaveLength(1);
+    expect(Object.values(mergedTasks[0])).not.toContain(undefined);
+    expect('notes' in mergedTasks[0]).toBe(false);
+    expect('doneAt' in mergedTasks[0]).toBe(false);
+    expect('notes' in changedTasks[0]).toBe(false);
+  });
 });

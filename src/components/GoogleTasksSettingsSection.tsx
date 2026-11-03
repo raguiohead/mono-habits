@@ -133,10 +133,10 @@ export const GoogleTasksSettingsSection: React.FC = () => {
           </div>
 
           {googleSyncError && (
-            <div className="p-3 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 text-xs text-red-600 dark:text-red-400 flex items-start gap-2">
+            <div className="p-3 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 text-xs text-red-600 dark:text-red-400 flex items-start gap-2.5 overflow-hidden">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <div className="flex-1 space-y-2">
-                <p>{googleSyncError}</p>
+              <div className="flex-1 min-w-0 space-y-2">
+                <p className="break-words leading-relaxed">{googleSyncError}</p>
                 <button
                   type="button"
                   onClick={handleReconnect}
@@ -149,10 +149,10 @@ export const GoogleTasksSettingsSection: React.FC = () => {
           )}
 
           {connectError && (
-            <div className="p-3 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 text-xs text-red-600 dark:text-red-400 flex items-start gap-2">
+            <div className="p-3 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 text-xs text-red-600 dark:text-red-400 flex items-start gap-2.5 overflow-hidden">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <div className="flex-1 space-y-2">
-                <p>{connectError}</p>
+              <div className="flex-1 min-w-0 space-y-2">
+                <p className="break-words leading-relaxed">{connectError}</p>
                 <button
                   type="button"
                   onClick={handleStartConnect}
@@ -199,10 +199,10 @@ export const GoogleTasksSettingsSection: React.FC = () => {
       ) : (
         <div className="space-y-3">
           {connectError && (
-            <div className="p-3 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 text-xs text-red-600 dark:text-red-400 flex items-start gap-2">
+            <div className="p-3 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 text-xs text-red-600 dark:text-red-400 flex items-start gap-2.5 overflow-hidden">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <div className="flex-1 space-y-2">
-                <p>{connectError}</p>
+              <div className="flex-1 min-w-0 space-y-2">
+                <p className="break-words leading-relaxed">{connectError}</p>
                 <button
                   type="button"
                   onClick={handleStartConnect}

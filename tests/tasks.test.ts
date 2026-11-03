@@ -3,6 +3,7 @@ import {
   createPomoTask,
   getLinkableTasks,
   normalizeTask,
+  toFirestoreTask,
   taskProgress,
   MIN_TASK_POMOS,
   MAX_TASK_POMOS,
@@ -319,6 +320,92 @@ describe('Tarefas do Pomo (tasks.ts e storage)', () => {
 
       clearLocalUserData();
       expect(loadLocalTasks()).toHaveLength(0);
+    });
+  });
+
+  describe('toFirestoreTask', () => {
+    it('remove estritamente todas as chaves com valor undefined', () => {
+      const taskWithUndefined: any = {
+        id: 'task-1',
+        title: 'Tarefa sem notas',
+        estimatedPomos: 2,
+        done: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+        order: 0,
+        notes: undefined,
+        doneAt: undefined,
+        deleted: undefined,
+        google: undefined
+      };
+
+      const firestoreDoc = toFirestoreTask(taskWithUndefined);
+
+      expect('notes' in firestoreDoc).toBe(false);
+      expect('doneAt' in firestoreDoc).toBe(false);
+      expect('deleted' in firestoreDoc).toBe(false);
+      expect('google' in firestoreDoc).toBe(false);
+
+      expect(Object.values(firestoreDoc)).not.toContain(undefined);
+      expect(firestoreDoc).toEqual({
+        id: 'task-1',
+        title: 'Tarefa sem notas',
+        estimatedPomos: 2,
+        done: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+        order: 0
+      });
+    });
+
+    it('remove chaves undefined dentro de objetos aninhados como google', () => {
+      const taskWithNested: any = {
+        id: 'task-2',
+        title: 'Tarefa com Google',
+        estimatedPomos: 1,
+        done: true,
+        doneAt: 2000,
+        createdAt: 1000,
+        updatedAt: 2000,
+        order: 1,
+        google: {
+          listId: 'list-1',
+          taskId: 'gtask-1',
+          updated: '2026-11-02T10:00:00.000Z',
+          extraField: undefined
+        }
+      };
+
+      const firestoreDoc = toFirestoreTask(taskWithNested);
+
+      expect('extraField' in (firestoreDoc.google as any)).toBe(false);
+      expect(firestoreDoc.google).toEqual({
+        listId: 'list-1',
+        taskId: 'gtask-1',
+        updated: '2026-11-02T10:00:00.000Z'
+      });
+      expect(Object.values(firestoreDoc.google as any)).not.toContain(undefined);
+    });
+
+    it('preserva valores falsy válidos (false, 0, strings preenchidas)', () => {
+      const task: PomoTask = {
+        id: 'task-3',
+        title: 'Zero Pomos',
+        estimatedPomos: 1,
+        done: false,
+        order: 0,
+        createdAt: 0,
+        updatedAt: 0,
+        notes: 'Nota existente'
+      };
+
+      const doc = toFirestoreTask(task);
+      expect(doc.done).toBe(false);
+      expect(doc.order).toBe(0);
+      expect(doc.createdAt).toBe(0);
+      expect(doc.updatedAt).toBe(0);
+      expect(doc.notes).toBe('Nota existente');
+      expect(Object.values(doc)).not.toContain(undefined);
     });
   });
 });

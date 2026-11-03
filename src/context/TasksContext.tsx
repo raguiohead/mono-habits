@@ -4,6 +4,7 @@ import { loadLocalTasks, saveLocalTasks } from '@/lib/storage';
 import {
   createPomoTask,
   normalizeTask,
+  toFirestoreTask,
   MIN_TASK_POMOS,
   MAX_TASK_POMOS,
   DEFAULT_TASK_POMOS,
@@ -121,7 +122,7 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           await Promise.all(
             changedTasks.map((t) => {
               const taskRef = doc(db!, 'artifacts', appId, 'users', user.uid, 'tasks', t.id);
-              return setDoc(taskRef, t);
+              return setDoc(taskRef, toFirestoreTask(t));
             })
           );
         }
@@ -217,7 +218,7 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           if (remoteTasks.length === 0 && localTasks.length > 0) {
             localTasks.forEach((t) => {
               const taskRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'tasks', t.id);
-              setDoc(taskRef, t).catch((err) =>
+              setDoc(taskRef, toFirestoreTask(t)).catch((err) =>
                 console.warn('[Firestore] Falha ao migrar tarefa local para nuvem:', err)
               );
             });
@@ -264,7 +265,7 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (user && db && isFirebaseConfigured) {
         try {
           const taskRef = doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', task.id);
-          await setDoc(taskRef, task);
+          await setDoc(taskRef, toFirestoreTask(task));
         } catch (err) {
           console.error('[Firestore] Falha ao salvar tarefa:', err);
         }
@@ -312,14 +313,18 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const existing = rawTasksRef.current.find((t) => t.id === taskId);
       if (!existing) return;
 
+      const cleanNotes = updates.notes !== undefined ? updates.notes.trim().slice(0, 1000) : undefined;
+      const { notes: _prevNotes, ...baseExisting } = existing;
       const updated: PomoTask = {
-        ...existing,
+        ...baseExisting,
         ...(updates.title !== undefined ? { title: updates.title.trim().slice(0, 200) } : {}),
         ...(updates.notes !== undefined
-          ? updates.notes.trim()
-            ? { notes: updates.notes.trim().slice(0, 1000) }
-            : { notes: undefined }
-          : {}),
+          ? cleanNotes
+            ? { notes: cleanNotes }
+            : {}
+          : existing.notes
+            ? { notes: existing.notes }
+            : {}),
         ...(updates.estimatedPomos !== undefined
           ? {
               estimatedPomos: Math.min(
@@ -361,10 +366,11 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       const nextDone = !existing.done;
       const now = Date.now();
+      const { doneAt: _prevDoneAt, ...baseExisting } = existing;
       const updated: PomoTask = {
-        ...existing,
+        ...baseExisting,
         done: nextDone,
-        ...(nextDone ? { doneAt: now } : { doneAt: undefined }),
+        ...(nextDone ? { doneAt: now } : {}),
         updatedAt: now
       };
 
@@ -404,7 +410,7 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           await Promise.all(
             updatedTasks.map((t) => {
               const taskRef = doc(db!, 'artifacts', appId, 'users', user.uid, 'tasks', t.id);
-              return setDoc(taskRef, t);
+              return setDoc(taskRef, toFirestoreTask(t));
             })
           );
         } catch (err) {
