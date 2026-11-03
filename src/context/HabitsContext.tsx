@@ -48,6 +48,8 @@ import {
   reauthenticateWithCredential,
   getNativeGoogleCredential,
   isNativeSignInCanceled,
+  isNoCredentialsError,
+  NO_GOOGLE_ACCOUNTS_MESSAGE,
   nativeSignOut,
   deleteAllCloudData,
   wipeDeviceDataAndReload,
@@ -564,14 +566,16 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       showToast('Conta Google conectada e sincronizada!');
     } catch (error: any) {
       console.error('[Google Auth Error]', error);
-      if (Capacitor.isNativePlatform() && isNativeSignInCanceled(error)) {
-        showToast('Login cancelado.');
-      } else if (error.code === 'auth/popup-blocked') {
+      if (isNoCredentialsError(error)) {
+        showToast(NO_GOOGLE_ACCOUNTS_MESSAGE);
+      } else if (Capacitor.isNativePlatform() && isNativeSignInCanceled(error)) {
+        // Cancelamento pelo usuário permanece silencioso
+      } else if (error?.code === 'auth/popup-blocked') {
         showToast('Pop-up bloqueado pelo navegador. Habilite pop-ups para fazer login.');
-      } else if (error.code === 'auth/unauthorized-domain') {
+      } else if (error?.code === 'auth/unauthorized-domain') {
         showToast('Domínio não autorizado no Firebase Console. Adicione este domínio nas configurações de autenticação.');
       } else {
-        showToast(`Erro na autenticação: ${error.message || 'Tente novamente.'}`);
+        showToast(`Erro na autenticação: ${error?.message || 'Tente novamente.'}`);
       }
     }
   };
@@ -618,7 +622,9 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       console.error('[Delete Account Error]', error);
       suppressSyncRef.current = false;
       setSyncEpoch((n) => n + 1);
-      if (
+      if (isNoCredentialsError(error)) {
+        showToast(NO_GOOGLE_ACCOUNTS_MESSAGE);
+      } else if (
         error.code === 'auth/popup-closed-by-user' ||
         error.code === 'auth/cancelled-popup-request' ||
         (Capacitor.isNativePlatform() && isNativeSignInCanceled(error))
