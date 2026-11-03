@@ -18,7 +18,11 @@ import {
   clearTasksToken,
   formatGoogleTasksError
 } from '@/lib/googleTasksAuth';
-import { executeTasksSync, applySyncResult } from '@/lib/tasksSync';
+import {
+  executeTasksSync,
+  applySyncResult,
+  tasksToRemoveOnListSwitch
+} from '@/lib/tasksSync';
 import {
   db,
   appId,
@@ -26,6 +30,7 @@ import {
   collection,
   doc,
   setDoc,
+  deleteDoc,
   onSnapshot
 } from '@/lib/firebase';
 
@@ -74,6 +79,8 @@ const TasksContext = createContext<TasksContextType | undefined>(undefined);
 export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, showToast } = useHabits();
   const { settings, updateSettings } = useSettings();
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
 
   const [rawTasks, setRawTasks] = useState<PomoTask[]>(() => loadLocalTasks());
   const rawTasksRef = useRef<PomoTask[]>(rawTasks);
@@ -168,27 +175,162 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const connectGoogleTasks = useCallback(
     async (listId: string, listTitle: string) => {
+      // 1. Remove tarefas vinculadas a outra lista imediatamente (hard delete)
+      const toRemove = tasksToRemoveOnListSwitch(rawTasksRef.current, listId);
+      if (toRemove.length > 0) {
+        const toRemoveIds = new Set(toRemove.map((t) => t.id));
+        setRawTasks((prev) => {
+          const next = prev.filter((t) => !toRemoveIds.has(t.id));
+          saveLocalTasks(next);
+          return next;
+        });
+      }
+
+      // 2. Com login: Firestore é a fonte da verdade do prefs/googleTasks e executa deleteDoc das tarefas antigas
+      if (user && db && isFirebaseConfigured) {
+        const activeDb = db;
+        // Hard delete no Firestore (nunca tombstone)
+        await Promise.all(
+          toRemove.map((t) => {
+            const taskRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'tasks', t.id);
+            return deleteDoc(taskRef).catch((err) =>
+              console.warn(`[Firestore] Falha ao excluir tarefa antiga ${t.id}:`, err)
+            );
+          })
+        );
+
+        const prefRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'prefs', 'googleTasks');
+        await setDoc(prefRef, {
+          listId,
+          listTitle,
+          updatedAt: Date.now()
+        }).catch((err) =>
+          console.error('[Firestore] Falha ao salvar doc prefs/googleTasks:', err)
+        );
+
+        localStorage.setItem(`mono_gt_migrated_${user.uid}`, '1');
+      }
+
+      // 3. Atualiza cache local
       updateSettings({
         googleTasks: {
           listId,
           listTitle
         }
       });
+
+      // 4. Dispara sincronização com a nova lista
       setTimeout(() => {
         void syncWithGoogle({ interactive: false });
       }, 100);
     },
-    [updateSettings, syncWithGoogle]
+    [user, updateSettings, syncWithGoogle]
   );
 
   const disconnectGoogleTasks = useCallback(async () => {
     clearTasksToken();
     setGoogleSyncError(null);
+
+    // Se autenticado, remove a preferência no Firestore
+    if (user && db && isFirebaseConfigured) {
+      const activeDb = db;
+      const prefRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'prefs', 'googleTasks');
+      await deleteDoc(prefRef).catch((err) =>
+        console.warn('[Firestore] Falha ao excluir doc prefs/googleTasks:', err)
+      );
+      localStorage.setItem(`mono_gt_migrated_${user.uid}`, '1');
+    }
+
+    // Não remove tarefas nem vínculos locais: apenas para de sincronizar
     updateSettings({ googleTasks: undefined });
     showToast('Google Tasks desconectado.');
-  }, [updateSettings, showToast]);
+  }, [user, updateSettings, showToast]);
 
-  // Sincronização em tempo real via Firestore
+  // Sincronização em tempo real das preferências da conta (prefs/googleTasks) via Firestore
+  useEffect(() => {
+    if (!user || !db || !isFirebaseConfigured) return;
+
+    const activeDb = db;
+    const prefRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'prefs', 'googleTasks');
+
+    const unsub = onSnapshot(
+      prefRef,
+      (snapshot) => {
+        const migrationKey = `mono_gt_migrated_${user.uid}`;
+        const hasMigrated = localStorage.getItem(migrationKey) === '1';
+
+        if (snapshot.exists()) {
+          localStorage.setItem(migrationKey, '1');
+          const data = snapshot.data();
+          const remoteListId =
+            typeof data?.listId === 'string' ? data.listId.trim().slice(0, 100) : '';
+          const remoteListTitle =
+            typeof data?.listTitle === 'string' ? data.listTitle.trim().slice(0, 100) : '';
+
+          if (remoteListId && remoteListTitle) {
+            const currentConfig = settingsRef.current.googleTasks;
+            const isSameList = currentConfig?.listId === remoteListId;
+
+            updateSettings({
+              googleTasks: {
+                listId: remoteListId,
+                listTitle: remoteListTitle,
+                lastSyncAt: isSameList ? currentConfig?.lastSyncAt : undefined
+              }
+            });
+
+            // Limpeza local: garante que tarefas de outra lista sejam expurgadas
+            // (as deleções no Firestore já chegam pelo snapshot de tasks, mas garante que o estado local não reenvie nada)
+            const toRemove = tasksToRemoveOnListSwitch(rawTasksRef.current, remoteListId);
+            if (toRemove.length > 0) {
+              const toRemoveIds = new Set(toRemove.map((t) => t.id));
+              setRawTasks((prev) => {
+                const next = prev.filter((t) => !toRemoveIds.has(t.id));
+                saveLocalTasks(next);
+                return next;
+              });
+
+              toRemove.forEach((t) => {
+                const taskRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'tasks', t.id);
+                deleteDoc(taskRef).catch(() => {});
+              });
+            }
+          }
+        } else {
+          // Documento não existe no Firestore
+          if (!hasMigrated) {
+            // Migração: se o doc não existe e há settings.googleTasks local, grava no Firestore uma vez
+            localStorage.setItem(migrationKey, '1');
+            const localConfig = settingsRef.current.googleTasks;
+            if (localConfig?.listId && localConfig?.listTitle) {
+              setDoc(prefRef, {
+                listId: localConfig.listId.slice(0, 100),
+                listTitle: localConfig.listTitle.slice(0, 100),
+                updatedAt: Date.now()
+              }).catch((err) =>
+                console.warn('[Firestore] Falha ao migrar pref googleTasks local:', err)
+              );
+              return;
+            }
+          }
+
+          // Se já migrou ou não há lista local, a conta está sem lista conectada
+          if (settingsRef.current.googleTasks) {
+            updateSettings({ googleTasks: undefined });
+          }
+        }
+      },
+      (error) => {
+        console.warn('[Firestore] Erro ao sincronizar prefs/googleTasks:', error);
+      }
+    );
+
+    return () => {
+      unsub();
+    };
+  }, [user, updateSettings]);
+
+  // Sincronização em tempo real das tarefas via Firestore
   useEffect(() => {
     if (!user || !db || !isFirebaseConfigured) {
       initialSyncedRef.current = false;
@@ -211,6 +353,14 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
         });
 
+        // Identifica IDs removidos no Firestore (via deleteDoc)
+        const removedRemoteIds = new Set<string>();
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'removed') {
+            removedRemoteIds.add(change.doc.id);
+          }
+        });
+
         // Migração inicial: se a nuvem não tiver nenhuma tarefa e existirem tarefas locais offline
         if (!initialSyncedRef.current) {
           initialSyncedRef.current = true;
@@ -229,10 +379,24 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Reconciliação com merge LWW para evitar regressão se houver writes pendentes
         setRawTasks((current) => {
           const map = new Map<string, PomoTask>();
+          const activeListId = settingsRef.current.googleTasks?.listId;
+
           for (const item of current) {
+            // Ignora tarefas que foram excluídas com deleteDoc no Firestore
+            if (removedRemoteIds.has(item.id)) {
+              continue;
+            }
+            // Ignora tarefas vinculadas a outra lista
+            if (item.google?.listId && activeListId && item.google.listId !== activeListId) {
+              continue;
+            }
             map.set(item.id, item);
           }
           for (const remote of remoteTasks) {
+            // Ignora tarefas remotas vinculadas a outra lista
+            if (remote.google?.listId && activeListId && remote.google.listId !== activeListId) {
+              continue;
+            }
             const local = map.get(remote.id);
             if (!local || (remote.updatedAt ?? 0) >= (local.updatedAt ?? 0)) {
               map.set(remote.id, remote);

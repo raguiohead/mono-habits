@@ -65,11 +65,18 @@ export function mergeTasks(
 
   // 1. Processa tarefas locais
   for (const local of localTasks) {
+    // Defesa: se a tarefa está vinculada a outra lista, é totalmente ignorada
+    // (não é criada na lista atual, não sofre tombstone e não é atualizada)
+    if (local.google?.listId && local.google.listId !== listId) {
+      continue;
+    }
+
     const googleRef = local.google?.listId === listId ? local.google : undefined;
 
-    // Tarefa local ainda não vinculada a esta lista
+    // Tarefa local ainda não vinculada
     if (!googleRef) {
-      if (!local.deleted) {
+      // Só tarefas sem vínculo Google entram em toPushCreateRemote
+      if (!local.google && !local.deleted) {
         toPushCreateRemote.push({
           localTaskId: local.id,
           payload: {
@@ -433,4 +440,16 @@ export function applySyncResult(
   }
 
   return { mergedTasks, changedTasks };
+}
+
+/**
+ * Função pura que identifica tarefas a serem removidas do app (hard delete) ao trocar ou conectar de lista.
+ * Retorna todas as tarefas cujo google.listId é diferente da nova lista (`newListId`).
+ * Preserva tarefas locais nunca vinculadas (sem `google`) e tarefas já vinculadas à `newListId`.
+ */
+export function tasksToRemoveOnListSwitch(
+  tasks: PomoTask[],
+  newListId: string
+): PomoTask[] {
+  return tasks.filter((t) => Boolean(t.google?.listId && t.google.listId !== newListId));
 }

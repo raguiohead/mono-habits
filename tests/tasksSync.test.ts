@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { mergeTasks, executeTasksSync, applySyncResult } from '../src/lib/tasksSync';
+import {
+  mergeTasks,
+  executeTasksSync,
+  applySyncResult,
+  tasksToRemoveOnListSwitch
+} from '../src/lib/tasksSync';
 import { type PomoTask } from '../src/types/habit';
 import { type GoogleTaskItem } from '../src/lib/googleTasksApi';
 
@@ -665,5 +670,194 @@ describe('applySyncResult (prevenção de condição de corrida)', () => {
     expect('notes' in mergedTasks[0]).toBe(false);
     expect('doneAt' in mergedTasks[0]).toBe(false);
     expect('notes' in changedTasks[0]).toBe(false);
+  });
+
+  describe('defesa contra duplicação de tarefas de listas diferentes (mergeTasks & tasksToRemoveOnListSwitch)', () => {
+    it('(a) tarefa vinculada a outra lista não é criada na lista atual e é totalmente ignorada no merge', () => {
+      const currentListId = 'tasks';
+      const localTasks: PomoTask[] = [
+        {
+          id: 'task-work-1',
+          title: 'Padronizar respostas do ServiceDesk',
+          notes: 'Criar templates no Zendesk',
+          estimatedPomos: 2,
+          done: false,
+          createdAt: 1000,
+          updatedAt: 1000,
+          order: 0,
+          google: {
+            listId: 'work',
+            taskId: 'gtask-work-sd',
+            updated: '2026-11-02T10:00:00.000Z'
+          }
+        },
+        {
+          id: 'task-work-deleted',
+          title: 'Tarefa antiga deletada em outra lista',
+          estimatedPomos: 1,
+          done: true,
+          deleted: true,
+          createdAt: 1000,
+          updatedAt: 2000,
+          order: 1,
+          google: {
+            listId: 'work',
+            taskId: 'gtask-work-del',
+            updated: '2026-11-02T10:00:00.000Z'
+          }
+        }
+      ];
+
+      const remoteItems: GoogleTaskItem[] = [];
+      const plan = mergeTasks(localTasks, remoteItems, currentListId);
+
+      // Não deve tentar criar nenhuma dessas tarefas na lista atual "tasks"
+      expect(plan.toPushCreateRemote).toHaveLength(0);
+      // Não deve sofrer nenhuma mutação
+      expect(plan.toTombstoneLocal).toHaveLength(0);
+      expect(plan.toUpsertLocal).toHaveLength(0);
+      expect(plan.toPushUpdateRemote).toHaveLength(0);
+      expect(plan.toDeleteRemote).toHaveLength(0);
+    });
+
+    it('(b) tarefa local sem vínculo com o Google é criada na lista atual', () => {
+      const currentListId = 'tasks';
+      const localTasks: PomoTask[] = [
+        {
+          id: 'task-local-unlinked',
+          title: 'Comprar café especial',
+          notes: 'Grãos torra média',
+          estimatedPomos: 1,
+          done: false,
+          createdAt: 1000,
+          updatedAt: 1000,
+          order: 0
+          // sem google
+        },
+        {
+          id: 'task-other-list',
+          title: 'Relatório Q3 da outra lista',
+          estimatedPomos: 3,
+          done: false,
+          createdAt: 1000,
+          updatedAt: 1000,
+          order: 1,
+          google: {
+            listId: 'work',
+            taskId: 'gtask-work-q3',
+            updated: '2026-11-02T10:00:00.000Z'
+          }
+        }
+      ];
+
+      const remoteItems: GoogleTaskItem[] = [];
+      const plan = mergeTasks(localTasks, remoteItems, currentListId);
+
+      // Apenas a tarefa local sem vínculo entra em toPushCreateRemote
+      expect(plan.toPushCreateRemote).toHaveLength(1);
+      expect(plan.toPushCreateRemote[0].localTaskId).toBe('task-local-unlinked');
+      expect(plan.toPushCreateRemote[0].payload.title).toBe('Comprar café especial');
+    });
+
+    it('(c) função pura tasksToRemoveOnListSwitch remove apenas tarefas de outra lista e preserva tarefas locais sem vínculo e tarefas da mesma lista', () => {
+      const tasks: PomoTask[] = [
+        {
+          id: 'task-work-1',
+          title: 'Tarefa da lista antiga Work',
+          estimatedPomos: 2,
+          done: false,
+          createdAt: 1000,
+          updatedAt: 1000,
+          order: 0,
+          google: {
+            listId: 'work',
+            taskId: 'gtask-1',
+            updated: '2026-11-02T10:00:00.000Z'
+          }
+        },
+        {
+          id: 'task-personal-1',
+          title: 'Tarefa de uma lista terceira Personal',
+          estimatedPomos: 1,
+          done: false,
+          createdAt: 1000,
+          updatedAt: 1000,
+          order: 1,
+          google: {
+            listId: 'personal',
+            taskId: 'gtask-2',
+            updated: '2026-11-02T10:00:00.000Z'
+          }
+        },
+        {
+          id: 'task-unlinked-1',
+          title: 'Tarefa local criada no app (sem vínculo)',
+          estimatedPomos: 1,
+          done: false,
+          createdAt: 1000,
+          updatedAt: 1000,
+          order: 2
+        },
+        {
+          id: 'task-already-in-target',
+          title: 'Tarefa que já pertence à nova lista conectada',
+          estimatedPomos: 3,
+          done: false,
+          createdAt: 1000,
+          updatedAt: 1000,
+          order: 3,
+          google: {
+            listId: 'tasks',
+            taskId: 'gtask-target-3',
+            updated: '2026-11-02T10:00:00.000Z'
+          }
+        },
+        {
+          id: 'task-work-completed',
+          title: 'Tarefa concluída da lista antiga Work',
+          estimatedPomos: 1,
+          done: true,
+          doneAt: 1500,
+          createdAt: 1000,
+          updatedAt: 1500,
+          order: 4,
+          google: {
+            listId: 'work',
+            taskId: 'gtask-4',
+            updated: '2026-11-02T10:00:00.000Z'
+          }
+        },
+        {
+          id: 'task-work-tombstone',
+          title: 'Tarefa com tombstone da lista antiga Work',
+          estimatedPomos: 1,
+          done: false,
+          deleted: true,
+          createdAt: 1000,
+          updatedAt: 1500,
+          order: 5,
+          google: {
+            listId: 'work',
+            taskId: 'gtask-5',
+            updated: '2026-11-02T10:00:00.000Z'
+          }
+        }
+      ];
+
+      const toRemove = tasksToRemoveOnListSwitch(tasks, 'tasks');
+
+      // Deve retornar exatamente as tarefas vinculadas a listas diferentes de "tasks":
+      // task-work-1, task-personal-1, task-work-completed, task-work-tombstone
+      expect(toRemove.map((t) => t.id)).toEqual([
+        'task-work-1',
+        'task-personal-1',
+        'task-work-completed',
+        'task-work-tombstone'
+      ]);
+
+      // Preservou a local sem vínculo e a que já pertencia a "tasks"
+      expect(toRemove.some((t) => t.id === 'task-unlinked-1')).toBe(false);
+      expect(toRemove.some((t) => t.id === 'task-already-in-target')).toBe(false);
+    });
   });
 });
