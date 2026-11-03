@@ -1,5 +1,113 @@
 import { Capacitor } from '@capacitor/core';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
+import {
+  isNoCredentialsError,
+  isNativeSignInCanceled,
+  NO_GOOGLE_ACCOUNTS_MESSAGE
+} from './firebase';
+
+export { isNoCredentialsError, isNativeSignInCanceled, NO_GOOGLE_ACCOUNTS_MESSAGE };
+
+export const GOOGLE_TASKS_API_DISABLED_MESSAGE =
+  'A API do Google Tasks está desativada no Google Cloud. Ative-a no console do projeto e tente de novo.';
+
+export const GOOGLE_TASKS_PERMISSION_DENIED_MESSAGE =
+  'Permissão para acessar o Google Tasks não concedida. Autorize o acesso para sincronizar suas tarefas.';
+
+export const GOOGLE_TASKS_NETWORK_ERROR_MESSAGE =
+  'Sem conexão com a internet. Verifique sua rede e tente de novo.';
+
+export const GOOGLE_TASKS_GENERIC_ERROR_MESSAGE =
+  'Não foi possível conectar ao Google Tasks. Tente novamente mais tarde.';
+
+export type GoogleTasksErrorKind =
+  | 'canceled'
+  | 'no_credentials'
+  | 'api_disabled'
+  | 'permission_denied'
+  | 'network'
+  | 'session_expired'
+  | 'generic';
+
+function getErrorString(error: unknown): string {
+  if (!error) return '';
+  if (typeof error === 'string') return error;
+  if (error instanceof Error) return `${error.name} ${error.message} ${(error as any).stack ?? ''}`;
+  const e = error as Record<string, unknown>;
+  return `${e.code ?? ''} ${e.message ?? ''} ${e.errorMessage ?? ''} ${e.error ?? ''} ${JSON.stringify(error)}`;
+}
+
+/**
+ * Classifica categoricamente a origem do erro do fluxo do Google Tasks.
+ */
+export function classifyGoogleTasksError(error: unknown): GoogleTasksErrorKind {
+  if (isNativeSignInCanceled(error)) return 'canceled';
+  if (isNoCredentialsError(error)) return 'no_credentials';
+
+  const text = getErrorString(error);
+
+  // 403 / API desativada
+  if (
+    /403/i.test(text) ||
+    /service_disabled/i.test(text) ||
+    /has not been used in project/i.test(text) ||
+    /is disabled/i.test(text) ||
+    /api desativada/i.test(text)
+  ) {
+    return 'api_disabled';
+  }
+
+  // Permissão / escopo negado
+  if (
+    /access_denied|permission_denied|insufficient.*scope|permiss[aã]o negada|n[aã]o autorizado/i.test(
+      text
+    )
+  ) {
+    return 'permission_denied';
+  }
+
+  // Sem rede / offline
+  if (
+    (typeof navigator !== 'undefined' && navigator.onLine === false) ||
+    /failed to fetch|network\s*error|networkrequestfailed|offline|net::err|sem conex[aã]o|sem internet|econnrefused/i.test(
+      text
+    )
+  ) {
+    return 'network';
+  }
+
+  // 401 / Sessão expirada
+  if (/401|expirad[ao]|invalid_grant/i.test(text)) {
+    return 'session_expired';
+  }
+
+  return 'generic';
+}
+
+/**
+ * Retorna mensagem em PT-BR para exibição ao usuário sem JSON cru.
+ * Retorna `null` caso o erro seja cancelamento pelo usuário (ação silenciosa).
+ */
+export function formatGoogleTasksError(error: unknown): string | null {
+  const kind = classifyGoogleTasksError(error);
+  switch (kind) {
+    case 'canceled':
+      return null;
+    case 'no_credentials':
+      return NO_GOOGLE_ACCOUNTS_MESSAGE;
+    case 'api_disabled':
+      return GOOGLE_TASKS_API_DISABLED_MESSAGE;
+    case 'permission_denied':
+      return GOOGLE_TASKS_PERMISSION_DENIED_MESSAGE;
+    case 'network':
+      return GOOGLE_TASKS_NETWORK_ERROR_MESSAGE;
+    case 'session_expired':
+      return 'Sessão do Google Tasks expirada. Reconecte sua conta.';
+    case 'generic':
+    default:
+      return GOOGLE_TASKS_GENERIC_ERROR_MESSAGE;
+  }
+}
 
 export const TASKS_SCOPE = 'https://www.googleapis.com/auth/tasks';
 

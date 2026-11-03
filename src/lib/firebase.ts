@@ -132,10 +132,30 @@ export async function getNativeGoogleCredential(): Promise<AuthCredential> {
   return GoogleAuthProvider.credential(idToken, result.credential?.accessToken);
 }
 
+export const NO_GOOGLE_ACCOUNTS_MESSAGE =
+  'Nenhuma conta Google neste aparelho. Adicione uma conta nas configurações do Android e tente de novo.';
+
+/** Detecta ausência de conta Google no aparelho (Credential Manager 28433 / No credentials available) */
+export function isNoCredentialsError(error: unknown): boolean {
+  if (!error) return false;
+  if (typeof error === 'string') {
+    return /no credentials? available|28433|getcredentialnocredentialsexception|no matching credential/i.test(error);
+  }
+  const e = error as { code?: string | number; message?: string; errorMessage?: string; name?: string } | null;
+  const combined = `${e?.name ?? ''} ${e?.code ?? ''} ${e?.message ?? ''} ${e?.errorMessage ?? ''} ${String(error)}`;
+  return /no credentials? available|28433|getcredentialnocredentialsexception|no matching credential/i.test(combined);
+}
+
 /** Detecta cancelamento do seletor de contas nativo (as mensagens variam entre versões do Android) */
 export function isNativeSignInCanceled(error: unknown): boolean {
-  const e = error as { code?: string; message?: string } | null;
-  return /cancel/i.test(`${e?.code ?? ''} ${e?.message ?? ''}`);
+  if (!error) return false;
+  if (isNoCredentialsError(error)) return false;
+  if (typeof error === 'string') {
+    return /cancel|closed[-_ ]by[-_ ]user|popup[-_ ]closed|user[-_ ]cancel/i.test(error);
+  }
+  const e = error as { code?: string | number; message?: string; errorMessage?: string; name?: string } | null;
+  const combined = `${e?.name ?? ''} ${e?.code ?? ''} ${e?.message ?? ''} ${e?.errorMessage ?? ''} ${String(error)}`;
+  return /cancel|closed[-_ ]by[-_ ]user|popup[-_ ]closed|user[-_ ]cancel/i.test(combined);
 }
 
 /** Encerra a sessão nativa do plugin (ignora erro) */
