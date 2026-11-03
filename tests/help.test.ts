@@ -15,6 +15,14 @@ describe('conteúdo da ajuda', () => {
   it('cada categoria tem perguntas', () => {
     for (const c of HELP_CATEGORIES) expect(FAQ.some((f) => f.category === c.id)).toBe(true);
   });
+  it('menciona sincronização beta e verificação do Google na ajuda de tarefas', () => {
+    const tarefas = FAQ.find((f) => f.id === 'pomo-tarefas');
+    expect(tarefas).toBeDefined();
+    expect(tarefas?.answer.toLowerCase()).toContain('beta');
+    expect(tarefas?.answer.toLowerCase()).toContain('google tasks');
+    expect(tarefas?.answer.toLowerCase()).toContain('não verificado');
+    expect(tarefas?.answer.toLowerCase()).toContain('verificação');
+  });
 });
 
 describe('busca e filtros', () => {
@@ -35,6 +43,12 @@ describe('busca e filtros', () => {
   it('categoria e busca combinam', () => {
     expect(filterFaq(FAQ, 'lembrete', 'habitos')).toEqual([]);
     expect(filterFaq(FAQ, 'lembrete', 'conta').length).toBeGreaterThan(0);
+  });
+  it('encontra ajuda de tarefas ao pesquisar por google tasks ou beta', () => {
+    const resGoogle = filterFaq(FAQ, 'google tasks', null);
+    expect(resGoogle.map((f) => f.id)).toContain('pomo-tarefas');
+    const resBeta = filterFaq(FAQ, 'beta', null);
+    expect(resBeta.map((f) => f.id)).toContain('pomo-tarefas');
   });
   it('filtra o glossário', () => {
     expect(filterGlossary(GLOSSARY, 'escorregao').map((g) => g.term)).toContain('Escorregão');

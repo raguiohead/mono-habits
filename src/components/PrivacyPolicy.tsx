@@ -54,8 +54,8 @@ export const PrivacyContent: React.FC = () => (
       <ul className="list-disc pl-4 space-y-1">
         <li>
           <strong>Conteúdo que você cria:</strong> nomes, descrições opcionais, imagens de capa (padrões geométricos ou uma foto que você escolher no aparelho, reduzida e guardada dentro do próprio hábito; ela fica no seu aparelho e, se você entrar com a conta Google, na sua conta, sem serviço de armazenamento de arquivos separado), categorias, ícones e frequência dos
-          hábitos, metas diárias com o Pomo, check-ins diários, dias de graça usados, escorregões registrados em hábitos a evitar e sessões do Pomo (com o hábito
-          vinculado, quando houver). Nomes de hábitos podem revelar informações
+          hábitos, metas diárias com o Pomo, check-ins diários, dias de graça usados, escorregões registrados em hábitos a evitar, sessões do Pomo (com o hábito
+          vinculado, quando houver) e tarefas com estimativa de pomos (título, estimativa, status de conclusão e ordenação). Nomes de hábitos e tarefas podem revelar informações
           sensíveis (por exemplo, de saúde); evite incluir dados que você não queira armazenar.
         </li>
         <li>
@@ -70,6 +70,9 @@ export const PrivacyContent: React.FC = () => (
         <li>
           <strong>Conta Google (opcional, somente se você conectar):</strong> o app não cria conta nem identificador anônimo automaticamente. Se você optar por entrar com o Google, tratamos o identificador único da sua conta (UID), seu nome, e-mail e foto de
           perfil para identificar sua conta nas configurações e sincronizar seus hábitos na nuvem.
+        </li>
+        <li>
+          <strong>Google Tasks (opcional, somente se você ativar a sincronização):</strong> se você conectar sua lista do Google Tasks nas Configurações, o app solicita autorização para acessar suas tarefas através do escopo <code>https://www.googleapis.com/auth/tasks</code>. Esse acesso é usado exclusivamente para ler, criar, editar e marcar como concluídas as tarefas na lista selecionada por você, mantendo-as sincronizadas com suas tarefas de foco do app. O token de acesso temporário é mantido exclusivamente na memória volátil do dispositivo durante a execução e nunca é salvo no armazenamento local (localStorage) nem no Firestore. Você pode desconectar o Google Tasks a qualquer momento nas configurações.
         </li>
         <li>
           <strong>Verificação de atualização no Android:</strong> somente no aplicativo instalado no Android (APK), o app consulta a API pública de lançamentos do GitHub ao abrir e ao voltar ao primeiro plano (no máximo uma vez a cada 6 horas, ou quando você toca em &ldquo;Verificar atualizações&rdquo;). Essa consulta envia apenas seu endereço IP e o cabeçalho técnico do aplicativo (User-Agent) ao GitHub, sem qualquer dado de hábitos ou de conta.
@@ -90,8 +93,11 @@ export const PrivacyContent: React.FC = () => (
       </p>
       <p>
         <strong>Na nuvem (opcional):</strong> quando você entra com sua Conta Google, seus hábitos, check-ins,
-        dias de graça, escorregões e sessões do Pomo são sincronizados com o Google Firebase (Authentication e Cloud
+        dias de graça, escorregões, sessões do Pomo e tarefas são sincronizados com o Google Firebase (Authentication e Cloud
         Firestore), operado pela Google LLC. As regras de segurança restringem a leitura e a escrita exclusivamente à sua conta e validam o formato e o tamanho dos documentos.
+      </p>
+      <p>
+        <strong>Google Tasks (opcional):</strong> quando a sincronização com o Google Tasks está ativada, as tarefas são sincronizadas diretamente entre este dispositivo e os servidores da API do Google Tasks sob sua própria conta Google.
       </p>
       <p>
         <strong>Fontes (na web):</strong> as fontes Inter e JetBrains Mono são carregadas do Google Fonts,
@@ -121,7 +127,7 @@ export const PrivacyContent: React.FC = () => (
       </p>
       <ul className="list-disc pl-4 space-y-1">
         <li>
-          <strong>Google LLC (Firebase e Google Fonts):</strong> autenticação Google, banco de dados em nuvem (quando você conecta sua conta), entrega de fontes e, somente se você ligar, estatísticas de uso (Google Analytics para Firebase) e avisos por push (Firebase Cloud Messaging).
+          <strong>Google LLC (Firebase, Google Fonts e Google Tasks):</strong> autenticação Google, banco de dados em nuvem (quando você conecta sua conta), sincronização com Google Tasks (somente quando você autoriza e conecta), entrega de fontes e, somente se você ligar, estatísticas de uso (Google Analytics para Firebase) e avisos por push (Firebase Cloud Messaging).
         </li>
         <li>
           <strong>GitHub, Inc.:</strong> hospedagem e consulta de novas versões do APK no Android (recebe apenas IP e User-Agent a cada verificação).

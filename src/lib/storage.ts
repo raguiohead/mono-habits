@@ -1,5 +1,5 @@
 import { sanitizeMilestonesSeen, type MilestonesSeen } from './milestones';
-import { type Habit, type LogsMap, type GracesMap, type SlipsMap, type PomoSession, type PomoKind } from '@/types/habit';
+import { type Habit, type LogsMap, type GracesMap, type SlipsMap, type PomoSession, type PomoKind, type PomoTask } from '@/types/habit';
 import { sanitizeSlips } from './avoid';
 import { sanitizeLockConfig, type LockConfig } from './lock';
 import { sanitizeGraces } from './graces';
@@ -7,6 +7,7 @@ import { DEFAULT_DURATIONS, clampMinutes, type PomoDurations } from './pomo';
 import { DEFAULT_SETTINGS, sanitizeSettings, type AppSettings } from './settings';
 import { withSanitizedCover } from './covers';
 import { pruneDismissals, type GoalDismissals } from './pomoGoals';
+import { normalizeTask } from './tasks';
 
 const HABITS_STORAGE_KEY = 'mono_habits_data_v1';
 const LOGS_STORAGE_KEY = 'mono_habits_logs_v1';
@@ -22,6 +23,7 @@ const GRACES_STORAGE_KEY = 'mono_habits_graces_v1';
 const SLIPS_STORAGE_KEY = 'mono_habits_slips_v1';
 const LOCK_STORAGE_KEY = 'mono_habits_lock_v1';
 const LAST_SYNCED_UID_KEY = 'mono_habits_last_uid_v1';
+const TASKS_STORAGE_KEY = 'mono_habits_tasks_v1';
 
 export const DEFAULT_HABITS: Habit[] = [
   {
@@ -208,6 +210,29 @@ export function saveGoalDismissals(map: GoalDismissals): void {
   }
 }
 
+// ---------- Tarefas do Pomo ----------
+
+export function loadLocalTasks(): PomoTask[] {
+  try {
+    const raw = localStorage.getItem(TASKS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(normalizeTask).filter((t): t is PomoTask => t !== null);
+  } catch (error) {
+    console.error('Falha ao carregar tarefas do localStorage:', error);
+    return [];
+  }
+}
+
+export function saveLocalTasks(tasks: PomoTask[]): void {
+  try {
+    localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
+  } catch (error) {
+    console.error('Falha ao salvar tarefas no localStorage:', error);
+  }
+}
+
 // ---------- Pomodoro ----------
 
 const POMO_SESSIONS_KEY = 'mono_habits_pomo_sessions_v1';
@@ -239,6 +264,7 @@ export interface PomoSettings {
   cycleCount: number;
   kind: PomoKind;
   lastHabitId?: string; // último hábito vinculado a um foco (ausente = sem vínculo)
+  lastTaskId?: string; // última tarefa vinculada a um foco (ausente = sem vínculo)
 }
 
 export function loadPomoSettings(): PomoSettings {
@@ -255,7 +281,8 @@ export function loadPomoSettings(): PomoSettings {
       },
       cycleCount: Number.isInteger(p?.cycleCount) ? p.cycleCount : 0,
       kind: ['focus', 'short', 'long'].includes(p?.kind) ? p.kind : 'focus',
-      ...(typeof p?.lastHabitId === 'string' && p.lastHabitId ? { lastHabitId: p.lastHabitId } : {})
+      ...(typeof p?.lastHabitId === 'string' && p.lastHabitId ? { lastHabitId: p.lastHabitId } : {}),
+      ...(typeof p?.lastTaskId === 'string' && p.lastTaskId ? { lastTaskId: p.lastTaskId } : {})
     };
   } catch {
     return fallback;
@@ -274,6 +301,7 @@ export function savePomoSettings(settings: PomoSettings): void {
 export interface PomoTimerState {
   kind: PomoKind;
   habitId?: string; // hábito vinculado a este foco
+  taskId?: string; // tarefa vinculada a este foco
   plannedMs: number;
   startedAt: number;
   status: 'running' | 'paused';
@@ -377,6 +405,7 @@ export function exportLocalData() {
     logs: loadLocalLogs(),
     graces: loadLocalGraces(),
     slips: loadLocalSlips(),
+    tasks: loadLocalTasks(),
     pomoSessions: loadLocalPomoSessions(),
     pomoSettings: loadPomoSettings(),
     settings: loadSettings()
@@ -449,6 +478,7 @@ export function clearLocalAccountData(): void {
       LOGS_STORAGE_KEY,
       GRACES_STORAGE_KEY,
       SLIPS_STORAGE_KEY,
+      TASKS_STORAGE_KEY,
       POMO_SESSIONS_KEY,
       REMINDER_SENT_KEY,
       REMINDER_SCHEDULED_TODAY_KEY,
@@ -467,13 +497,14 @@ export interface SyncCollectionsCounts {
   graces: number;
   slips: number;
   pomoSessions: number;
+  tasks?: number;
 }
 
 /**
  * Regra M1 de migração local → nuvem:
  * - Se o aparelho guarda dados de OUTRO uid (`lastSyncedUid !== null && lastSyncedUid !== currentUid`),
  *   nunca migra e descarta o espelho local da conta anterior (`discardLocal = true`).
- * - Só migra (`migrate = true`) quando a conta na nuvem está totalmente vazia nas 5 coleções,
+ * - Só migra (`migrate = true`) quando a conta na nuvem está totalmente vazia nas 6 coleções,
  *   há dados locais a enviar e os dados locais eram offline (`lastSyncedUid === null`) ou do próprio `currentUid`.
  */
 export function evaluateInitialCloudSync(opts: {
@@ -492,13 +523,15 @@ export function evaluateInitialCloudSync(opts: {
     remoteCounts.logs === 0 &&
     remoteCounts.graces === 0 &&
     remoteCounts.slips === 0 &&
-    remoteCounts.pomoSessions === 0;
+    remoteCounts.pomoSessions === 0 &&
+    (remoteCounts.tasks ?? 0) === 0;
   const localHasData =
     localCounts.habits > 0 ||
     localCounts.logs > 0 ||
     localCounts.graces > 0 ||
     localCounts.slips > 0 ||
-    localCounts.pomoSessions > 0;
+    localCounts.pomoSessions > 0 ||
+    (localCounts.tasks ?? 0) > 0;
   return {
     discardLocal: false,
     migrateLocalToCloud: cloudEmpty && localHasData
@@ -513,6 +546,7 @@ export function clearLocalUserData(): void {
       GRACES_STORAGE_KEY,
       SLIPS_STORAGE_KEY,
       LOCK_STORAGE_KEY, // "apagar dados deste dispositivo" também remove o bloqueio (saída para quem esqueceu o PIN)
+      TASKS_STORAGE_KEY,
       POMO_SESSIONS_KEY,
       POMO_SETTINGS_KEY,
       POMO_TIMER_KEY,

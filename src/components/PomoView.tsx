@@ -1,9 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Play, Pause, Square, Minus, Plus, Check, X } from 'lucide-react';
 import { TomatoIcon } from './TomatoIcon';
+import { PomoTasks } from './PomoTasks';
+import { ModalShell } from './ModalShell';
 import { useHabits } from '@/context/HabitsContext';
+import { useTasks } from '@/context/TasksContext';
 import { usePomo } from '@/context/PomoContext';
 import { toDateKey } from '@/lib/dateUtils';
+import { taskProgress } from '@/lib/tasks';
 import {
   FOCUS_BEFORE_LONG_BREAK,
   KIND_LABEL,
@@ -30,7 +34,8 @@ const goalTarget = (goal: PomoGoal) =>
 
 export const PomoView: React.FC = () => {
   const { pomoSessions, activeHabits } = useHabits();
-  const { isHidden } = useDiscreet();
+  const { tasks } = useTasks();
+  const { isHidden, active: isDiscreet } = useDiscreet();
   const {
     kind,
     durations,
@@ -46,11 +51,19 @@ export const PomoView: React.FC = () => {
     setMinutes,
     linkableHabits,
     linkedHabitId,
-    setLinkedHabit
+    setLinkedHabit,
+    linkableTasks,
+    linkedTaskId,
+    setLinkedTask,
+    pendingTaskPrompt,
+    dismissPendingTaskPrompt,
+    resolvePendingTaskPrompt
   } = usePomo();
 
   const idle = status === 'idle';
   const minutes = durations[kind];
+
+  const pendingTask = pendingTaskPrompt ? tasks.find((t) => t.id === pendingTaskPrompt) : null;
 
   // Campo numérico editável sem "brigar" com a digitação
   const [draft, setDraft] = useState(String(minutes));
@@ -153,15 +166,29 @@ export const PomoView: React.FC = () => {
           </span>
         </div>
 
-        {/* Hábito vinculado à sessão em andamento */}
-        {!idle && kind === 'focus' && linkedHabitId && (() => {
-          const linked = activeHabits.find((h) => h.id === linkedHabitId);
-          return linked?.pomoGoal ? (
-            <p className="text-[11px] font-mono text-zinc-600 dark:text-zinc-400 text-center">
-              Vinculado a {habitName(linked, isHidden(linked))} · meta {goalTarget(linked.pomoGoal)}
-            </p>
-          ) : null;
-        })()}
+        {/* Vínculo à sessão em andamento */}
+        {!idle && kind === 'focus' && (linkedHabitId || linkedTaskId) && (
+          <div className="text-[11px] font-mono text-zinc-600 dark:text-zinc-400 text-center space-y-0.5">
+            {linkedHabitId && (() => {
+              const linked = activeHabits.find((h) => h.id === linkedHabitId);
+              return linked?.pomoGoal ? (
+                <p>
+                  Vinculado a {habitName(linked, isHidden(linked))} · meta {goalTarget(linked.pomoGoal)}
+                </p>
+              ) : null;
+            })()}
+            {linkedTaskId && (() => {
+              const task = tasks.find((t) => t.id === linkedTaskId);
+              if (!task) return null;
+              const prog = taskProgress(task, pomoSessions);
+              return (
+                <p>
+                  Tarefa: {isDiscreet ? '••••• (Tarefa)' : task.title} · progresso {prog.done}/{prog.target} pomos
+                </p>
+              );
+            })()}
+          </div>
+        )}
 
         {/* Ajuste do tempo (somente ocioso) */}
         {idle && (
@@ -221,25 +248,59 @@ export const PomoView: React.FC = () => {
           </div>
         )}
 
-        {/* Vincular o foco a um hábito com meta (somente ocioso, em foco) */}
-        {idle && kind === 'focus' && linkableHabits.length > 0 && (
-          <div className="w-full space-y-1.5">
-            <label htmlFor="pomo-habit" className="block text-[11px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
-              Vincular a hábito
-            </label>
-            <select
-              id="pomo-habit"
-              value={linkedHabitId ?? ''}
-              onChange={(e) => setLinkedHabit(e.target.value || null)}
-              className="w-full min-h-[44px] px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm"
-            >
-              <option value="">Sem vínculo</option>
-              {linkableHabits.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {habitName(h, isHidden(h))} — {goalLabel(goalProgress(h.pomoGoal!, h.id, pomoSessions, todayKey))}
-                </option>
-              ))}
-            </select>
+        {/* Vincular o foco a um hábito e/ou a uma tarefa (somente ocioso, em foco) */}
+        {idle && kind === 'focus' && (linkableHabits.length > 0 || linkableTasks.length > 0) && (
+          <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {linkableHabits.length > 0 && (
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="pomo-habit"
+                  className="block text-[11px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400"
+                >
+                  Vincular a hábito
+                </label>
+                <select
+                  id="pomo-habit"
+                  value={linkedHabitId ?? ''}
+                  onChange={(e) => setLinkedHabit(e.target.value || null)}
+                  className="w-full min-h-[44px] px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm"
+                >
+                  <option value="">Sem vínculo</option>
+                  {linkableHabits.map((h) => (
+                    <option key={h.id} value={h.id}>
+                      {habitName(h, isHidden(h))} — {goalLabel(goalProgress(h.pomoGoal!, h.id, pomoSessions, todayKey))}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {linkableTasks.length > 0 && (
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="pomo-task"
+                  className="block text-[11px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400"
+                >
+                  Vincular a tarefa
+                </label>
+                <select
+                  id="pomo-task"
+                  value={linkedTaskId ?? ''}
+                  onChange={(e) => setLinkedTask(e.target.value || null)}
+                  className="w-full min-h-[44px] px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm"
+                >
+                  <option value="">Sem vínculo</option>
+                  {linkableTasks.map((t) => {
+                    const prog = taskProgress(t, pomoSessions);
+                    return (
+                      <option key={t.id} value={t.id}>
+                        {isDiscreet ? '••••• (Tarefa)' : t.title} — {prog.done}/{prog.target} pomos
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            )}
           </div>
         )}
 
@@ -286,6 +347,9 @@ export const PomoView: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Seção de Tarefas */}
+      <PomoTasks />
 
       {/* Resumo de hoje */}
       <div className="grid grid-cols-3 gap-3">
@@ -352,6 +416,54 @@ export const PomoView: React.FC = () => {
           </ul>
         )}
       </div>
+
+      {/* Prompt pós-foco ao atingir a estimativa de pomos */}
+      {pendingTask && (
+        <ModalShell
+          labelledBy="pending-task-prompt-title"
+          onClose={dismissPendingTaskPrompt}
+          widthClass="sm:max-w-sm"
+        >
+          <div className="space-y-4">
+            <h3 id="pending-task-prompt-title" className="text-sm font-semibold tracking-tight">
+              Meta de foco atingida!
+            </h3>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+              Você completou os pomos planejados para{' '}
+              <strong className="text-zinc-950 dark:text-zinc-50">
+                "{isDiscreet ? '••••• (Tarefa)' : pendingTask.title}"
+              </strong>
+              . Concluiu a tarefa?
+            </p>
+
+            <div className="flex flex-col gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => resolvePendingTaskPrompt('complete')}
+                className="w-full min-h-[44px] px-4 py-2 rounded-xl text-xs font-medium bg-zinc-950 text-zinc-50 dark:bg-zinc-50 dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+              >
+                Concluir Tarefa
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => resolvePendingTaskPrompt('add_pomo')}
+                  className="flex-1 min-h-[44px] px-3 py-2 rounded-xl text-xs font-medium border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                >
+                  +1 Pomo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => resolvePendingTaskPrompt('later')}
+                  className="flex-1 min-h-[44px] px-3 py-2 rounded-xl text-xs font-medium border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                >
+                  Agora não
+                </button>
+              </div>
+            </div>
+          </div>
+        </ModalShell>
+      )}
     </div>
   );
 };
