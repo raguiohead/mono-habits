@@ -21,7 +21,9 @@ import {
 import {
   executeTasksSync,
   applySyncResult,
-  tasksToRemoveOnListSwitch
+  tasksToRemoveOnListSwitch,
+  detectListConflict,
+  type ListConflict
 } from '@/lib/tasksSync';
 import {
   db,
@@ -72,6 +74,10 @@ interface TasksContextType {
   connectGoogleTasks: (listId: string, listTitle: string) => Promise<void>;
   /** Desconecta do Google Tasks e remove a lista */
   disconnectGoogleTasks: () => Promise<void>;
+  /** Outro aparelho definiu uma lista diferente da usada aqui; aguarda a escolha do usuário */
+  pendingListConflict: ListConflict | null;
+  /** 'adopt' = usar a lista da conta (descarta aqui as tarefas da outra lista); 'keep' = manter a daqui e trocar a conta */
+  resolveListConflict: (choice: 'adopt' | 'keep') => Promise<void>;
 }
 
 const TasksContext = createContext<TasksContextType | undefined>(undefined);
@@ -88,6 +94,9 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [isSyncingGoogle, setIsSyncingGoogle] = useState(false);
   const isSyncingGoogleRef = useRef(false);
+  const [pendingListConflict, setPendingListConflict] = useState<ListConflict | null>(null);
+  const pendingListConflictRef = useRef<ListConflict | null>(null);
+  pendingListConflictRef.current = pendingListConflict;
   const [googleSyncError, setGoogleSyncError] = useState<string | null>(null);
   const debounceTimerRef = useRef<number | null>(null);
 
@@ -99,6 +108,8 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const config = settings.googleTasks;
       if (!config?.listId) return false;
 
+      // Enquanto o usuário não decide qual lista vale, não sincroniza (evita misturar listas)
+      if (pendingListConflictRef.current) return false;
       // Evita dois syncs simultâneos concorrentes
       if (isSyncingGoogleRef.current) return false;
       isSyncingGoogleRef.current = true;
@@ -246,6 +257,58 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     showToast('Google Tasks desconectado.');
   }, [user, updateSettings, showToast]);
 
+  /** Adota a lista salva na conta: atualiza o cache local e expurga as tarefas vinculadas a outra lista */
+  const applyRemoteList = useCallback(
+    (remote: { listId: string; listTitle: string }) => {
+      const currentConfig = settingsRef.current.googleTasks;
+      const isSameList = currentConfig?.listId === remote.listId;
+
+      updateSettings({
+        googleTasks: {
+          listId: remote.listId,
+          listTitle: remote.listTitle,
+          lastSyncAt: isSameList ? currentConfig?.lastSyncAt : undefined
+        }
+      });
+
+      // As deleções no Firestore já chegam pelo snapshot de tasks; aqui garante que o estado local não reenvie nada
+      const toRemove = tasksToRemoveOnListSwitch(rawTasksRef.current, remote.listId);
+      if (toRemove.length > 0) {
+        const toRemoveIds = new Set(toRemove.map((t) => t.id));
+        setRawTasks((prev) => {
+          const next = prev.filter((t) => !toRemoveIds.has(t.id));
+          saveLocalTasks(next);
+          return next;
+        });
+
+        if (user && db && isFirebaseConfigured) {
+          const activeDb = db;
+          toRemove.forEach((t) => {
+            const taskRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'tasks', t.id);
+            deleteDoc(taskRef).catch(() => {});
+          });
+        }
+      }
+    },
+    [user, updateSettings]
+  );
+
+  const resolveListConflict = useCallback(
+    async (choice: 'adopt' | 'keep') => {
+      const conflict = pendingListConflictRef.current;
+      if (!conflict) return;
+      setPendingListConflict(null);
+      pendingListConflictRef.current = null;
+      if (choice === 'adopt') {
+        applyRemoteList(conflict.remote);
+      } else {
+        // Mantém a lista deste aparelho e troca a lista da conta (remove as tarefas da outra lista)
+        await connectGoogleTasks(conflict.local.listId, conflict.local.listTitle);
+      }
+    },
+    [applyRemoteList, connectGoogleTasks]
+  );
+
   // Sincronização em tempo real das preferências da conta (prefs/googleTasks) via Firestore
   useEffect(() => {
     if (!user || !db || !isFirebaseConfigured) return;
@@ -268,32 +331,14 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             typeof data?.listTitle === 'string' ? data.listTitle.trim().slice(0, 100) : '';
 
           if (remoteListId && remoteListTitle) {
-            const currentConfig = settingsRef.current.googleTasks;
-            const isSameList = currentConfig?.listId === remoteListId;
-
-            updateSettings({
-              googleTasks: {
-                listId: remoteListId,
-                listTitle: remoteListTitle,
-                lastSyncAt: isSameList ? currentConfig?.lastSyncAt : undefined
-              }
-            });
-
-            // Limpeza local: garante que tarefas de outra lista sejam expurgadas
-            // (as deleções no Firestore já chegam pelo snapshot de tasks, mas garante que o estado local não reenvie nada)
-            const toRemove = tasksToRemoveOnListSwitch(rawTasksRef.current, remoteListId);
-            if (toRemove.length > 0) {
-              const toRemoveIds = new Set(toRemove.map((t) => t.id));
-              setRawTasks((prev) => {
-                const next = prev.filter((t) => !toRemoveIds.has(t.id));
-                saveLocalTasks(next);
-                return next;
-              });
-
-              toRemove.forEach((t) => {
-                const taskRef = doc(activeDb, 'artifacts', appId, 'users', user.uid, 'tasks', t.id);
-                deleteDoc(taskRef).catch(() => {});
-              });
+            const remote = { listId: remoteListId, listTitle: remoteListTitle };
+            const conflict = detectListConflict(settingsRef.current.googleTasks, remote, rawTasksRef.current);
+            if (conflict) {
+              // Adotar a lista da conta descartaria tarefas deste aparelho: o usuário decide
+              setPendingListConflict(conflict);
+            } else {
+              setPendingListConflict(null);
+              applyRemoteList(remote);
             }
           }
         } else {
@@ -315,6 +360,7 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
 
           // Se já migrou ou não há lista local, a conta está sem lista conectada
+          setPendingListConflict(null);
           if (settingsRef.current.googleTasks) {
             updateSettings({ googleTasks: undefined });
           }
@@ -328,7 +374,7 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => {
       unsub();
     };
-  }, [user, updateSettings]);
+  }, [user, updateSettings, applyRemoteList]);
 
   // Sincronização em tempo real das tarefas via Firestore
   useEffect(() => {
@@ -651,7 +697,9 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       googleSyncError,
       syncWithGoogle,
       connectGoogleTasks,
-      disconnectGoogleTasks
+      disconnectGoogleTasks,
+      pendingListConflict,
+      resolveListConflict
     }),
     [
       tasks,
@@ -670,7 +718,9 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       googleSyncError,
       syncWithGoogle,
       connectGoogleTasks,
-      disconnectGoogleTasks
+      disconnectGoogleTasks,
+      pendingListConflict,
+      resolveListConflict
     ]
   );
 
