@@ -19,6 +19,7 @@ import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import { BottomNav } from '@/components/BottomNav';
 import { Toast } from '@/components/Toast';
 import { UpdateNotice } from '@/components/UpdateNotice';
+import { ListConflictModal } from '@/components/ListConflictModal';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { type Habit } from '@/types/habit';
 
@@ -126,6 +127,7 @@ const MainContent: React.FC = () => {
       <DayCompleteEffect />
       <MilestoneWatcher />
       <UpdateNotice />
+      <ListConflictModal />
 
       {showWelcome && (
         <WelcomeModal

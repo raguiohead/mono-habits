@@ -453,3 +453,33 @@ export function tasksToRemoveOnListSwitch(
 ): PomoTask[] {
   return tasks.filter((t) => Boolean(t.google?.listId && t.google.listId !== newListId));
 }
+
+export interface AccountListRef {
+  listId: string;
+  listTitle: string;
+}
+
+export interface ListConflict {
+  /** Lista salva na conta (Firestore), que este aparelho adotaria */
+  remote: AccountListRef;
+  /** Lista que este aparelho usava até agora */
+  local: AccountListRef;
+  /** Tarefas ativas deste aparelho que sairiam do app ao adotar a lista da conta */
+  affectedCount: number;
+}
+
+/**
+ * Detecta quando adotar a lista da conta descartaria tarefas locais de outra lista.
+ * Só há conflito se o aparelho já usava OUTRA lista e ainda tem tarefas ativas vinculadas a ela;
+ * sem tarefas afetadas a troca é silenciosa (não há nada a perder).
+ */
+export function detectListConflict(
+  local: AccountListRef | undefined,
+  remote: AccountListRef,
+  tasks: PomoTask[]
+): ListConflict | null {
+  if (!local?.listId || local.listId === remote.listId) return null;
+  const affectedCount = tasksToRemoveOnListSwitch(tasks, remote.listId).filter((t) => !t.deleted).length;
+  if (affectedCount === 0) return null;
+  return { remote, local, affectedCount };
+}
