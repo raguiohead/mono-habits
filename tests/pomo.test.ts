@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   formatClock,
+  isDataReady,
   formatDuration,
   getNextKind,
   summarizeDay,
@@ -66,5 +67,25 @@ describe('pomo', () => {
   it('ordena da mais recente para a mais antiga', () => {
     const r = sortSessions([make({ id: 'a', startedAt: 1 }), make({ id: 'b', startedAt: 2 })]);
     expect(r.map((s) => s.id)).toEqual(['b', 'a']);
+  });
+});
+
+describe('isDataReady', () => {
+  const base = { authLoading: false, initialLoaded: true, cloudSync: false, uid: null, syncedUid: null };
+
+  it('aguarda a autenticação e o carregamento inicial', () => {
+    expect(isDataReady({ ...base, authLoading: true })).toBe(false);
+    expect(isDataReady({ ...base, initialLoaded: false })).toBe(false);
+  });
+
+  it('sem nuvem, fica pronto assim que a autenticação termina', () => {
+    expect(isDataReady(base)).toBe(true);
+  });
+
+  it('com conta conectada, só fica pronto depois da sincronização inicial dessa conta', () => {
+    const cloud = { ...base, cloudSync: true, uid: 'u1' };
+    expect(isDataReady({ ...cloud, syncedUid: null })).toBe(false);
+    expect(isDataReady({ ...cloud, syncedUid: 'outra-conta' })).toBe(false);
+    expect(isDataReady({ ...cloud, syncedUid: 'u1' })).toBe(true);
   });
 });
