@@ -94,3 +94,20 @@ export function summarizeDay(sessions: PomoSession[], dateKey: string): PomoDayS
 export function sortSessions(sessions: PomoSession[]): PomoSession[] {
   return [...sessions].sort((a, b) => b.startedAt - a.startedAt);
 }
+
+/**
+ * Indica se já é seguro gravar resultados automáticos (ex.: o fim de um foco que terminou com o app fechado).
+ * Com conta conectada, espera a sincronização inicial da nuvem: antes dela, o que for gravado só no aparelho
+ * é substituído pelos dados remotos e se perde.
+ */
+export function isDataReady(opts: {
+  authLoading: boolean;
+  initialLoaded: boolean;
+  cloudSync: boolean;
+  uid: string | null;
+  syncedUid: string | null;
+}): boolean {
+  if (opts.authLoading || !opts.initialLoaded) return false;
+  if (!opts.cloudSync) return true;
+  return opts.uid !== null && opts.uid === opts.syncedUid;
+}
