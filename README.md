@@ -37,11 +37,15 @@ O **MONO // HABITS** foi desenhado com um princípio radical: **eliminar o ruíd
    - Categorias de hábitos: organização temática personalizável (categoria padrão 'Geral') para contagem e filtragem estruturada.
    - Hábitos em destaque (layout Bento): fixação de até 2 hábitos prioritários no topo do Foco, com células de destaque em grade bento e prioridade visual.
    - Capas personalizadas para hábitos: temas visuais monocromáticos padrão ou upload de imagem própria comprimida e enquadrada no cliente (sem necessidade de armazenamento na nuvem).
+   - Descrições opcionais em hábitos: texto complementar (até 140 caracteres) higienizado automaticamente e ocultado quando o Modo Discreto está ativo.
 2. **Modo Discreto (Privacidade Visual):**
-   - Oculte nomes e notas de hábitos sensíveis com um toque no botão de olho (`Eye`/`EyeOff`), exibindo apenas ícones neutros e marcadores.
-3. **Temporizador Pomodoro Integrado (Pomo Focus):**
+   - Oculte nomes e descrições de hábitos sensíveis individualmente ou de todos de uma vez com um toque no botão de olho (`Eye`/`EyeOff`), exibindo apenas ícones neutros e categorias.
+   - Agendamento automático opcional por janela de horário (ex.: das 22:00 às 07:00).
+3. **Temporizador Pomodoro Integrado (Pomo Focus) & Tarefas:**
    - Timer Pomodoro integrado com contagem regressiva, ciclos de foco e pausas configuráveis.
    - Associação de metas diárias de pomodoros a hábitos específicos ou ao foco geral.
+   - Lista de Tarefas integrada (`PomoTasks`): cadastro de tarefas pontuais com estimativa de pomodoros, vinculação ao ciclo de foco ativo e confirmação ao atingir as sessões planejadas.
+   - Sincronização bidirecional com Google Tasks (Beta): integração opcional via OAuth 2.0 (web e plugin nativo Android) para sincronizar tarefas do Pomo com uma lista do Google Tasks, com preferência de lista sincronizada por conta no Firestore e confirmação segura ao alternar listas entre aparelhos (`ListConflictModal`).
    - Avisos sonoros/táteis e notificações de conclusão de ciclo.
 4. **Lembretes Locais & Notificações:**
    - Lembretes programados executados diretamente no dispositivo (`@capacitor/local-notifications` no Android ou Notification API no navegador/PWA).
@@ -85,12 +89,12 @@ O **MONO // HABITS** foi desenhado com um princípio radical: **eliminar o ruíd
 
 ## 🛠️ Stack Tecnológica
 
-- **Frontend:** React 18.3, TypeScript 5.7, Vite 6.1
-- **Mobile (Android):** Capacitor 8.5 (`@capacitor/android`, `@capacitor/core`, `@capacitor/local-notifications`, `@capacitor/push-notifications`, `@capacitor/splash-screen`, `@capacitor/status-bar`, `@capacitor-firebase/authentication`)
+- **Frontend:** React 18.3, TypeScript 5.7, Vite 6.4
+- **Mobile (Android):** Capacitor 8.6 (`@capacitor/android`, `@capacitor/core`, `@capacitor/local-notifications`, `@capacitor/push-notifications`, `@capacitor/splash-screen`, `@capacitor/status-bar`, `@capacitor-firebase/authentication`)
 - **Estilização:** Tailwind CSS 3.4 (paleta estritamente monocromática `zinc`, `black`, `white`)
 - **Fontes:** Fontsource Variable Fonts (`Inter`, `JetBrains Mono`) empacotadas localmente
 - **Ícones:** Lucide React
-- **Persistência:** LocalStorage + Google Firebase 11.4 (Firebase Auth + Cloud Firestore + Firebase Cloud Messaging + Firebase Analytics opcionais)
+- **Persistência & Integrações:** LocalStorage + Google Firebase 11.4 (Firebase Auth + Cloud Firestore + Firebase Cloud Messaging + Firebase Analytics opcionais) + Google Tasks API v1 (opcional)
 - **PWA:** `vite-plugin-pwa` com Service Worker customizado (`injectManifest`, Workbox 7.4) e precache offline
 - **Testes:** Vitest 4.1 (testes unitários) + `@firebase/rules-unit-testing` (testes de regras de segurança do Firestore)
 
@@ -109,8 +113,8 @@ mono-habits/
 ├── public/                           # Assets estáticos, ícones PWA e splash
 ├── src/
 │   ├── components/                   # Componentes de interface modulares
-│   ├── context/                      # Contextos React (Habits, Settings, Pomo, Lock)
-│   ├── lib/                          # Lógica de domínio, storage, regras, crypto e Firebase
+│   ├── context/                      # Contextos React (Habits, Settings, Pomo, Tasks, Lock)
+│   ├── lib/                          # Lógica de domínio, storage, regras, crypto, Firebase e Google Tasks
 │   ├── types/                        # Definições de tipagem TypeScript
 │   ├── App.tsx                       # Componente raiz da aplicação
 │   ├── index.css                     # Tailwind, variáveis de alto contraste e acessibilidade

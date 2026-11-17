@@ -5,7 +5,7 @@ import { type Habit, type LogsMap, type GracesMap, type SlipsMap, type TabType, 
 import { logUsage } from '@/lib/usageClient';
 import { useSettings } from '@/context/SettingsContext';
 import { GRACE_BLOCK_MESSAGE, addGrace, getGraceBlock, graceRemaining, isGraced, monthKeyOf, removeGrace } from '@/lib/graces';
-import { sortSessions } from '@/lib/pomo';
+import { isDataReady, sortSessions } from '@/lib/pomo';
 import { sanitizeHabitCover, withSanitizedCover } from '@/lib/covers';
 import { normalizePeriod } from '@/lib/periods';
 import { applyWeeklyTargetChange } from '@/lib/weekly';
@@ -89,6 +89,12 @@ interface HabitsContextType {
   slips: SlipsMap;
   pomoSessions: PomoSession[];
   initialLoaded: boolean;
+  /**
+   * Dados prontos para gravações automáticas: autenticação resolvida e, com conta conectada,
+   * a sincronização inicial da nuvem já aplicada. Antes disso, um registro local seria
+   * sobrescrito pelos dados remotos.
+   */
+  dataReady: boolean;
 
   // Navegação
   selectedDateKey: string;
@@ -153,6 +159,8 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const pomoSessionsRef = useRef<PomoSession[]>(pomoSessions);
   pomoSessionsRef.current = pomoSessions;
   const [initialLoaded, setInitialLoaded] = useState<boolean>(false);
+  // Conta cuja sincronização inicial com a nuvem já foi aplicada
+  const [syncedUid, setSyncedUid] = useState<string | null>(null);
 
   // Navegação e datas
   const todayKey = useMemo(() => toDateKey(new Date()), []);
@@ -325,6 +333,11 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       saveLocalPomoSessions(sorted);
     };
 
+    const markSynced = () => {
+      setInitialLoaded(true);
+      setSyncedUid(user.uid);
+    };
+
     const tryResolveInitialSync = () => {
       if (initialResolved || suppressSyncRef.current) return;
       if (
@@ -402,7 +415,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         applyRemotePomo(pendingInitial.pomoSessions);
       }
 
-      setInitialLoaded(true);
+      markSynced();
       setSyncState('synced');
     };
 
@@ -435,7 +448,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         console.warn('[Firestore] Erro ao carregar hábitos:', error);
         initialResolved = true;
         setSyncState('offline');
-        setInitialLoaded(true);
+        markSynced();
       }
     );
 
@@ -464,7 +477,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         console.warn('[Firestore] Erro ao carregar logs:', error);
         initialResolved = true;
         setSyncState('offline');
-        setInitialLoaded(true);
+        markSynced();
       }
     );
 
@@ -489,7 +502,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       (error) => {
         console.warn('[Firestore] Erro ao carregar escorregões:', error);
         initialResolved = true;
-        setInitialLoaded(true);
+        markSynced();
       }
     );
 
@@ -514,7 +527,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       (error) => {
         console.warn('[Firestore] Erro ao carregar dias de graça:', error);
         initialResolved = true;
-        setInitialLoaded(true);
+        markSynced();
       }
     );
 
@@ -538,7 +551,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       (error) => {
         console.warn('[Firestore] Erro ao carregar sessões Pomo:', error);
         initialResolved = true;
-        setInitialLoaded(true);
+        markSynced();
       }
     );
 
@@ -1064,6 +1077,13 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const activeHabits = useMemo(() => habits.filter((h) => !h.archived), [habits]);
+  const dataReady = isDataReady({
+    authLoading,
+    initialLoaded,
+    cloudSync: Boolean(user && db && isFirebaseConfigured),
+    uid: user?.uid ?? null,
+    syncedUid
+  });
 
   return (
     <HabitsContext.Provider
@@ -1084,6 +1104,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         slips,
         pomoSessions,
         initialLoaded,
+        dataReady,
         selectedDateKey,
         setSelectedDateKey,
         weekOffset,

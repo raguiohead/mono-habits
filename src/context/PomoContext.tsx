@@ -75,7 +75,7 @@ function playBeeps(ctx: AudioContext | null) {
 }
 
 export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { savePomoSession, showToast, activeHabits, logs, pomoSessions } = useHabits();
+  const { savePomoSession, showToast, activeHabits, logs, pomoSessions, dataReady } = useHabits();
   const { linkableTasks, tasks, toggleTaskDone, incrementTaskEstimate } = useTasks();
   const { settings: appSettings } = useSettings();
 
@@ -199,13 +199,16 @@ export const PomoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [timer?.status]);
 
-  // Detecta o fim (inclusive quando o app foi reaberto depois do horário)
+  // Detecta o fim (inclusive quando o app foi reaberto depois do horário).
+  // Espera os dados ficarem prontos: se o foco terminou com o app fechado, registrar antes da
+  // sincronização inicial faria a sessão (e a conclusão automática do hábito) ser sobrescrita pela nuvem.
   const mountedAtRef = useRef(Date.now());
   useEffect(() => {
+    if (!dataReady) return;
     if (timer?.status === 'running' && now >= timer.endsAt) {
       finish(timer, timer.endsAt < mountedAtRef.current - 2000);
     }
-  }, [now, timer, finish]);
+  }, [now, timer, finish, dataReady]);
 
   // Mantém a tela acesa durante o timer
   useEffect(() => {
